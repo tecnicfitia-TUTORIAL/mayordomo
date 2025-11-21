@@ -135,8 +135,8 @@ export const generateChatResponse = async (
         history: history,
       });
 
-      // Construct message with attachments if present
-      let messagePayload: any = { text: currentMessage };
+      // Construct message strictly correctly for Gemini SDK
+      let messagePayload: any;
       
       if (attachments && attachments.length > 0) {
         const parts = [];
@@ -158,7 +158,11 @@ export const generateChatResponse = async (
           parts.push({ text: "Analiza este archivo adjunto." });
         }
         
-        messagePayload = { parts };
+        // Correct: message expects string | Part[], so we pass the array directly
+        messagePayload = parts; 
+      } else {
+        // Simple text message
+        messagePayload = currentMessage;
       }
 
       const result = await chat.sendMessage({ message: messagePayload });

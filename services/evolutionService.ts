@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { MacroContextEvent, PermissionProposal, UserProfile, PermissionModule, PermissionItem, SubscriptionTier } from "../types";
+import { MacroContextEvent, PermissionProposal, UserProfile, PermissionModule, SubscriptionTier } from "../types";
 
 // Mock "Internet" Data Stream - Expanded to 15 items for daily variety
 const MOCK_MACRO_EVENTS: MacroContextEvent[] = [

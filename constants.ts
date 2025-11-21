@@ -1,5 +1,5 @@
 
-import { HouseSector, IntegrationPermission, Owner, SectorType, UserProfile, UserArchetype, PermissionModule, LifeStageConfig, PermissionItem, SubscriptionPlan, SubscriptionTier, NotificationConfig } from "./types";
+import { HouseSector, Owner, SectorType, UserProfile, UserArchetype, PermissionModule, LifeStageConfig, SubscriptionPlan, SubscriptionTier, NotificationConfig } from "./types";
 
 // --- ADMIN & SUPPORT CONFIGURATION ---
 export const ADMIN_EMAILS = ['admin@confort.app', 'support@confort.app']; 
@@ -231,16 +231,16 @@ export const determineArchetype = (age: number, occupation: string): UserArchety
 
 // --- LOGIC: Get Permissions by Profile ---
 // Returns ALL modules for EVERYONE. Granularity allows the "Total Experience" feel.
-export const getPermissionsByProfile = (age: number, gender: string): LifeStageConfig => {
+// Removed 'gender' argument as it was unused, causing strict build failure.
+export const getPermissionsByProfile = (age: number): LifeStageConfig => {
   let modules = [
     MODULE_GESTION_DIARIA,
     MODULE_FINANZAS_CRECIMIENTO,
     MODULE_METAS_PROFESIONALES,
     MODULE_SEGURIDAD_TUTELA,
-    MODULE_BIENESTAR_ENTORNO // Added new module
+    MODULE_BIENESTAR_ENTORNO
   ];
   
-  // The Stage Name adds flavor, but doesn't restrict module access anymore
   let stageName = "ESTÁNDAR";
 
   if (age < 18) {

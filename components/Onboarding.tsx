@@ -46,8 +46,9 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
 
   // Effect to load permissions when entering step 3
   useEffect(() => {
-    if (step === 3 && profile.age && profile.gender) {
-        const config = getPermissionsByProfile(profile.age, profile.gender);
+    if (step === 3 && typeof profile.age === 'number') {
+        // Use correct signature: ONLY age, and use 0 fallback or assertion implicitly handled by if check
+        const config = getPermissionsByProfile(profile.age);
         setLifeStageConfig(config);
         
         // Initial selection only if enabled AND tier allows it
@@ -65,7 +66,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
         });
         setSelectedPermissions(initialSelection);
     }
-  }, [step, profile.age, profile.gender, selectedPlan]);
+  }, [step, profile.age, selectedPlan]);
 
   const handleLogin = () => {
     const demoEmail = email || "admin@confort.app"; 
@@ -515,7 +516,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
                     <span className="hover:text-slate-300 cursor-pointer">Términos de Servicio</span>
                     <span className="hover:text-slate-300 cursor-pointer">Soporte</span>
                 </div>
-                <div className="font-mono text-slate-600">v2.4.0 (Stable)</div>
+                <div className="font-mono text-slate-600">v2.4.1 (Stable)</div>
             </div>
 
         </div>

@@ -1,4 +1,5 @@
 
+
 export enum SectorType {
   FINANCE = 'FINANZAS',
   HEALTH = 'SALUD',
@@ -88,16 +89,6 @@ export interface NotificationConfig {
   savingsTips: boolean;    // Oportunidades financieras
   healthReminders: boolean; // Salud y bienestar
   systemUpdates: boolean;  // Evolución del sistema
-}
-
-// Legacy interface (can be removed if not used elsewhere, but keeping for safety)
-export interface IntegrationPermission {
-  id: string;
-  name: string;
-  description: string;
-  icon: 'MAIL' | 'CALENDAR' | 'SHOPPING' | 'HEALTH' | 'BANK' | 'SOCIAL' | 'HOME';
-  enabled: boolean;
-  minAge: number; // Logic filter
 }
 
 // --- NEW PERMISSION SYSTEM TYPES ---

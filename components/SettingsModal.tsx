@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { NotificationConfig, UserProfile, SubscriptionTier } from '../types';
 import { SUBSCRIPTION_PLANS } from '../constants';
-import { X, Bell, ShieldAlert, Clock, Wallet, Heart, Zap, CreditCard, Check } from 'lucide-react';
+import { X, ShieldAlert, Clock, Wallet, Heart, Zap, CreditCard, Check } from 'lucide-react';
 
 interface Props {
   config: NotificationConfig;
@@ -12,6 +12,14 @@ interface Props {
   onClose: () => void;
 }
 
+interface SettingRowProps {
+  label: string;
+  desc: string;
+  icon: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+}
+
 export const SettingsModal: React.FC<Props> = ({ config, userProfile, onSave, onUpdateSubscription, onClose }) => {
     const [activeTab, setActiveTab] = useState<'NOTIFICATIONS' | 'SUBSCRIPTION'>('SUBSCRIPTION');
 
@@ -19,7 +27,7 @@ export const SettingsModal: React.FC<Props> = ({ config, userProfile, onSave, on
         onSave({ ...config, [key]: !config[key] });
     };
 
-    const SettingRow = ({ label, desc, icon, active, onClick }: any) => (
+    const SettingRow: React.FC<SettingRowProps> = ({ label, desc, icon, active, onClick }) => (
         <div onClick={onClick} className="flex items-center justify-between cursor-pointer group p-3 rounded-xl hover:bg-slate-800/50 transition-colors">
             <div className="flex items-center gap-3">
                 <div className="p-2 bg-slate-800 rounded-lg group-hover:bg-slate-700 transition-colors text-slate-300 shadow-inner">{icon}</div>

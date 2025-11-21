@@ -58,7 +58,7 @@ const App: React.FC = () => {
 
   const hydrateApp = (profile: UserProfile, integrations: string[]) => {
       // Generate Config based on profile
-      const initialConfig = getPermissionsByProfile(profile.age, profile.gender);
+      const initialConfig = getPermissionsByProfile(profile.age);
       // Sync the boolean state based on 'integrations' (which are just IDs)
       const configWithState = {
           ...initialConfig,
@@ -136,7 +136,7 @@ const App: React.FC = () => {
 
     // 2. SCOPING LOGIC: Granular Permission Check
     // Iterate over all defined permissions globally to find restrictions
-    const globalModules = getPermissionsByProfile(updatedProfile.age, updatedProfile.gender).modules;
+    const globalModules = getPermissionsByProfile(updatedProfile.age).modules;
     const newTierLevel = getTierLevel(newTier);
     
     // Find IDs that are FORBIDDEN in the new tier
