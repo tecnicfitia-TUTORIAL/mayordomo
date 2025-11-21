@@ -127,12 +127,17 @@ export const generateChatResponse = async (
       // Simplificamos el contexto para enviar lo relevante
       const contextString = JSON.stringify(context.map(c => ({ name: c.name, owner: c.owner, status: c.status, efficiency: c.efficiency })));
       
+      // CRITICAL: Filter history to remove invalid entries (e.g. empty text parts) which cause 400 errors
+      const validHistory = history.filter(h => 
+        h.parts && h.parts.length > 0 && h.parts.some(p => p.text && p.text.trim() !== "")
+      );
+
       const chat = ai.chats.create({
         model: 'gemini-2.5-flash',
         config: {
           systemInstruction: `${getSystemInstruction(profile)}\n\nEstado actual del Ecosistema: ${contextString}`,
         },
-        history: history,
+        history: validHistory,
       });
 
       // Construct message strictly correctly for Gemini SDK
@@ -151,8 +156,8 @@ export const generateChatResponse = async (
           });
         }
         
-        // Add text part if exists
-        if (currentMessage.trim()) {
+        // Add text part if exists, or a placeholder if only attachments are present
+        if (currentMessage && currentMessage.trim().length > 0) {
           parts.push({ text: currentMessage });
         } else {
           parts.push({ text: "Analiza este archivo adjunto." });
@@ -161,10 +166,11 @@ export const generateChatResponse = async (
         // Correct: message expects string | Part[], so we pass the array directly
         messagePayload = parts; 
       } else {
-        // Simple text message
-        messagePayload = currentMessage;
+        // Simple text message - ensure it's not empty
+        messagePayload = currentMessage || "Continúa.";
       }
 
+      // Note: 'message' parameter in sendMessage can accept string or Part[]
       const result = await chat.sendMessage({ message: messagePayload });
       return result.text || "Analizando patrones del ecosistema...";
     }, 3, "Chat Generation");
@@ -174,7 +180,7 @@ export const generateChatResponse = async (
     if (error?.status === 429 || error?.error?.code === 429) {
         return "El núcleo está recibiendo demasiadas solicitudes simultáneas. Dame unos segundos para liberar recursos.";
     }
-    return "Error de conexión con el núcleo de Confort (O el archivo es demasiado grande).";
+    return "Error de conexión con el núcleo de Confort.";
   }
 };
 

@@ -103,9 +103,16 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile }) => {
     setAttachments([]); // Clear attachments after sending
     setIsTyping(true);
 
+    // Generate history safely. 
+    // Gemini API throws 400 if text is empty string in history parts.
+    // We replace empty text with a placeholder if there was an attachment.
     const history = messages.map(m => ({
       role: m.role,
-      parts: [{ text: m.text }] // Note: We are simplifying history here to text-only for cost/complexity, but sending full multimodal for current message below
+      parts: [{ 
+        text: m.text && m.text.trim() !== "" 
+          ? m.text 
+          : "[Archivo adjunto analizado]" 
+      }] 
     }));
 
     const responseText = await generateChatResponse(history, userMsg.text, sectors, userProfile, userMsg.attachments);

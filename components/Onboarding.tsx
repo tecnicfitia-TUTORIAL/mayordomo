@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { UserProfile, UserArchetype, LifeStageConfig, SubscriptionTier, PermissionItem } from '../types';
 import { determineArchetype, getPermissionsByProfile, SUBSCRIPTION_PLANS, getTierLevel } from '../constants';
@@ -46,9 +45,12 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
 
   // Effect to load permissions when entering step 3
   useEffect(() => {
-    if (step === 3 && typeof profile.age === 'number') {
-        // Use correct signature: ONLY age, and use 0 fallback or assertion implicitly handled by if check
-        const config = getPermissionsByProfile(profile.age);
+    // Explicitly check age is present and valid
+    const hasValidAge = typeof profile.age === 'number' && !isNaN(profile.age);
+    
+    if (step === 3 && hasValidAge) {
+        // Cast as number to satisfy strict TypeScript checks
+        const config = getPermissionsByProfile(profile.age as number);
         setLifeStageConfig(config);
         
         // Initial selection only if enabled AND tier allows it
