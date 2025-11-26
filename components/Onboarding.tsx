@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { UserProfile, UserArchetype, LifeStageConfig, SubscriptionTier, PermissionItem } from '../types';
 import { determineArchetype, getPermissionsByProfile, SUBSCRIPTION_PLANS, getTierLevel } from '../constants';
@@ -39,6 +40,15 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
   // New State for Plan
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(SubscriptionTier.BASIC);
 
+  // Email validation regex
+  const validateEmail = (email: string) => {
+    return String(email)
+      .toLowerCase()
+      .match(
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+      );
+  };
+
   // Effect to calculate archetype when data is sufficient
   useEffect(() => {
     if (profile.age && profile.occupation) {
@@ -71,6 +81,11 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
   }, [step, profile.age, selectedPlan]);
 
   const handleLogin = () => {
+    if (!validateEmail(email)) {
+        alert("Por favor, introduce un email válido.");
+        return;
+    }
+
     setIsAuthenticating(true);
     setAuthStatus('Validando credenciales manuales...');
     
@@ -561,7 +576,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
                     <span className="hover:text-slate-300 cursor-pointer">Términos de Servicio</span>
                     <span className="hover:text-slate-300 cursor-pointer">Soporte</span>
                 </div>
-                <div className="font-mono text-slate-600">v2.4.1 (Stable)</div>
+                <div className="font-mono text-slate-600">v2.8.0 (Deploy Fix)</div>
             </div>
 
         </div>

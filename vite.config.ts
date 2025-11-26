@@ -2,34 +2,37 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Strategy to break the deployment loop:
-// In Cloud Run, the project directory is often mounted via GCS Fuse which is slow and unstable for heavy write operations.
-// We switch BOTH the build output AND the Vite cache to the system's temporary directory (/tmp) which is RAM-based.
-const isCloudEnvironment = process.env.K_SERVICE || process.env.PORT;
-// Vercel expects 'dist' by default. We align with that standard.
-const buildOutput = isCloudEnvironment ? '/tmp/dist' : 'dist';
-const cacheLocation = isCloudEnvironment ? '/tmp/.vite' : 'node_modules/.vite';
+// Detección precisa del entorno de despliegue
+const isVercel = process.env.VERCEL === '1';
+const isCloudRun = process.env.K_SERVICE || (process.env.PORT && !isVercel);
+
+// Configuración de Rutas
+// Vercel espera 'dist'. Cloud Run necesita '/tmp/dist' para evitar errores de escritura en GCS Fuse.
+let buildOutput = 'dist';
+let cacheLocation = 'node_modules/.vite';
+
+if (isCloudRun) {
+  console.log('Configuring for Cloud Run environment...');
+  buildOutput = '/tmp/dist';
+  cacheLocation = '/tmp/.vite';
+} else {
+  console.log('Configuring for Standard/Vercel environment (Output: dist)...');
+}
 
 export default defineConfig({
   plugins: [react()],
-  cacheDir: cacheLocation, // CRITICAL FIX: Prevent writing cache to node_modules on GCS Fuse
-  // CRITICAL: Explicitly inject the API Key into the browser code
+  cacheDir: cacheLocation,
   define: {
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
+    'process.env.API_KEY': JSON.stringify(process.env.VITE_GOOGLE_API_KEY || process.env.API_KEY)
   },
   build: {
     outDir: buildOutput, 
     emptyOutDir: true,
     sourcemap: false,
-    minify: false, // Keep false to prevent OOM on small containers
+    minify: false,
     rollupOptions: {
       external: [
-        'react',
-        'react-dom',
-        'react-dom/client',
-        '@google/genai',
-        'recharts',
-        'lucide-react'
+        // No externalizar React para evitar conflictos en Vercel
       ]
     }
   },
