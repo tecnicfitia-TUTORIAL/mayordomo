@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { NotificationConfig, UserProfile, SubscriptionTier, LifeStageConfig, PermissionItem } from '../types';
-import { SUBSCRIPTION_PLANS, getTierLevel } from '../constants';
-import { X, ShieldAlert, Clock, Wallet, Heart, Zap, CreditCard, Check, Trash2, Settings as SettingsIcon, Sliders, Lock, ToggleLeft, ToggleRight, BellRing, Skull } from 'lucide-react';
+import { SUBSCRIPTION_PLANS, getTierLevel, ADMIN_EMAILS } from '../constants';
+import { X, ShieldAlert, Clock, Wallet, Heart, Zap, CreditCard, Check, Trash2, Settings as SettingsIcon, Sliders, Lock, ToggleLeft, ToggleRight, BellRing, Skull, Eye, MonitorPlay } from 'lucide-react';
 
 interface Props {
   config: NotificationConfig;
@@ -39,6 +39,9 @@ export const SettingsModal: React.FC<Props> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<'NOTIFICATIONS' | 'SUBSCRIPTION' | 'PERMISSIONS'>('SUBSCRIPTION');
     const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
+
+    // Check if current user is Admin
+    const isAdmin = ADMIN_EMAILS.includes(userProfile.email);
 
     useEffect(() => {
         if ("Notification" in window) {
@@ -112,7 +115,7 @@ export const SettingsModal: React.FC<Props> = ({
                 {/* Header */}
                 <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                        Configuración
+                        Configuración {isAdmin && <span className="text-[10px] bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded border border-amber-500/50">ADMIN</span>}
                     </h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-800 rounded-full"><X size={20}/></button>
                 </div>
@@ -328,6 +331,30 @@ export const SettingsModal: React.FC<Props> = ({
                 {/* Footer Actions */}
                 <div className="p-5 border-t border-slate-800 bg-slate-950">
                      <div className="flex flex-col gap-4">
+                         {/* ADMIN GOD MODE SECTION */}
+                         {isAdmin && (
+                             <div className="mb-4 p-3 bg-amber-900/10 border border-amber-500/30 rounded-lg">
+                                 <h4 className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                     <MonitorPlay size={12} /> Simulación de Roles (God Mode)
+                                 </h4>
+                                 <div className="grid grid-cols-4 gap-2">
+                                     {SUBSCRIPTION_PLANS.map(plan => (
+                                         <button 
+                                            key={plan.id}
+                                            onClick={() => onUpdateSubscription(plan.id)}
+                                            className={`text-[9px] py-1 px-2 rounded border transition-all uppercase ${
+                                                userProfile.subscriptionTier === plan.id 
+                                                ? 'bg-amber-500 text-black border-amber-500 font-bold' 
+                                                : 'border-slate-700 text-slate-400 hover:border-amber-500/50 hover:text-amber-200'
+                                            }`}
+                                         >
+                                             {plan.name.split(' ')[1]}
+                                         </button>
+                                     ))}
+                                 </div>
+                             </div>
+                         )}
+
                          <div className="flex justify-between items-center">
                              {onHardReset && (
                                  <button 
