@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { UserProfile, UserArchetype, LifeStageConfig, SubscriptionTier, PermissionItem } from '../types';
 import { determineArchetype, getPermissionsByProfile, SUBSCRIPTION_PLANS, getTierLevel } from '../constants';
@@ -75,6 +74,8 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
     setIsAuthenticating(true);
     setAuthStatus('Validando credenciales manuales...');
     
+    // ECHO [FIREBASE]: firebase.auth().signInWithEmailAndPassword(email, password)
+    
     // Simulate Network Delay
     setTimeout(() => {
         const demoEmail = email || "admin@confort.app"; 
@@ -96,6 +97,9 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
   const handleSocialLogin = (provider: string) => {
       setIsAuthenticating(true);
       setAuthStatus(`Contactando proveedor de identidad (${provider})...`);
+      
+      // ECHO [FIREBASE]: const provider = new firebase.auth.GoogleAuthProvider();
+      // ECHO [FIREBASE]: firebase.auth().signInWithPopup(provider);
       
       // Simulate OAuth Popup and Network Delay with realistic steps
       setTimeout(() => {
@@ -159,6 +163,13 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
         }
     });
     setSelectedPermissions(newSet);
+  };
+
+  const handlePlanSelection = (planId: SubscriptionTier) => {
+      // ECHO [STRIPE]: Aquí inicia el flujo de pago real
+      // const { sessionId } = await api.post('/create-checkout-session', { priceId: planId });
+      // stripe.redirectToCheckout({ sessionId });
+      setSelectedPlan(planId);
   };
 
   const handleComplete = () => {
@@ -295,7 +306,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
                                 className="w-4 h-4 rounded bg-slate-800 border-slate-700 text-ai-500 focus:ring-ai-500" 
                             />
                             <label htmlFor="terms" className="text-xs text-slate-400">
-                                Acepto ceder el 65% de mi carga operativa a la IA.
+                                He leído y acepto las <span className="text-slate-300 font-bold cursor-pointer hover:text-white hover:underline">Condiciones de Uso</span> y la Política de Privacidad.
                             </label>
                         </div>
 
@@ -403,7 +414,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
                             {SUBSCRIPTION_PLANS.map((plan) => (
                                 <div 
                                     key={plan.id}
-                                    onClick={() => setSelectedPlan(plan.id)}
+                                    onClick={() => handlePlanSelection(plan.id)}
                                     className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${
                                         selectedPlan === plan.id 
                                         ? 'border-ai-500 bg-ai-900/10' 

@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { HouseSector, Insight, UserProfile, SubscriptionTier, Attachment } from "../types";
 
@@ -15,6 +13,7 @@ export const subscribeToErrors = (listener: ErrorListener) => {
 };
 
 const notifyUser = (message: string, type: 'ERROR' | 'WARNING' = 'ERROR') => {
+  // ECHO [DATADOG]: datadogLogs.logger.error(message, { type });
   errorListeners.forEach(listener => listener(message, type));
 };
 
@@ -81,6 +80,7 @@ async function runWithRetry<T>(fn: () => Promise<T>, retries = 3, context: strin
       // If it's not a recoverable error, throw immediately
       if (!isQuotaError) {
           notifyUser(`Error en ${context}: No pude procesar la solicitud.`);
+          // ECHO [DATADOG]: datadogLogs.logger.error(`Critical Error in ${context}`, { error });
           throw error;
       }
     }
@@ -203,6 +203,9 @@ export const generateChatResponse = async (
       }
 
       const result = await chat.sendMessage({ message: messagePayload });
+      
+      // ECHO [FIREBASE]: Guardar chat en Firestore -> db.collection('chats').add({ user: profile.email, prompt: currentMessage, response: result.text })
+      
       return result.text || "Analizando patrones del ecosistema...";
     }, 3, "Chat");
     

@@ -109,6 +109,8 @@ const App: React.FC = () => {
   
   // Load Persistence on Mount
   useEffect(() => {
+    // ECHO [DATADOG]: datadogRum.init({ applicationId: '...', clientToken: '...' });
+    
     const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
     const storedIntegrations = localStorage.getItem(INTEGRATIONS_STORAGE_KEY);
     const storedDemoMode = localStorage.getItem(DEMO_MODE_KEY);
@@ -135,10 +137,18 @@ const App: React.FC = () => {
             setUserProfile(parsedProfile);
             const integrations = storedIntegrations ? JSON.parse(storedIntegrations) : [];
             setActiveIntegrations(integrations);
+            
+            // ECHO [FIREBASE]: Aquí reemplazaríamos hydrateApp local por fetch de Firestore
+            // const dbSectors = await firebase.firestore().collection('sectors').where('userId', '==', parsedProfile.id).get();
+            
             // Re-hydrate Sectors & Config
             hydrateApp(parsedProfile, integrations);
+            
+            // ECHO [DATADOG]: datadogRum.setUser({ id: parsedProfile.email, ... });
         }
     }
+    
+    // ECHO [FIREBASE]: firebase.auth().onAuthStateChanged((user) => { ... });
   }, []);
 
   const toggleTheme = () => {
@@ -222,6 +232,9 @@ const App: React.FC = () => {
     // Save to Storage
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
     localStorage.setItem(INTEGRATIONS_STORAGE_KEY, JSON.stringify(integrations));
+    
+    // ECHO [FIREBASE]: firebase.firestore().collection('users').doc(user.uid).set(profile);
+    // ECHO [FIREBASE]: firebase.firestore().collection('sectors').add(initialSectors);
 
     setUserProfile({ ...profile, setupCompleted: true });
     setActiveIntegrations(integrations);
@@ -234,6 +247,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+      // ECHO [FIREBASE]: firebase.auth().signOut();
       localStorage.removeItem(PROFILE_STORAGE_KEY);
       localStorage.removeItem(INTEGRATIONS_STORAGE_KEY);
       localStorage.removeItem('confort_chat_history'); // Clear chat history on logout
@@ -265,6 +279,9 @@ const App: React.FC = () => {
   // Handle Plan Change & Granular Scope Permissions
   const handleUpdateSubscription = (newTier: SubscriptionTier) => {
     if (!userProfile || !lifeStageConfig) return;
+
+    // ECHO [STRIPE]: Aquí llamaríamos al backend para crear una sesión de portal o actualizar suscripción
+    // await api.post('/create-portal-session', { tier: newTier });
 
     // 1. Update Profile
     const updatedProfile = { ...userProfile, subscriptionTier: newTier };
@@ -307,6 +324,7 @@ const App: React.FC = () => {
   };
 
   const handleToggleIntegration = (id: string) => {
+      // ECHO [FIREBASE]: Actualizar en DB remota
       const isEnabled = activeIntegrations.includes(id);
       const newIntegrations = isEnabled 
           ? activeIntegrations.filter(i => i !== id) 
@@ -391,6 +409,7 @@ const App: React.FC = () => {
     setActiveIntegrations(newIntegrations);
     localStorage.setItem(INTEGRATIONS_STORAGE_KEY, JSON.stringify(newIntegrations));
     
+    // ECHO [FIREBASE]: Guardar nuevo permiso evolutivo en DB
     alert(`NUEVO PERMISO EVOLUTIVO: "${newPermission.label}" ha sido añadido a tu ecosistema.`);
   };
 

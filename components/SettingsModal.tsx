@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { NotificationConfig, UserProfile, SubscriptionTier, LifeStageConfig, PermissionItem } from '../types';
 import { SUBSCRIPTION_PLANS, getTierLevel } from '../constants';
-import { X, ShieldAlert, Clock, Wallet, Heart, Zap, CreditCard, Check, Trash2, Settings as SettingsIcon, Sliders, Lock, ToggleLeft, ToggleRight, BellRing } from 'lucide-react';
+import { X, ShieldAlert, Clock, Wallet, Heart, Zap, CreditCard, Check, Trash2, Settings as SettingsIcon, Sliders, Lock, ToggleLeft, ToggleRight, BellRing, Skull } from 'lucide-react';
 
 interface Props {
   config: NotificationConfig;
@@ -60,7 +61,9 @@ export const SettingsModal: React.FC<Props> = ({
     };
 
     const toggle = (key: keyof NotificationConfig) => {
-        onSave({ ...config, [key]: !config[key] });
+        const newConfig = { ...config, [key]: !config[key] };
+        // ECHO [FIREBASE]: firebase.firestore().collection('users').doc(uid).update({ notifications: newConfig });
+        onSave(newConfig);
     };
 
     // Helper to handle bulk toggle for a module
@@ -75,6 +78,16 @@ export const SettingsModal: React.FC<Props> = ({
         
         // If all are active, disable them. Otherwise, enable them.
         onBulkToggle(ids, allActive ? 'DISABLE' : 'ENABLE');
+    };
+
+    const handleDeleteAccount = () => {
+        const confirmText = prompt("Para confirmar el borrado, escribe 'ELIMINAR' en mayúsculas. Esta acción no se puede deshacer.");
+        if (confirmText === 'ELIMINAR') {
+            // ECHO [FIREBASE]: firebase.auth().currentUser.delete();
+            // ECHO [FIREBASE]: firebase.firestore().collection('users').doc(uid).delete();
+            alert("Cuenta eliminada. Gracias por usar Confort OS.");
+            if (onHardReset) onHardReset();
+        }
     };
 
     const SettingRow: React.FC<SettingRowProps> = ({ label, desc, icon, active, onClick }) => (
@@ -210,7 +223,11 @@ export const SettingsModal: React.FC<Props> = ({
                                 {SUBSCRIPTION_PLANS.map(plan => (
                                     <div 
                                         key={plan.id}
-                                        onClick={() => onUpdateSubscription(plan.id)}
+                                        onClick={() => {
+                                            // ECHO [STRIPE]: Aquí iría la lógica de redirección al Customer Portal si ya tiene cuenta
+                                            // if (hasStripeId) { window.location.href = portalUrl } else { onUpdateSubscription(...) }
+                                            onUpdateSubscription(plan.id)
+                                        }}
                                         className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${userProfile.subscriptionTier === plan.id ? 'border-ai-500 bg-ai-900/10' : 'border-slate-800 bg-slate-900 hover:border-slate-700'}`}
                                     >
                                         <div>
@@ -307,19 +324,35 @@ export const SettingsModal: React.FC<Props> = ({
                     )}
 
                 </div>
-                <div className="p-5 border-t border-slate-800 bg-slate-950 flex justify-between items-center">
-                     {onHardReset && (
-                         <button 
-                            onClick={onHardReset}
-                            className="text-red-500 hover:text-red-400 text-xs font-bold flex items-center gap-1 px-2 py-1 hover:bg-red-900/20 rounded transition-colors"
-                            title="Borrar todos los datos y reiniciar"
-                         >
-                             <Trash2 size={14} /> Reiniciar Demo
-                         </button>
-                     )}
-                     <button onClick={onClose} className="bg-ai-600 hover:bg-ai-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-ai-500/20">
-                        {activeTab === 'SUBSCRIPTION' || activeTab === 'PERMISSIONS' ? 'Cerrar' : 'Guardar Preferencias'}
-                     </button>
+                
+                {/* Footer Actions */}
+                <div className="p-5 border-t border-slate-800 bg-slate-950">
+                     <div className="flex flex-col gap-4">
+                         <div className="flex justify-between items-center">
+                             {onHardReset && (
+                                 <button 
+                                    onClick={onHardReset}
+                                    className="text-slate-500 hover:text-white text-xs font-bold flex items-center gap-1 px-2 py-1 hover:bg-slate-800 rounded transition-colors"
+                                    title="Reiniciar Simulación Local"
+                                 >
+                                     <Trash2 size={14} /> Reiniciar Demo
+                                 </button>
+                             )}
+                             <button onClick={onClose} className="bg-ai-600 hover:bg-ai-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-ai-500/20">
+                                {activeTab === 'SUBSCRIPTION' || activeTab === 'PERMISSIONS' ? 'Cerrar' : 'Guardar'}
+                             </button>
+                         </div>
+                         
+                         {/* Danger Zone - Legal Requirement for App Store */}
+                         <div className="pt-4 border-t border-slate-800/50">
+                             <button 
+                                onClick={handleDeleteAccount}
+                                className="w-full flex items-center justify-center gap-2 text-[10px] text-red-900 hover:text-red-500 bg-red-950/20 hover:bg-red-950/40 border border-red-900/30 hover:border-red-800 py-2 rounded transition-colors uppercase tracking-widest font-bold"
+                             >
+                                 <Skull size={12} /> Eliminar Cuenta y Datos (Irreversible)
+                             </button>
+                         </div>
+                     </div>
                 </div>
             </div>
         </div>
