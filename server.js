@@ -27,7 +27,8 @@ try {
 
 const port = process.env.PORT || 8080;
 const isCloudEnvironment = process.env.K_SERVICE || process.env.PORT;
-const distPath = isCloudEnvironment ? '/tmp/build' : path.join(__dirname, 'build');
+// Update path to 'dist' (or /tmp/dist in cloud)
+const distPath = isCloudEnvironment ? '/tmp/dist' : path.join(__dirname, 'dist');
 
 let buildStatus = 'pending';
 let buildLogs = [];
@@ -72,14 +73,20 @@ function startBuild() {
     if (buildStatus === 'error') return;
 
     console.log("[Build] Starting background build process...");
+    // Use node directly to execute vite script to avoid permission/symlink issues
     const viteScript = path.join(__dirname, 'node_modules', 'vite', 'bin', 'vite.js');
     
     if (!fs.existsSync(viteScript)) {
+        console.error(`[Build Error] Vite script not found at ${viteScript}`);
         buildStatus = 'error';
         return;
     }
 
-    // Usamos 'node' directo para máxima compatibilidad
+    // Check API Key presence
+    if (!process.env.API_KEY) {
+        console.warn("[Build Warning] API_KEY is not set in environment variables. AI features may fail.");
+    }
+
     const buildProcess = exec(`node "${viteScript}" build`, {
         env: { ...process.env, NODE_ENV: 'production' }
     });
@@ -89,9 +96,16 @@ function startBuild() {
 
     buildProcess.on('close', (code) => {
         if (code === 0) {
-            console.log("[Build] SUCCESS.");
-            buildStatus = 'success';
+            // Verify build output exists
+            if (fs.existsSync(distPath) && fs.existsSync(path.join(distPath, 'index.html'))) {
+                console.log(`[Build] SUCCESS. Serving from ${distPath}`);
+                buildStatus = 'success';
+            } else {
+                console.error(`[Build] Failed. Output directory ${distPath} is empty or missing index.html`);
+                buildStatus = 'error';
+            }
         } else {
+            console.error(`[Build] Process exited with code ${code}`);
             buildStatus = 'error';
         }
     });
@@ -131,18 +145,28 @@ const server = http.createServer(async (req, res) => {
   } 
   else if (buildStatus === 'error') {
       res.writeHead(500, { 'Content-Type': 'text/html' });
-      res.end(`<h1>Error de Arranque</h1><pre>${buildLogs.join('\n')}</pre>`);
+      res.end(`<h1>Error de Arranque</h1><p>El sistema no pudo compilar la aplicación.</p><pre>${buildLogs.join('\n')}</pre>
+      <p><strong>Posible Solución Cloud Run:</strong> Verifica que la cuenta de servicio tenga el rol 'Storage Object Admin'.</p>`);
   } 
   else {
       // Loading Screen
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(`
         <html><head><meta http-equiv="refresh" content="2"></head>
-        <body style="background:#000;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;">
-            <div>
-                <h2>Confort OS: Inicializando...</h2>
-                <p>Conectando con Google Cloud Database...</p>
+        <body style="background:#020617;color:#e2e8f0;font-family:'Courier New',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;">
+            <div style="border: 1px solid #334155; padding: 2rem; border-radius: 8px; background: #0f172a;">
+                <h2 style="margin-top:0; color: #d4af37;">Confort OS: Inicializando...</h2>
+                <div style="width: 100%; background: #1e293b; height: 4px; margin: 1rem 0; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 0; left: 0; height: 100%; width: 50%; background: #d4af37; animation: loading 1s infinite ease-in-out;"></div>
+                </div>
+                <p style="font-size: 0.8rem; color: #94a3b8;">Compilando activos en memoria volátil...</p>
             </div>
+            <style>
+                @keyframes loading {
+                    0% { left: -50%; }
+                    100% { left: 100%; }
+                }
+            </style>
         </body></html>
       `);
   }

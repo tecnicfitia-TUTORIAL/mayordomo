@@ -1,9 +1,10 @@
+
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.confort.app',
   appName: 'Confort OS',
-  webDir: 'build', // Debe coincidir con la salida de vite.config.ts
+  webDir: 'dist', // Updated to match Vite output
   server: {
     androidScheme: 'https'
   },

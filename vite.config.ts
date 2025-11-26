@@ -6,7 +6,8 @@ import react from '@vitejs/plugin-react';
 // In Cloud Run, the project directory is often mounted via GCS Fuse which is slow and unstable for heavy write operations.
 // We switch BOTH the build output AND the Vite cache to the system's temporary directory (/tmp) which is RAM-based.
 const isCloudEnvironment = process.env.K_SERVICE || process.env.PORT;
-const buildOutput = isCloudEnvironment ? '/tmp/build' : 'build';
+// Vercel expects 'dist' by default. We align with that standard.
+const buildOutput = isCloudEnvironment ? '/tmp/dist' : 'dist';
 const cacheLocation = isCloudEnvironment ? '/tmp/.vite' : 'node_modules/.vite';
 
 export default defineConfig({
@@ -20,7 +21,7 @@ export default defineConfig({
     outDir: buildOutput, 
     emptyOutDir: true,
     sourcemap: false,
-    minify: false,
+    minify: false, // Keep false to prevent OOM on small containers
     rollupOptions: {
       external: [
         'react',
