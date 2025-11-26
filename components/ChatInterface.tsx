@@ -86,38 +86,14 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
     recognition.start();
   };
 
-  // File Handling
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const newAttachments: Attachment[] = [];
-      
-      for (let i = 0; i < e.target.files.length; i++) {
-        const file = e.target.files[i];
-        const base64 = await fileToBase64(file);
-        const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
-        
-        newAttachments.push({
-          type,
-          mimeType: file.type,
-          data: base64,
-          name: file.name
-        });
-      }
-      
-      setAttachments(prev => [...prev, ...newAttachments]);
-      
-      // Clear input value to allow selecting the same file again if needed
-      e.target.value = '';
-    }
-  };
-
+  // File Handling Logic
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
         if (typeof reader.result === 'string') {
-          // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
+          // Remove data URL prefix (e.g., "data:image/jpeg;base64,") to get raw base64
           const base64Content = reader.result.split(',')[1];
           resolve(base64Content);
         } else {
@@ -126,6 +102,34 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
       };
       reader.onerror = error => reject(error);
     });
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newAttachments: Attachment[] = [];
+      
+      for (let i = 0; i < e.target.files.length; i++) {
+        const file = e.target.files[i];
+        try {
+            const base64 = await fileToBase64(file);
+            const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
+            
+            newAttachments.push({
+              type,
+              mimeType: file.type,
+              data: base64, // Store raw base64 for API
+              name: file.name
+            });
+        } catch (err) {
+            console.error("Error processing file", file.name, err);
+        }
+      }
+      
+      setAttachments(prev => [...prev, ...newAttachments]);
+      
+      // Clear input value to allow selecting the same file again if needed
+      e.target.value = '';
+    }
   };
 
   const removeAttachment = (index: number) => {
@@ -140,17 +144,17 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
       role: 'user',
       text: input,
       timestamp: new Date(),
-      attachments: [...attachments] // Copy current attachments
+      attachments: [...attachments] // Copy current attachments to the message
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setAttachments([]); // Clear attachments after sending
+    setAttachments([]); // Clear attachments staging area
     setIsTyping(true);
 
     // Generate history safely. 
     // Gemini API throws 400 if text is empty string in history parts.
-    // We replace empty text with a placeholder if there was an attachment.
+    // We replace empty text with a placeholder if there was an attachment but no text.
     const history = messages.map(m => ({
       role: m.role,
       parts: [{ 
@@ -175,7 +179,7 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
 
   return (
     <div className="flex flex-col h-full bg-dark-900 border-double border-4 border-stone-800 rounded-sm overflow-hidden shadow-2xl relative">
-      {/* Hidden File Input */}
+      {/* Hidden File Inputs */}
       <input 
         type="file" 
         ref={fileInputRef}
@@ -185,13 +189,12 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
         className="hidden"
       />
 
-      {/* Hidden Camera Input */}
       <input 
         type="file" 
         ref={cameraInputRef}
         onChange={handleFileSelect}
         accept="image/*"
-        capture="environment"
+        capture="environment" // Opens camera directly on mobile
         className="hidden"
       />
       
@@ -201,12 +204,14 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
       {/* Header */}
       <div className="p-4 border-b border-stone-800 bg-dark-950/80 flex items-center gap-3 relative z-10">
         {/* Mobile Back Button */}
-        <button 
-            onClick={onBack} 
-            className="md:hidden p-2 mr-1 -ml-2 rounded-full hover:bg-stone-800 text-stone-500 hover:text-white transition-colors"
-        >
-            <ArrowLeft size={20} />
-        </button>
+        {onBack && (
+            <button 
+                onClick={onBack} 
+                className="md:hidden p-2 mr-1 -ml-2 rounded-full hover:bg-stone-800 text-stone-500 hover:text-white transition-colors"
+            >
+                <ArrowLeft size={20} />
+            </button>
+        )}
 
         <div className="w-10 h-10 rounded-sm border border-ai-500/30 bg-ai-900/20 flex items-center justify-center shadow-lg">
           <Sparkles size={18} className="text-ai-500" />
@@ -220,7 +225,7 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide relative z-10">
         {messages.map((msg) => (
           <div
@@ -232,22 +237,22 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
                 {msg.role === 'user' ? 'Yo' : 'Confort'}
             </span>
 
-            {/* Attachments Display */}
+            {/* Message Attachments (Sent) */}
             {msg.attachments && msg.attachments.length > 0 && (
               <div className={`mb-2 flex flex-wrap gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.attachments.map((att, idx) => (
-                  <div key={idx} className="relative group overflow-hidden rounded-sm border border-stone-700 w-24 h-24 flex items-center justify-center bg-dark-950">
+                  <div key={idx} className="relative group overflow-hidden rounded-sm border border-stone-700 w-24 h-24 flex items-center justify-center bg-dark-950 shadow-md">
                     {att.type === 'image' ? (
-                      <img src={`data:${att.mimeType};base64,${att.data}`} alt="attachment" className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity" />
+                      <img src={`data:${att.mimeType};base64,${att.data}`} alt="attachment" className="w-full h-full object-cover opacity-90" />
                     ) : att.type === 'video' ? (
                       <div className="flex flex-col items-center text-stone-500">
                         <Film size={24} />
-                        <span className="text-[8px] mt-1 px-1 truncate max-w-full font-serif">{att.name}</span>
+                        <span className="text-[8px] mt-1 px-1 truncate max-w-full font-serif text-center w-20">{att.name}</span>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center text-stone-500">
                         <FileText size={24} />
-                        <span className="text-[8px] mt-1 px-1 truncate max-w-full font-serif">{att.name}</span>
+                        <span className="text-[8px] mt-1 px-1 truncate max-w-full font-serif text-center w-20">{att.name}</span>
                       </div>
                     )}
                   </div>
@@ -276,28 +281,32 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Attachment Preview Area (Active Input) */}
+      {/* Attachment Preview Area (Active Input / Staging) */}
       {attachments.length > 0 && (
-        <div className="px-4 py-3 bg-dark-950 border-t border-stone-800 flex gap-3 overflow-x-auto relative z-10">
+        <div className="px-4 py-3 bg-dark-950 border-t border-stone-800 flex gap-3 overflow-x-auto relative z-10 shadow-inner">
           {attachments.map((att, index) => (
             <div key={index} className="relative flex-shrink-0 w-16 h-16 bg-stone-900 rounded-sm border border-stone-700 flex items-center justify-center group">
               <button 
                 onClick={() => removeAttachment(index)}
-                className="absolute -top-2 -right-2 bg-user-700 text-white rounded-full p-0.5 z-10 shadow-md hover:bg-user-600"
+                className="absolute -top-2 -right-2 bg-user-700 text-white rounded-full p-1 z-10 shadow-md hover:bg-user-600 transition-transform transform hover:scale-110"
+                title="Eliminar"
               >
-                <X size={12} />
+                <X size={10} />
               </button>
               {att.type === 'image' ? (
-                 <img src={`data:${att.mimeType};base64,${att.data}`} alt="preview" className="w-full h-full object-cover opacity-70" />
+                 <img src={`data:${att.mimeType};base64,${att.data}`} alt="preview" className="w-full h-full object-cover opacity-80" />
               ) : (
                  <FileText size={20} className="text-stone-500" />
               )}
+              <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-[8px] text-white truncate px-1 text-center">
+                  {att.name.length > 10 ? att.name.substring(0, 8) + '...' : att.name}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Input */}
+      {/* Input Area */}
       <div className="p-5 bg-dark-950 border-t border-stone-800 relative z-10">
         <div className="relative flex items-center">
           <input
@@ -309,15 +318,17 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
             className={`w-full bg-dark-900 border-b border-stone-700 rounded-none pl-2 pr-28 py-3 text-sm text-stone-200 font-serif focus:outline-none focus:border-ai-500 transition-all placeholder:text-stone-600 placeholder:italic ${isListening ? 'border-user-500 text-user-200' : ''}`}
           />
           <div className="absolute right-0 flex items-center gap-2">
+            
             {/* Camera Button */}
             <button 
               onClick={() => cameraInputRef.current?.click()}
               className="p-2 text-stone-500 hover:text-ai-400 hover:bg-ai-900/10 rounded-full transition-colors" 
-              title="Cámara"
+              title="Tomar Foto"
             >
                <Camera size={18} />
             </button>
 
+            {/* File Button */}
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="p-2 text-stone-500 hover:text-ai-400 hover:bg-ai-900/10 rounded-full transition-colors" 
@@ -326,7 +337,7 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
                <Paperclip size={18} />
             </button>
             
-            {/* Enhanced Mic Button */}
+            {/* Mic Button */}
             <div className="relative">
                 {isListening && (
                     <div className="absolute inset-0 bg-user-700 rounded-full animate-ping opacity-50"></div>
@@ -338,12 +349,13 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
                       ? 'bg-user-700 text-white' 
                       : 'text-stone-500 hover:text-ai-400 hover:bg-ai-900/10'
                   }`} 
-                  title="Voz"
+                  title={isListening ? "Detener" : "Dictar"}
                 >
                    <Mic size={18} className={isListening ? 'animate-bounce' : ''} />
                 </button>
             </div>
 
+            {/* Send Button */}
             <button 
               onClick={handleSend}
               disabled={(!input.trim() && attachments.length === 0) || isTyping}
