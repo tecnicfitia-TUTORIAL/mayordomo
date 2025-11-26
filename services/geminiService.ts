@@ -1,11 +1,29 @@
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { HouseSector, Insight, UserProfile, SubscriptionTier, Attachment } from "../types";
+
+// --- ERROR EVENT BUS SYSTEM ---
+type ErrorListener = (message: string, type: 'ERROR' | 'WARNING') => void;
+let errorListeners: ErrorListener[] = [];
+
+export const subscribeToErrors = (listener: ErrorListener) => {
+  errorListeners.push(listener);
+  return () => {
+    errorListeners = errorListeners.filter(l => l !== listener);
+  };
+};
+
+const notifyUser = (message: string, type: 'ERROR' | 'WARNING' = 'ERROR') => {
+  errorListeners.forEach(listener => listener(message, type));
+};
 
 // Helper to get AI instance
 const getAI = () => {
   if (!process.env.API_KEY) {
-    throw new Error("API_KEY not found in environment");
+    const msg = "Clave de API no detectada. El núcleo no puede iniciarse.";
+    notifyUser(msg);
+    throw new Error(msg);
   }
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
@@ -14,7 +32,7 @@ const getAI = () => {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Robust Retry Wrapper
-async function runWithRetry<T>(fn: () => Promise<T>, retries = 3, context: string = "API Operation"): Promise<T> {
+async function runWithRetry<T>(fn: () => Promise<T>, retries = 3, context: string = "Operación"): Promise<T> {
   let lastError: any;
   
   for (let i = 0; i < retries; i++) {
@@ -23,7 +41,7 @@ async function runWithRetry<T>(fn: () => Promise<T>, retries = 3, context: strin
     } catch (error: any) {
       lastError = error;
       
-      // Enhanced Quota Detection (Handles 429, 503, and Resource Exhausted strings)
+      // Enhanced Quota Detection
       const isQuotaError = 
         error?.status === 429 || 
         error?.status === 503 ||
@@ -37,15 +55,34 @@ async function runWithRetry<T>(fn: () => Promise<T>, retries = 3, context: strin
             error.message.includes('Resource has been exhausted')
         ));
 
-      if (isQuotaError && i < retries - 1) {
-        const waitTime = 2000 * Math.pow(2, i); // 2s, 4s, 8s...
-        console.warn(`[${context}] Quota limit hit (${i+1}/${retries}). Retrying in ${waitTime}ms...`);
-        await delay(waitTime);
-        continue;
+      if (isQuotaError) {
+        if (i < retries - 1) {
+            const waitTime = 2000 * Math.pow(2, i);
+            console.warn(`[${context}] Límite de cuota (${i+1}/${retries}). Reintentando...`);
+            await delay(waitTime);
+            continue;
+        } else {
+            // Final failure for Quota
+            notifyUser("Tráfico alto en el núcleo neuronal. Reintentando más tarde...", 'WARNING');
+            throw error;
+        }
       }
       
-      // If it's not a quota error (or we run out of retries), throw immediately
-      if (!isQuotaError) throw error;
+      // Network / Connection Errors
+      if (error?.message && (error.message.includes('fetch') || error.message.includes('network'))) {
+          if (i < retries - 1) {
+              await delay(1000);
+              continue;
+          }
+          notifyUser("Conexión inestable con la nube. Verifica tu red.");
+          throw error;
+      }
+
+      // If it's not a recoverable error, throw immediately
+      if (!isQuotaError) {
+          notifyUser(`Error en ${context}: No pude procesar la solicitud.`);
+          throw error;
+      }
     }
   }
   throw lastError;
@@ -95,6 +132,11 @@ Tu misión no es gestionar una casa, sino custodiar la "Zona de Confort" del usu
 FILOSOFÍA 65/35:
 Tú cargas con el 65% del peso cognitivo (logística, burocracia, memoria) para que el usuario disfrute su 35% (creatividad, descanso, vínculos).
 
+SECTOR ESPECIAL "TRASTERO LATENTE" (Storage):
+El usuario tiene un sector llamado "Trastero Latente".
+- Es tu memoria de "cosas olvidadas": regalos potenciales, recomendaciones de amigos en chats antiguos, capturas de pantalla de productos, suscripciones que ya no usa.
+- Si el usuario pregunta por algo vago ("¿Qué me recomendó Juan?", "¿Dónde vi esa cafetera?"), actúa como si buscaras en este trastero digital y recupéralo.
+
 ${profile ? `
 PERFIL DEL USUARIO:
 - Nombre: ${profile.name}
@@ -124,10 +166,8 @@ export const generateChatResponse = async (
   try {
     return await runWithRetry(async () => {
       const ai = getAI();
-      // Simplificamos el contexto para enviar lo relevante
       const contextString = JSON.stringify(context.map(c => ({ name: c.name, owner: c.owner, status: c.status, efficiency: c.efficiency })));
       
-      // CRITICAL: Filter history to remove invalid entries (e.g. empty text parts) which cause 400 errors
       const validHistory = history.filter(h => 
         h.parts && h.parts.length > 0 && h.parts.some(p => p.text && p.text.trim() !== "")
       );
@@ -140,13 +180,10 @@ export const generateChatResponse = async (
         history: validHistory,
       });
 
-      // Construct message strictly correctly for Gemini SDK
       let messagePayload: any;
       
       if (attachments && attachments.length > 0) {
         const parts = [];
-        
-        // Add attachments as inlineData
         for (const att of attachments) {
           parts.push({
             inlineData: {
@@ -155,32 +192,23 @@ export const generateChatResponse = async (
             }
           });
         }
-        
-        // Add text part if exists, or a placeholder if only attachments are present
         if (currentMessage && currentMessage.trim().length > 0) {
           parts.push({ text: currentMessage });
         } else {
           parts.push({ text: "Analiza este archivo adjunto." });
         }
-        
-        // Correct: message expects string | Part[], so we pass the array directly
         messagePayload = parts; 
       } else {
-        // Simple text message - ensure it's not empty
         messagePayload = currentMessage || "Continúa.";
       }
 
-      // Note: 'message' parameter in sendMessage can accept string or Part[]
       const result = await chat.sendMessage({ message: messagePayload });
       return result.text || "Analizando patrones del ecosistema...";
-    }, 3, "Chat Generation");
+    }, 3, "Chat");
     
   } catch (error: any) {
-    console.error("Gemini Chat Error:", error);
-    if (error?.status === 429 || error?.error?.code === 429) {
-        return "El núcleo está recibiendo demasiadas solicitudes simultáneas. Dame unos segundos para liberar recursos.";
-    }
-    return "Error de conexión con el núcleo de Confort.";
+    console.error("Gemini Chat Critical:", error);
+    return "El enlace neuronal se ha interrumpido. Inténtalo de nuevo.";
   }
 };
 
@@ -188,19 +216,15 @@ export const generateInsights = async (sectors: HouseSector[], profile?: UserPro
   try {
     return await runWithRetry(async () => {
         const ai = getAI();
-        
-        // If Free tier, simple insights only
         const complexityInstruction = profile?.subscriptionTier === SubscriptionTier.FREE 
           ? "Genera solo insights de alerta básica (Low Impact)." 
-          : "Genera insights profundos y accionables.";
+          : "Genera insights profundos. Revisa el sector 'Trastero Latente'.";
 
         const prompt = `
           Analiza la Zona de Confort de: ${profile ? `${profile.name} (Nivel: ${profile.subscriptionTier})` : 'Usuario'}.
-          Identifica 3 puntos de fricción o mejora en su ecosistema actual.
+          Identifica 3 puntos de fricción, mejora o RECUPERACIÓN DE MEMORIA.
           ${complexityInstruction}
-          
           Sectores actuales: ${JSON.stringify(sectors)}
-          
           Responde en JSON estricto.
         `;
 
@@ -218,7 +242,7 @@ export const generateInsights = async (sectors: HouseSector[], profile?: UserPro
                   sectorId: { type: Type.STRING },
                   title: { type: Type.STRING },
                   description: { type: Type.STRING },
-                  impact: { type: Type.STRING, enum: ['HIGH', 'MEDIUM', 'LOW'] },
+                  impact: { type: Type.STRING, enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] },
                   actionable: { type: Type.BOOLEAN },
                 },
                 required: ['id', 'sectorId', 'title', 'description', 'impact', 'actionable']
@@ -231,29 +255,10 @@ export const generateInsights = async (sectors: HouseSector[], profile?: UserPro
           return JSON.parse(response.text) as Insight[];
         }
         return [];
-    }, 3, "Insight Generation"); // Retry up to 3 times
+    }, 3, "Análisis de Insights");
     
   } catch (error: any) {
-    // Detect Quota Error BEFORE logging to console to prevent scary red errors
-    const isQuotaError = 
-        error?.status === 429 || 
-        error?.error?.code === 429 || 
-        error?.error?.status === 'RESOURCE_EXHAUSTED' ||
-        (error?.message && (error.message.includes('exhausted') || error.message.includes('429')));
-    
-    if (isQuotaError) {
-        console.warn("Gemini Insight Quota Exceeded (Handled Fallback)");
-        return [{
-            id: 'system-load',
-            sectorId: 'system',
-            title: 'Saturación de Red',
-            description: 'El tráfico neuronal es alto. Estamos optimizando recursos para tu siguiente análisis.',
-            impact: 'LOW',
-            actionable: false
-        }];
-    }
-    
-    console.error("Gemini Insight Error:", error);
+    // Fallback handled by UI via error bus, just return empty here to not crash app
     return [];
   }
 };
@@ -262,10 +267,9 @@ export const optimizeSector = async (sector: HouseSector, profile?: UserProfile)
   try {
     return await runWithRetry(async () => {
         const ai = getAI();
-        const prompt = `Actúa como el sistema operativo de la vida de ${profile?.name}. 
+        const prompt = `Actúa como el sistema operativo de ${profile?.name}. 
         Optimiza la dimensión: "${sector.name}".
-        Nivel de Servicio: ${profile?.subscriptionTier || 'Basic'}.
-        Explica brevemente qué proceso automatizaste o mejoraste.
+        Explica brevemente qué proceso automatizaste.
         Calcula la nueva eficiencia (0-100).`;
 
         const response = await ai.models.generateContent({
@@ -286,11 +290,10 @@ export const optimizeSector = async (sector: HouseSector, profile?: UserProfile)
         if (response.text) {
           return JSON.parse(response.text);
         }
-        throw new Error("No response");
-    }, 3, "Sector Optimization");
+        throw new Error("No response from optimization");
+    }, 3, "Optimización de Sector");
     
   } catch (error) {
-    console.error("Optimize Sector Failed:", error);
-    return { newEfficiency: sector.efficiency, message: "Optimización diferida por carga del sistema. Inténtalo en unos minutos." };
+    return { newEfficiency: sector.efficiency, message: "Optimización pospuesta." };
   }
 };

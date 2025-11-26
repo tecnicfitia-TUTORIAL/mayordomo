@@ -1,4 +1,5 @@
 
+
 import { HouseSector, Owner, SectorType, UserProfile, UserArchetype, PermissionModule, LifeStageConfig, SubscriptionPlan, SubscriptionTier, NotificationConfig } from "./types";
 
 // --- ADMIN & SUPPORT CONFIGURATION ---
@@ -272,6 +273,17 @@ export const getInitialSectors = (profile: UserProfile): HouseSector[] => {
     status: tierLevel > 0 ? 'OPTIMAL' : 'ATTENTION',
     description: tierLevel === 0 ? 'Solo registro manual habilitado.' : 'Gestión inteligente de activos activada.',
     efficiency: financeEfficiencyCap
+  });
+
+  // NEW: Trastero Latente (Storage) - Available for everyone, efficiency depends on permissions (data fed in)
+  sectors.push({
+    id: 'storage-1',
+    name: 'Trastero Latente',
+    type: SectorType.STORAGE,
+    owner: Owner.AI,
+    status: 'IDLE',
+    description: 'Donde guardo lo que olvidas: ideas, regalos potenciales, recomendaciones de amigos y viejos hallazgos.',
+    efficiency: 100 // Always 100 because it's just a passive container (Garage would vary)
   });
 
   // Archetype Specific Logic

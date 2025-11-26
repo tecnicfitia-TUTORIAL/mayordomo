@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { UserProfile, UserArchetype, LifeStageConfig, SubscriptionTier, PermissionItem } from '../types';
 import { determineArchetype, getPermissionsByProfile, SUBSCRIPTION_PLANS, getTierLevel } from '../constants';
-import { ArrowRight, ArrowLeft, ChevronRight, Crown, Check, Shield, Lock, Zap, Award, Sparkles, ToggleLeft, ToggleRight, Globe } from 'lucide-react';
+import { ArrowRight, ArrowLeft, ChevronRight, Crown, Check, Shield, Lock, Zap, Award, Sparkles, ToggleLeft, ToggleRight, Globe, Loader2 } from 'lucide-react';
 import { Logo } from './Logo';
 
 interface Props {
@@ -12,9 +13,13 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
   const [step, setStep] = useState(0); 
   // Steps: 0=Auth, 1=Context, 2=Plan, 3=Permissions
   const [isCalculating, setIsCalculating] = useState(false);
+  
+  // Auth State
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authStatus, setAuthStatus] = useState(''); // New: Detailed status for simulation
   const [isSignUp, setIsSignUp] = useState(true);
   
-  // Auth States
+  // Auth Form Data
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -45,22 +50,18 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
 
   // Effect to load permissions when entering step 3
   useEffect(() => {
-    // Explicitly check age is present and valid
     const hasValidAge = typeof profile.age === 'number' && !isNaN(profile.age);
     
     if (step === 3 && hasValidAge) {
-        // Cast as number to satisfy strict TypeScript checks
         const config = getPermissionsByProfile(profile.age as number);
         setLifeStageConfig(config);
         
-        // Initial selection only if enabled AND tier allows it
         const userTierLevel = getTierLevel(selectedPlan);
         const initialSelection = new Set<string>();
         
         config.modules.forEach(mod => {
             mod.permissions.forEach(perm => {
                 const permTierLevel = getTierLevel(perm.minTier);
-                // Auto-select items if they are default enabled AND unlocked by tier
                 if (perm.defaultEnabled && userTierLevel >= permTierLevel) {
                     initialSelection.add(perm.id);
                 }
@@ -71,33 +72,59 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
   }, [step, profile.age, selectedPlan]);
 
   const handleLogin = () => {
-    const demoEmail = email || "admin@confort.app"; 
-    setProfile(prev => ({
-        ...prev,
-        name: prev.name || "Usuario Demo",
-        email: demoEmail
-    }));
-    setEmail(demoEmail);
-    setStep(1);
+    setIsAuthenticating(true);
+    setAuthStatus('Validando credenciales manuales...');
+    
+    // Simulate Network Delay
+    setTimeout(() => {
+        const demoEmail = email || "admin@confort.app"; 
+        setProfile(prev => ({
+            ...prev,
+            name: prev.name || "Usuario Demo",
+            email: demoEmail
+        }));
+        setEmail(demoEmail);
+        setAuthStatus('Desencriptando perfil de usuario...');
+    }, 1000);
+
+    setTimeout(() => {
+        setIsAuthenticating(false);
+        setStep(1);
+    }, 2000);
   };
   
   const handleSocialLogin = (provider: string) => {
-      const demoEmail = `admin+${provider}@confort.app`;
-      setProfile(prev => ({
-        ...prev,
-        name: `Usuario ${provider}`,
-        email: demoEmail
-      }));
-      setEmail(demoEmail);
-      setTermsAccepted(true);
-      setStep(1);
+      setIsAuthenticating(true);
+      setAuthStatus(`Contactando proveedor de identidad (${provider})...`);
+      
+      // Simulate OAuth Popup and Network Delay with realistic steps
+      setTimeout(() => {
+          setAuthStatus('Verificando token de seguridad...');
+      }, 1200);
+
+      setTimeout(() => {
+          setAuthStatus('Sincronizando datos del dispositivo...');
+      }, 2400);
+
+      setTimeout(() => {
+          const demoEmail = `admin+${provider.toLowerCase()}@confort.app`;
+          setProfile(prev => ({
+            ...prev,
+            name: `Usuario ${provider}`,
+            email: demoEmail
+          }));
+          setEmail(demoEmail);
+          setTermsAccepted(true);
+          setIsAuthenticating(false);
+          setStep(1);
+      }, 3500);
   };
 
   const handleContextSubmit = () => {
     setIsCalculating(true);
     setTimeout(() => {
         setIsCalculating(false);
-        setStep(2); // Go to Plan Selection
+        setStep(2);
     }, 1500);
   };
   
@@ -115,23 +142,20 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
     setSelectedPermissions(newSet);
   };
 
-  // Toggle All: Only toggle those that are UNLOCKED for current tier
   const toggleModulePermissions = (modulePermissions: PermissionItem[]) => {
     const newSet = new Set(selectedPermissions);
     const userTierLevel = getTierLevel(selectedPlan);
     
-    // Filter only unlocked permissions
     const unlockedPermissions = modulePermissions.filter(p => userTierLevel >= getTierLevel(p.minTier));
     const ids = unlockedPermissions.map(p => p.id);
     
-    // Check if all unlocked are selected
     const allUnlockedSelected = ids.length > 0 && ids.every((id: string) => newSet.has(id));
 
     ids.forEach((id: string) => {
         if (!allUnlockedSelected) {
-            newSet.add(id); // Select all unlocked
+            newSet.add(id);
         } else {
-            newSet.delete(id); // Deselect all
+            newSet.delete(id);
         }
     });
     setSelectedPermissions(newSet);
@@ -212,15 +236,23 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
                 
                 {/* STEP 0: AUTH */}
                 {step === 0 && (
-                    <div className="space-y-6 animate-fadeIn">
+                    <div className="space-y-6 animate-fadeIn relative">
+                        {isAuthenticating && (
+                             <div className="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center rounded-xl text-center animate-fadeIn">
+                                 <Loader2 className="text-ai-500 animate-spin mb-3" size={32} />
+                                 <h3 className="text-white font-bold text-sm">Conectando al Núcleo...</h3>
+                                 <p className="text-xs text-slate-400 mt-1">{authStatus}</p>
+                             </div>
+                        )}
+
                         <div className="grid grid-cols-3 gap-3">
-                            <button onClick={() => handleSocialLogin('Google')} className="h-12 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors flex items-center justify-center group">
+                            <button onClick={() => handleSocialLogin('Google')} className="h-12 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors flex items-center justify-center group" title="Continuar con Google">
                                 <svg className="w-5 h-5 text-slate-300 group-hover:text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                             </button>
-                            <button onClick={() => handleSocialLogin('Apple')} className="h-12 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors flex items-center justify-center group">
+                            <button onClick={() => handleSocialLogin('Apple')} className="h-12 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors flex items-center justify-center group" title="Continuar con Apple">
                                 <svg className="w-5 h-5 text-slate-300 group-hover:text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.74s2.57-.9 4.35-.68c1.53.18 2.69.94 3.39 1.93-2.96 1.8-2.46 5.82.54 7.05-.53 1.54-1.27 2.72-2.2 3.93-.36.47-.75.92-1.16 1.36zM12.35 4.22c-.3-1.77 1.03-3.13 2.45-3.22.41 2.03-1.77 3.65-2.45 3.22z"/></svg>
                             </button>
-                            <button onClick={() => handleSocialLogin('Facebook')} className="h-12 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors flex items-center justify-center group">
+                            <button onClick={() => handleSocialLogin('Facebook')} className="h-12 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors flex items-center justify-center group" title="Continuar con Facebook">
                                 <svg className="w-5 h-5 text-slate-300 group-hover:text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                             </button>
                         </div>
@@ -269,7 +301,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
 
                         <button 
                             onClick={handleLogin}
-                            disabled={!termsAccepted}
+                            disabled={!termsAccepted || isAuthenticating}
                             className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isSignUp ? 'Iniciar Sesión' : 'Crear Cuenta'} <ArrowRight size={18} />

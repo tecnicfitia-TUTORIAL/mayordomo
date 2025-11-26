@@ -9,13 +9,14 @@ interface Props {
   lifeStageConfig: LifeStageConfig;
   onAddPermission: (moduleId: string, permission: PermissionItem) => void;
   onClose: () => void;
+  isEmbedded?: boolean;
 }
 
 const DAILY_SCAN_KEY = 'lastEvolutionScan';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAddPermission, onClose }) => {
-  const [logs, setLogs] = useState<string[]>(["Iniciando Motor de Evolución...", "Verificando última sincronización..."]);
+export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAddPermission, onClose, isEmbedded }) => {
+  const [logs, setLogs] = useState<string[]>(["Iniciando Protocolo de Evolución...", "Verificando última sincronización..."]);
   const [currentMacroEvent, setCurrentMacroEvent] = useState<MacroContextEvent | null>(null);
   const [activeProposal, setActiveProposal] = useState<PermissionProposal | null>(null);
   const [isScanning, setIsScanning] = useState(true);
@@ -131,45 +132,50 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
       addLog("Forzando nuevo ciclo de escaneo manual...");
   };
 
+  const containerClasses = isEmbedded
+    ? "relative w-full h-full bg-dark-950 rounded-sm border-double border-4 border-stone-800 shadow-inner flex flex-col overflow-hidden animate-fadeIn"
+    : "fixed inset-0 z-[100] bg-black/95 flex flex-col overflow-hidden animate-fadeIn";
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black/95 text-green-500 font-mono flex flex-col overflow-hidden animate-fadeIn">
+    <div className={`${containerClasses} text-ai-500 font-serif`}>
       
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-green-900/50 bg-black">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-stone-800 bg-dark-900 shrink-0">
         <div className="flex items-center gap-3">
-            <Activity className={`text-green-500 ${isScanning ? 'animate-pulse' : ''}`} />
+            <Activity className={`text-ai-500 ${isScanning ? 'animate-pulse' : ''}`} />
             <div>
-                <h1 className="text-lg font-bold tracking-widest uppercase">SYSTEM_ADMIN_CONSOLE // EVOLUTION_CORE</h1>
-                <p className="text-[10px] text-green-700">Root Access: {profile.name} // {profile.subscriptionTier}</p>
+                <h1 className="text-lg font-bold tracking-widest uppercase font-serif">ADMIN_CONSOLE // EVOLUTION_CORE</h1>
+                <p className="text-[10px] text-ai-700 font-sans">Root Access: {profile.name} // {profile.subscriptionTier}</p>
             </div>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-green-900/20 rounded-full transition-colors">
-            <X />
-        </button>
+        {!isEmbedded && (
+            <button onClick={onClose} className="p-2 hover:bg-ai-900/20 rounded-full transition-colors">
+                <X />
+            </button>
+        )}
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-green-900/30 relative">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-stone-800 relative overflow-hidden">
         
         {/* COL 1: MICRO-CONTEXT (USER DNA) */}
-        <div className="p-6 flex flex-col bg-black/50 relative overflow-hidden">
-             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
-             <h2 className="text-xs font-bold text-green-700 uppercase mb-4 flex items-center gap-2">
-                <Lock size={14} /> Micro-Contexto (Yo Observado)
+        <div className="p-6 flex flex-col bg-dark-900 relative overflow-hidden min-h-[300px] lg:min-h-auto">
+             <h2 className="text-xs font-bold text-ai-700 uppercase mb-4 flex items-center gap-2 font-sans tracking-widest">
+                <Lock size={14} /> Micro-Contexto (Interno)
              </h2>
              
              <div className="space-y-4 overflow-y-auto custom-scrollbar pr-2 flex-1">
                 {lifeStageConfig.modules.map(mod => (
-                    <div key={mod.id} className="border border-green-900/30 p-3 rounded bg-green-900/5">
-                        <h3 className="text-xs font-bold text-green-400 mb-2">{mod.title}</h3>
-                        <div className="space-y-1">
+                    <div key={mod.id} className="border border-stone-800 p-4 rounded-sm bg-stone-900/30">
+                        <h3 className="text-xs font-bold text-stone-400 mb-3 uppercase tracking-wide">{mod.title}</h3>
+                        <div className="space-y-2">
                             {mod.permissions.filter(p => p.defaultEnabled).map(p => (
-                                <div key={p.id} className="flex items-center gap-2 text-[10px] text-green-600">
-                                    <div className="w-1 h-1 bg-green-500 rounded-full shadow-[0_0_5px_rgba(34,197,94,0.8)]" />
+                                <div key={p.id} className="flex items-center gap-2 text-[11px] text-ai-600 font-sans">
+                                    <div className="w-1.5 h-1.5 bg-ai-600 rounded-full" />
                                     {p.label}
                                 </div>
                             ))}
                             {mod.permissions.filter(p => !p.defaultEnabled).length > 0 && (
-                                <div className="text-[10px] text-green-800 italic mt-1">
+                                <div className="text-[10px] text-stone-700 italic mt-2 pl-3 border-l border-stone-800">
                                     + {mod.permissions.filter(p => !p.defaultEnabled).length} inactivos
                                 </div>
                             )}
@@ -178,69 +184,63 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
                 ))}
              </div>
              
-             <div className="mt-4 pt-4 border-t border-green-900/30">
-                <div className="flex justify-between text-xs">
-                    <span className="text-green-700">Permisos Activos:</span>
-                    <span className="font-bold">{lifeStageConfig.modules.flatMap(m => m.permissions).filter(p => p.defaultEnabled).length}</span>
+             <div className="mt-4 pt-4 border-t border-stone-800">
+                <div className="flex justify-between text-xs font-sans">
+                    <span className="text-stone-600">Permisos Activos:</span>
+                    <span className="font-bold text-ai-500">{lifeStageConfig.modules.flatMap(m => m.permissions).filter(p => p.defaultEnabled).length}</span>
                 </div>
              </div>
         </div>
 
         {/* COL 2: LOGIC CORE (THE BRAIN) */}
-        <div className="p-6 flex flex-col relative bg-black">
-             <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-50 ${isScanning ? 'animate-scanline' : ''}`}></div>
+        <div className="p-6 flex flex-col relative bg-dark-950 min-h-[400px] lg:min-h-auto">
              
              {/* Central Visualization */}
              <div className="flex-1 flex items-center justify-center flex-col relative">
                 
-                {/* Connecting Lines */}
-                <div className="absolute top-1/2 left-0 w-1/4 h-px bg-gradient-to-r from-green-900 to-green-500 opacity-30"></div>
-                <div className="absolute top-1/2 right-0 w-1/4 h-px bg-gradient-to-l from-green-900 to-green-500 opacity-30"></div>
-
                 {/* The Core Icon */}
-                <div className={`w-32 h-32 rounded-full border border-green-500/30 flex items-center justify-center relative mb-8 transition-all duration-500 ${activeProposal ? 'shadow-[0_0_50px_rgba(34,197,94,0.3)] border-green-500' : ''}`}>
-                    <div className={`absolute inset-0 rounded-full border border-green-500/20 animate-ping opacity-20 ${!isScanning && !activeProposal ? 'hidden' : ''}`}></div>
-                    <Cpu size={48} className={`${activeProposal ? 'text-green-400' : isWaitingForNextDay ? 'text-green-900' : 'text-green-800'}`} />
-                    {isWaitingForNextDay && <Clock size={24} className="absolute text-green-500/50" />}
+                <div className={`w-32 h-32 rounded-full border border-double border-4 flex items-center justify-center relative mb-8 transition-all duration-500 ${activeProposal ? 'border-ai-500 shadow-2xl shadow-ai-900/20' : 'border-stone-800'}`}>
+                    <Cpu size={48} className={`${activeProposal ? 'text-ai-400' : isWaitingForNextDay ? 'text-stone-800' : 'text-stone-700'}`} />
+                    {isWaitingForNextDay && <Clock size={24} className="absolute text-stone-600" />}
                 </div>
 
                 {/* Active Proposal Card */}
                 {activeProposal ? (
-                    <div className="w-full bg-green-900/10 border border-green-500/50 p-5 rounded-lg animate-scaleIn backdrop-blur-sm">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-bold text-green-400 uppercase">Propuesta de Evolución</h3>
-                            <span className="text-[10px] bg-green-500/20 px-2 py-1 rounded text-green-300 animate-pulse">PENDIENTE</span>
+                    <div className="w-full bg-stone-900 border border-ai-500/50 p-6 rounded-sm animate-scaleIn shadow-xl">
+                        <div className="flex items-center justify-between mb-4 border-b border-ai-900/30 pb-2">
+                            <h3 className="text-sm font-bold text-ai-400 uppercase tracking-widest">Propuesta de Evolución</h3>
+                            <span className="text-[9px] border border-ai-500 text-ai-500 px-2 py-1 rounded-sm font-sans font-bold">PENDIENTE</span>
                         </div>
-                        <div className="mb-4">
-                            <h4 className="text-lg font-serif text-white mb-1">{activeProposal.title}</h4>
-                            <p className="text-xs text-green-300/80 leading-relaxed">{activeProposal.reasoning}</p>
+                        <div className="mb-6">
+                            <h4 className="text-xl font-serif text-stone-200 mb-2">{activeProposal.title}</h4>
+                            <p className="text-xs text-stone-400 leading-relaxed italic font-serif">"{activeProposal.reasoning}"</p>
                         </div>
                         
-                        <div className="bg-black p-3 rounded border border-green-500/30 mb-4 flex items-center justify-between">
-                             <span className="text-xs text-green-500">{activeProposal.proposedPermission.label}</span>
-                             <div className="w-8 h-4 bg-green-900/50 rounded-full border border-green-700 relative">
-                                <div className="w-3 h-3 bg-green-500 rounded-full absolute top-0.5 right-0.5 shadow-[0_0_10px_rgba(34,197,94,1)]"></div>
+                        <div className="bg-black p-4 rounded-sm border border-stone-700 mb-6 flex items-center justify-between">
+                             <span className="text-xs text-ai-500 font-bold uppercase">{activeProposal.proposedPermission.label}</span>
+                             <div className="w-8 h-4 bg-stone-800 rounded-full border border-stone-600 relative">
+                                <div className="w-3 h-3 bg-ai-500 rounded-full absolute top-0.5 right-0.5"></div>
                              </div>
                         </div>
 
-                        <div className="flex gap-2">
-                            <button onClick={handleIgnore} className="flex-1 py-2 border border-green-800 text-green-700 text-xs hover:bg-green-900/20 transition-colors">
-                                IGNORAR
+                        <div className="flex gap-3">
+                            <button onClick={handleIgnore} className="flex-1 py-3 border border-stone-700 text-stone-500 text-xs hover:bg-stone-800 transition-colors uppercase tracking-widest font-bold">
+                                Ignorar
                             </button>
-                            <button onClick={handleAccept} className="flex-1 py-2 bg-green-600 text-black font-bold text-xs hover:bg-green-500 transition-colors shadow-[0_0_15px_rgba(34,197,94,0.4)]">
-                                ACTIVAR PERMISO
+                            <button onClick={handleAccept} className="flex-1 py-3 bg-ai-700 text-stone-100 font-bold text-xs hover:bg-ai-600 transition-colors uppercase tracking-widest border border-ai-600">
+                                Autorizar
                             </button>
                         </div>
                     </div>
                 ) : (
                     <div className="text-center">
-                        <p className="text-xs text-green-700 uppercase tracking-widest animate-pulse mb-4">
+                        <p className="text-xs text-stone-600 uppercase tracking-widest animate-pulse mb-4 font-sans">
                             {isScanning ? "Analizando Brechas..." : isWaitingForNextDay ? "Vigilancia Activa. Próximo scan en 24h." : "Esperando Input..."}
                         </p>
                         {isWaitingForNextDay && (
                             <button 
                                 onClick={handleForceScan}
-                                className="text-[10px] text-green-500 border border-green-900 hover:bg-green-900/30 px-3 py-1 rounded transition-colors"
+                                className="text-[10px] text-ai-600 border border-stone-800 hover:bg-stone-900 px-4 py-2 rounded-sm transition-colors uppercase tracking-widest"
                             >
                                 Forzar Escaneo Manual
                             </button>
@@ -250,49 +250,48 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
              </div>
 
              {/* Logs Console */}
-             <div className="h-32 bg-black border border-green-900/50 p-3 font-mono text-[10px] overflow-y-auto custom-scrollbar opacity-70">
+             <div className="h-32 bg-black border border-stone-800 p-4 font-mono text-[10px] overflow-y-auto custom-scrollbar opacity-70 rounded-sm">
                 {logs.map((log, i) => (
-                    <div key={i} className="mb-1 text-green-500/80">{log}</div>
+                    <div key={i} className="mb-1 text-stone-500 border-l-2 border-stone-800 pl-2">{log}</div>
                 ))}
                 <div ref={logsEndRef} />
              </div>
         </div>
 
         {/* COL 3: MACRO-CONTEXT (INTERNET) */}
-        <div className="p-6 flex flex-col bg-black/50 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-green-900/10 via-black to-black opacity-50 pointer-events-none"></div>
-            <h2 className="text-xs font-bold text-green-700 uppercase mb-4 flex items-center gap-2">
-                <Globe size={14} /> Macro-Contexto (Yo Referencial)
+        <div className="p-6 flex flex-col bg-dark-900 relative overflow-hidden min-h-[300px] lg:min-h-auto">
+            <h2 className="text-xs font-bold text-ai-700 uppercase mb-4 flex items-center gap-2 font-sans tracking-widest">
+                <Globe size={14} /> Macro-Contexto (Externo)
              </h2>
 
              <div className="flex-1 flex flex-col justify-center">
                 {currentMacroEvent ? (
-                    <div className="border border-green-500/30 p-4 rounded-lg bg-green-900/10 relative overflow-hidden animate-slideInRight">
-                        <div className="absolute top-0 right-0 p-2">
-                            <Wifi size={16} className="text-green-600 animate-pulse" />
+                    <div className="border border-stone-700 p-5 rounded-sm bg-stone-900 relative overflow-hidden animate-slideInRight shadow-lg">
+                        <div className="absolute top-0 right-0 p-3 opacity-20">
+                            <Wifi size={24} className="text-stone-400" />
                         </div>
-                        <span className="text-[10px] font-bold bg-green-900/50 px-1.5 py-0.5 rounded text-green-400 mb-2 inline-block">
+                        <span className="text-[9px] font-bold bg-stone-800 px-2 py-1 rounded-sm text-stone-400 mb-3 inline-block uppercase tracking-wide">
                             {currentMacroEvent.source}
                         </span>
-                        <h3 className="text-sm font-bold text-green-100 mb-2">{currentMacroEvent.title}</h3>
-                        <p className="text-xs text-green-500/70">{currentMacroEvent.description}</p>
+                        <h3 className="text-sm font-bold text-stone-200 mb-2 font-serif">{currentMacroEvent.title}</h3>
+                        <p className="text-xs text-stone-500 italic font-serif">"{currentMacroEvent.description}"</p>
                         
-                        <div className="mt-3 flex items-center gap-2">
-                             <div className={`h-1.5 flex-1 rounded-full bg-green-900/50 overflow-hidden`}>
-                                <div className={`h-full ${currentMacroEvent.riskLevel === 'CRITICAL' ? 'bg-red-500 w-[95%]' : currentMacroEvent.riskLevel === 'HIGH' ? 'bg-orange-500 w-[75%]' : 'bg-green-500 w-[40%]'}`}></div>
+                        <div className="mt-4 flex items-center gap-3">
+                             <div className={`h-1 flex-1 bg-stone-800 overflow-hidden`}>
+                                <div className={`h-full ${currentMacroEvent.riskLevel === 'CRITICAL' ? 'bg-user-600 w-[95%]' : currentMacroEvent.riskLevel === 'HIGH' ? 'bg-user-400 w-[75%]' : 'bg-ai-600 w-[40%]'}`}></div>
                              </div>
-                             <span className="text-[9px] uppercase font-bold text-green-600">Riesgo {currentMacroEvent.riskLevel}</span>
+                             <span className="text-[9px] uppercase font-bold text-stone-500">Riesgo {currentMacroEvent.riskLevel}</span>
                         </div>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center text-green-900">
-                        <Database size={32} className="mb-2 opacity-20" />
-                        <p className="text-[10px]">Escaneando Nodos Globales...</p>
+                    <div className="flex flex-col items-center justify-center text-stone-800">
+                        <Database size={48} className="mb-4 opacity-20" />
+                        <p className="text-[10px] font-sans uppercase tracking-widest">Escaneando Nodos Globales...</p>
                     </div>
                 )}
              </div>
              
-             <div className="mt-4 pt-4 border-t border-green-900/30 text-[10px] text-green-800 text-center">
+             <div className="mt-4 pt-4 border-t border-stone-800 text-[9px] text-stone-600 text-center uppercase tracking-widest font-sans">
                 Conectado a Gemini 2.5 Flash • Latencia: 45ms
              </div>
         </div>

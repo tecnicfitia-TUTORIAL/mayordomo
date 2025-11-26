@@ -8,7 +8,8 @@ export enum SectorType {
   CAREER = 'DESARROLLO', // Changed from CARRERA to DESARROLLO (covers career and studies)
   CREATIVITY = 'EXPANSIÓN', // Changed from CREATIVIDAD to EXPANSIÓN
   LOGISTICS = 'SOPORTE', // Changed from LOGISTICA to SOPORTE
-  EDUCATION = 'APRENDIZAJE'
+  EDUCATION = 'APRENDIZAJE',
+  STORAGE = 'MEMORIA' // New: Trastero Latente
 }
 
 export enum Owner {
@@ -31,7 +32,7 @@ export interface Insight {
   sectorId: string;
   title: string;
   description: string;
-  impact: 'HIGH' | 'MEDIUM' | 'LOW';
+  impact: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   actionable: boolean;
 }
 
