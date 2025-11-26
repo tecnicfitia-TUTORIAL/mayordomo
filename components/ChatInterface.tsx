@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage, HouseSector, UserProfile, Attachment } from '../types';
-import { Send, Sparkles, Mic, Paperclip, X, FileText, Film, ArrowLeft, Feather } from 'lucide-react';
+import { Send, Sparkles, Mic, Paperclip, X, FileText, Film, ArrowLeft, Feather, Camera } from 'lucide-react';
 import { generateChatResponse } from '../services/geminiService';
 
 interface Props {
@@ -15,6 +15,7 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   
   // Voice Recognition State
   const [isListening, setIsListening] = useState(false);
@@ -106,9 +107,7 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
       setAttachments(prev => [...prev, ...newAttachments]);
       
       // Clear input value to allow selecting the same file again if needed
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      e.target.value = '';
     }
   };
 
@@ -183,6 +182,16 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
         onChange={handleFileSelect}
         multiple
         accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+        className="hidden"
+      />
+
+      {/* Hidden Camera Input */}
+      <input 
+        type="file" 
+        ref={cameraInputRef}
+        onChange={handleFileSelect}
+        accept="image/*"
+        capture="environment"
         className="hidden"
       />
       
@@ -300,10 +309,19 @@ export const ChatInterface: React.FC<Props> = ({ sectors, userProfile, onBack })
             className={`w-full bg-dark-900 border-b border-stone-700 rounded-none pl-2 pr-28 py-3 text-sm text-stone-200 font-serif focus:outline-none focus:border-ai-500 transition-all placeholder:text-stone-600 placeholder:italic ${isListening ? 'border-user-500 text-user-200' : ''}`}
           />
           <div className="absolute right-0 flex items-center gap-2">
+            {/* Camera Button */}
+            <button 
+              onClick={() => cameraInputRef.current?.click()}
+              className="p-2 text-stone-500 hover:text-ai-400 hover:bg-ai-900/10 rounded-full transition-colors" 
+              title="Cámara"
+            >
+               <Camera size={18} />
+            </button>
+
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="p-2 text-stone-500 hover:text-ai-400 hover:bg-ai-900/10 rounded-full transition-colors" 
-              title="Adjuntar"
+              title="Adjuntar Archivo"
             >
                <Paperclip size={18} />
             </button>
