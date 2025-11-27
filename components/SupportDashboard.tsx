@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { SupportUserStatus, SubscriptionTier } from '../types';
 import { ArrowLeft, LifeBuoy, AlertTriangle, CheckCircle2, XCircle, MoreVertical, RefreshCw, PauseCircle, ShieldAlert } from 'lucide-react';
@@ -46,7 +45,7 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
   const filteredUsers = users.filter(u => u.email.toLowerCase().includes(filter.toLowerCase()) || u.uid.includes(filter));
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#0c0a09] flex flex-col animate-fadeIn font-sans">
+    <div className="fixed inset-0 z-[120] bg-[#0c0a09] flex flex-col animate-fadeIn font-sans">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-stone-800 bg-dark-900 flex justify-between items-center">

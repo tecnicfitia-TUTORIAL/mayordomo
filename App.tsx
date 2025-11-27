@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { UserProfile, PillarId, CapabilityStatus, SubscriptionTier, PillarStatus, LifeStageConfig, PermissionItem, UserArchetype, Mission, DashboardConfig } from './types';
 import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS } from './constants';
@@ -452,6 +451,7 @@ const App: React.FC = () => {
             onAddPermission={handleAddPermission}
             onClose={() => setShowEvolution(false)}
             onSimulateTier={handleSimulationChange}
+            onOpenSupport={handleOpenSupport}
           />
       )}
 

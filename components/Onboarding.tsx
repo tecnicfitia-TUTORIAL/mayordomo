@@ -252,20 +252,22 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
                  </button>
                </div>
 
-               {/* Name is shown in Signup, and optionally in Login if user wants to update it */}
-               <div>
-                 <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Nombre Completo</label>
-                 <div className="flex items-center gap-3 border-b border-stone-700 py-2">
-                   <User size={18} className="text-ai-500" />
-                   <input 
-                      type="text" 
-                      value={name} 
-                      onChange={e => setName(e.target.value)} 
-                      className="bg-transparent w-full outline-none text-white placeholder-stone-600" 
-                      placeholder="Ej. Ana García" 
-                   />
+               {/* Name is shown in Signup only */}
+               {!isLoginMode && (
+                 <div>
+                   <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Nombre Completo</label>
+                   <div className="flex items-center gap-3 border-b border-stone-700 py-2">
+                     <User size={18} className="text-ai-500" />
+                     <input 
+                        type="text" 
+                        value={name} 
+                        onChange={e => setName(e.target.value)} 
+                        className="bg-transparent w-full outline-none text-white placeholder-stone-600" 
+                        placeholder="Ej. Ana García" 
+                     />
+                   </div>
                  </div>
-               </div>
+               )}
 
                <div>
                  <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Email</label>

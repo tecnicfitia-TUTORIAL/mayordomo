@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LifeStageConfig, MacroContextEvent, PermissionProposal, UserProfile, PermissionItem, SubscriptionTier } from '../types';
 import { scanMacroContext, analyzeGapAndPropose } from '../services/evolutionService';
-import { Globe, Database, Activity, Wifi, X, Shield, Zap, Star, Crown, Play, ChevronDown, Cpu, Fingerprint, ScanEye, Server, Radar } from 'lucide-react';
+import { Globe, Database, Activity, Wifi, X, Shield, Zap, Star, Crown, Play, ChevronDown, Cpu, Fingerprint, ScanEye, Server, Radar, LifeBuoy } from 'lucide-react';
 import { TECHNICAL_PERMISSIONS } from '../constants';
 
 interface Props {
@@ -11,13 +11,13 @@ interface Props {
   onAddPermission: (moduleId: string, permission: PermissionItem) => void;
   onClose: () => void;
   onSimulateTier: (tier: SubscriptionTier) => void;
+  onOpenSupport?: () => void;
   isEmbedded?: boolean;
 }
 
 const DAILY_SCAN_KEY = 'lastEvolutionScan';
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAddPermission, onClose, onSimulateTier, isEmbedded }) => {
+export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAddPermission, onClose, onSimulateTier, onOpenSupport, isEmbedded }) => {
   const [logs, setLogs] = useState<string[]>(["Inicializando núcleo...", "Cargando protocolos de vigilancia..."]);
   const [currentMacroEvent, setCurrentMacroEvent] = useState<MacroContextEvent | null>(null);
   const [activeProposal, setActiveProposal] = useState<PermissionProposal | null>(null);
@@ -46,10 +46,19 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
       if (!isScanning) return;
       
       const interval = setInterval(() => {
-          // Fluctuación aleatoria pequeña
-          setMemoryUsage(prev => Math.max(10, Math.min(64, prev + (Math.random() - 0.5) * 2)));
-          setCpuLoad(prev => Math.floor(Math.random() * 90) + 5);
-      }, 800);
+          // Fluctuación aleatoria más agresiva para simular cálculo en tiempo real
+          setMemoryUsage(prev => {
+              const noise = (Math.random() - 0.5) * 8; // +/- 4 MB fluctuation
+              return Math.max(12, Math.min(64, prev + noise));
+          });
+          
+          setCpuLoad(prev => {
+              const noise = Math.floor((Math.random() - 0.5) * 20); // +/- 10% load fluctuation
+              // Tendencia a subir si es bajo
+              const trend = prev < 30 ? 2 : prev > 90 ? -2 : 0;
+              return Math.max(5, Math.min(99, prev + noise + trend));
+          });
+      }, 150); // Actualización rápida (150ms)
 
       return () => clearInterval(interval);
   }, [isScanning]);
@@ -62,19 +71,13 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
     const runEvolutionCycle = async () => {
       if (!isMounted || activeProposal || !isScanning) return;
 
-      // Check last run time
-      const lastRunStr = localStorage.getItem(DAILY_SCAN_KEY);
-      const lastRun = lastRunStr ? parseInt(lastRunStr, 10) : 0;
-      const now = Date.now();
-
-      // Forzar escaneo visual al menos unos segundos para la demo, aunque ya se haya hecho hoy
-      // En producción real, esto retornaría inmediatamente.
-      
+      // Forzar escaneo visual al menos unos segundos para la demo
       addLog("Conectando con red neuronal global...");
       await new Promise(r => setTimeout(r, 1500));
       if (!isMounted) return;
 
       addLog("Escaneando Macro-Contexto (Internet)...");
+      setCpuLoad(85); // Spike CPU during scan
       
       const event = await scanMacroContext();
       if (!isMounted) return;
@@ -86,11 +89,10 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
       if (!isMounted) return;
       
       addLog("Analizando impacto en Pilares...");
+      setMemoryUsage(58); // Spike RAM during analysis
       
       const proposal = await analyzeGapAndPropose(event, profile, lifeStageConfig.modules);
       if (!isMounted) return;
-
-      localStorage.setItem(DAILY_SCAN_KEY, Date.now().toString());
 
       if (proposal) {
         addLog("⚠️ OPORTUNIDAD DE MEJORA DETECTADA.");
@@ -98,7 +100,6 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
         setIsScanning(false); 
       } else {
         addLog("Análisis: Cobertura Óptima. Sistema seguro.");
-        // Mantener evento visible un momento y luego limpiar o dejarlo
         setIsScanning(false);
       }
     };
@@ -142,6 +143,18 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
         
         <div className="flex items-center gap-4 relative">
             
+            {/* SUPPORT BUTTON - Navigate Forward */}
+            {onOpenSupport && (
+                <button 
+                    onClick={onOpenSupport}
+                    className="flex items-center gap-2 px-4 py-2 rounded-sm border bg-stone-900 border-stone-700 hover:border-blue-500 hover:bg-blue-900/10 text-stone-300 transition-colors group"
+                    title="Abrir Dashboard de Soporte"
+                >
+                    <LifeBuoy size={16} className="group-hover:text-blue-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider hidden md:inline">Soporte</span>
+                </button>
+            )}
+
             {/* SIMULATION DROPDOWN */}
             <div className="relative">
                 <button 
@@ -177,9 +190,14 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
                 )}
             </div>
 
+            {/* CLOSE BUTTON - Navigate Backward */}
             {!isEmbedded && (
-                <button onClick={onClose} className="p-2 hover:bg-ai-900/20 rounded-full transition-colors">
-                    <X />
+                <button 
+                    onClick={onClose} 
+                    className="p-2 hover:bg-red-900/20 hover:text-red-500 rounded-full transition-colors text-stone-500"
+                    title="Cerrar Consola"
+                >
+                    <X size={20} />
                 </button>
             )}
         </div>
@@ -205,14 +223,14 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
                     {/* Scanner Rings */}
                     {isScanning && (
                         <>
-                            <div className="absolute -inset-12 border border-ai-500/10 rounded-full animate-[spin_10s_linear_infinite]"></div>
-                            <div className="absolute -inset-8 border-t border-r border-ai-500/30 rounded-full animate-[spin_3s_linear_infinite]"></div>
+                            <div className="absolute -inset-12 border border-ai-500/10 rounded-full animate-[spin_4s_linear_infinite]"></div>
+                            <div className="absolute -inset-8 border-t border-r border-ai-500/30 rounded-full animate-[spin_2s_linear_infinite]"></div>
                             <div className="absolute -inset-4 bg-ai-500/10 rounded-full blur-xl animate-pulse"></div>
                         </>
                     )}
                     
-                    <div className={`relative bg-stone-900 border p-6 rounded-full shadow-[0_0_30px_rgba(212,175,55,0.15)] transition-all duration-500 ${isScanning ? 'border-ai-500/50 scale-105' : 'border-stone-700'}`}>
-                        <Cpu size={48} className={`transition-colors duration-500 ${isScanning ? 'text-ai-400' : 'text-stone-500'}`} />
+                    <div className={`relative bg-stone-900 border p-6 rounded-full shadow-[0_0_30px_rgba(212,175,55,0.15)] transition-all duration-300 ${isScanning ? 'border-ai-500/50 scale-105 shadow-[0_0_50px_rgba(212,175,55,0.3)]' : 'border-stone-700'}`}>
+                        <Cpu size={48} className={`transition-colors duration-300 ${isScanning ? 'text-ai-400' : 'text-stone-500'}`} />
                     </div>
 
                     {/* Satellites */}
@@ -233,7 +251,7 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
                         <div className="text-lg font-mono text-ai-400">{memoryUsage.toFixed(1)} MB</div>
                         <div className="w-full bg-stone-800 h-1 mt-2 rounded-full overflow-hidden">
                             <div 
-                                className="bg-ai-500 h-full transition-all duration-300"
+                                className="bg-ai-500 h-full transition-all duration-150"
                                 style={{ width: `${(memoryUsage/64)*100}%` }}
                             ></div>
                         </div>
@@ -242,12 +260,12 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
                          <div className="text-[9px] text-stone-500 uppercase tracking-widest mb-1 flex items-center gap-1">
                             <Activity size={10} /> Carga Cognitiva
                         </div>
-                        <div className={`text-lg font-mono transition-colors ${cpuLoad > 80 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        <div className={`text-lg font-mono transition-colors duration-150 ${cpuLoad > 80 ? 'text-red-400' : 'text-emerald-400'}`}>
                             {cpuLoad > 80 ? 'ALTA' : 'OPTIMAL'} ({cpuLoad}%)
                         </div>
                          <div className="w-full bg-stone-800 h-1 mt-2 rounded-full overflow-hidden">
                             <div 
-                                className={`h-full transition-all duration-300 ${cpuLoad > 80 ? 'bg-red-500' : 'bg-emerald-500'}`}
+                                className={`h-full transition-all duration-150 ${cpuLoad > 80 ? 'bg-red-500' : 'bg-emerald-500'}`}
                                 style={{ width: `${cpuLoad}%` }}
                             ></div>
                         </div>
