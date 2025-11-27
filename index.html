@@ -98,7 +98,7 @@
     </script>
     <style>
       :root {
-        /* NIGHT MODE (Default) */
+        /* NIGHT MODE (Default) - Deep Charcoal & Gold */
         --color-dark-950: 12 10 9;   
         --color-dark-900: 28 25 23;  
         --color-dark-800: 41 37 36;  
@@ -111,18 +111,18 @@
         --color-stone-800: 41 37 36;    
       }
 
-      .light-mode {
-        /* DAY MODE */
-        --color-dark-950: 240 238 230; 
-        --color-dark-900: 230 227 215; 
-        --color-dark-800: 220 216 200; 
+      .light {
+        /* LIGHT MODE - Bone White & Bronze/Dark Grey */
+        --color-dark-950: 250 250 249; /* Stone 50 */
+        --color-dark-900: 245 245 244; /* Stone 100 */
+        --color-dark-800: 231 229 228; /* Stone 200 */
 
-        --color-stone-200: 28 25 23;    
-        --color-stone-300: 68 64 60;
-        --color-stone-400: 87 83 78;    
-        --color-stone-500: 120 113 108;
-        --color-stone-700: 168 162 158;
-        --color-stone-800: 200 195 180; 
+        --color-stone-200: 28 25 23;    /* Stone 900 (Text Main) */
+        --color-stone-300: 68 64 60;    /* Stone 700 */
+        --color-stone-400: 87 83 78;    /* Stone 600 */
+        --color-stone-500: 120 113 108; /* Stone 500 */
+        --color-stone-700: 214 211 209; /* Stone 300 (Borders) */
+        --color-stone-800: 231 229 228; /* Stone 200 (Borders/Bg) */
       }
 
       body {
@@ -144,6 +144,11 @@
         pointer-events: none;
         z-index: 9999;
         mix-blend-mode: overlay;
+      }
+
+      /* Transitions for theme switching */
+      div, button, aside, main {
+         transition: background-color 0.3s ease, border-color 0.3s ease;
       }
 
       .custom-scrollbar::-webkit-scrollbar {

@@ -1,387 +1,160 @@
 
-import React, { useState, useEffect } from 'react';
-import { NotificationConfig, UserProfile, SubscriptionTier, LifeStageConfig, PermissionItem } from '../types';
-import { SUBSCRIPTION_PLANS, getTierLevel, ADMIN_EMAILS } from '../constants';
-import { X, ShieldAlert, Clock, Wallet, Heart, Zap, CreditCard, Check, Trash2, Settings as SettingsIcon, Sliders, Lock, ToggleLeft, ToggleRight, BellRing, Skull, Eye, MonitorPlay } from 'lucide-react';
+import React from 'react';
+import { UserProfile, SubscriptionTier, ThemePreference } from '../types';
+import { SUBSCRIPTION_PLANS } from '../constants';
+import { StripeService } from '../services/stripeService';
+import { X, ExternalLink, CreditCard, CheckCircle2, Crown, Shield, Star, Zap, Monitor, Moon, Sun, Loader2 } from 'lucide-react';
+import { LegalModal } from './LegalModal';
 
 interface Props {
-  config: NotificationConfig;
-  userProfile: UserProfile;
-  lifeStageConfig: LifeStageConfig | null;
-  activeIntegrations: string[];
-  onSave: (config: NotificationConfig) => void;
-  onUpdateSubscription: (tier: SubscriptionTier) => void;
-  onTogglePermission: (id: string) => void;
-  onBulkToggle: (ids: string[], action: 'ENABLE' | 'DISABLE') => void;
-  onHardReset?: () => void;
+  profile: UserProfile;
+  onUpdate?: (profile: UserProfile) => void;
   onClose: () => void;
 }
 
-interface SettingRowProps {
-  label: string;
-  desc: string;
-  icon: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
-}
+export const SettingsModal: React.FC<Props> = ({ profile, onClose, onUpdate }) => {
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [legalType, setLegalType] = React.useState<'PRIVACY' | 'TERMS' | null>(null);
+  
+  const handleManageSubscription = async () => {
+    setIsLoading(true);
+    // Delegamos la gestión al servicio de Stripe
+    await StripeService.openCustomerPortal(profile.email);
+    setIsLoading(false);
+  };
 
-export const SettingsModal: React.FC<Props> = ({ 
-    config, 
-    userProfile, 
-    lifeStageConfig,
-    activeIntegrations,
-    onSave, 
-    onUpdateSubscription, 
-    onTogglePermission,
-    onBulkToggle,
-    onHardReset, 
-    onClose 
-}) => {
-    const [activeTab, setActiveTab] = useState<'NOTIFICATIONS' | 'SUBSCRIPTION' | 'PERMISSIONS'>('SUBSCRIPTION');
-    const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
+  const handleThemeChange = (theme: ThemePreference) => {
+    if (onUpdate) {
+        onUpdate({ ...profile, themePreference: theme });
+    }
+  };
 
-    // Check if current user is Admin
-    const isAdmin = ADMIN_EMAILS.includes(userProfile.email);
+  const getTierIcon = (tierId: string) => {
+      switch(tierId) {
+          case SubscriptionTier.FREE: return <Shield size={24} />;
+          case SubscriptionTier.BASIC: return <Zap size={24} />;
+          case SubscriptionTier.PRO: return <Star size={24} />;
+          case SubscriptionTier.VIP: return <Crown size={24} />;
+          default: return <Shield size={24} />;
+      }
+  };
 
-    useEffect(() => {
-        if ("Notification" in window) {
-            setPermissionStatus(Notification.permission);
-        }
-    }, []);
+  const currentPlan = SUBSCRIPTION_PLANS.find(p => p.id === profile.subscriptionTier) || SUBSCRIPTION_PLANS[0];
+  const currentTheme = profile.themePreference || 'AUTO';
 
-    const requestPermission = () => {
-        if (!("Notification" in window)) {
-            alert("Tu navegador no soporta notificaciones.");
-            return;
-        }
-        Notification.requestPermission().then(permission => {
-            setPermissionStatus(permission);
-            if (permission === 'granted') {
-                // Optionally send a test notification
-                new Notification("Confort OS", { body: "Notificaciones activadas correctamente." });
-            }
-        });
-    };
-
-    const toggle = (key: keyof NotificationConfig) => {
-        const newConfig = { ...config, [key]: !config[key] };
-        // ECHO [FIREBASE]: firebase.firestore().collection('users').doc(uid).update({ notifications: newConfig });
-        onSave(newConfig);
-    };
-
-    // Helper to handle bulk toggle for a module
-    const handleModuleToggle = (permissions: PermissionItem[]) => {
-        const userTierLevel = getTierLevel(userProfile.subscriptionTier);
-        // Filter only unlocked permissions for this tier
-        const unlockedPermissions = permissions.filter(p => userTierLevel >= getTierLevel(p.minTier));
-        const ids = unlockedPermissions.map(p => p.id);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fadeIn">
+      <div className="w-full max-w-lg bg-stone-900 border border-stone-800 rounded-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         
-        // Check if all unlocked are currently active
-        const allActive = ids.every(id => activeIntegrations.includes(id));
-        
-        // If all are active, disable them. Otherwise, enable them.
-        onBulkToggle(ids, allActive ? 'DISABLE' : 'ENABLE');
-    };
-
-    const handleDeleteAccount = () => {
-        const confirmText = prompt("Para confirmar el borrado, escribe 'ELIMINAR' en mayúsculas. Esta acción no se puede deshacer.");
-        if (confirmText === 'ELIMINAR') {
-            // ECHO [FIREBASE]: firebase.auth().currentUser.delete();
-            // ECHO [FIREBASE]: firebase.firestore().collection('users').doc(uid).delete();
-            alert("Cuenta eliminada. Gracias por usar Confort OS.");
-            if (onHardReset) onHardReset();
-        }
-    };
-
-    const SettingRow: React.FC<SettingRowProps> = ({ label, desc, icon, active, onClick }) => (
-        <div onClick={onClick} className="flex items-center justify-between cursor-pointer group p-3 rounded-xl hover:bg-slate-800/50 transition-colors">
-            <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-800 rounded-lg group-hover:bg-slate-700 transition-colors text-slate-300 shadow-inner">{icon}</div>
-                <div>
-                    <div className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">{label}</div>
-                    <div className="text-xs text-slate-500">{desc}</div>
-                </div>
-            </div>
-            <div className={`w-11 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${active ? 'bg-ai-500' : 'bg-slate-700'}`}>
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-300 ${active ? 'translate-x-6' : 'translate-x-1'}`} />
-            </div>
+        {/* Header */}
+        <div className="p-4 border-b border-stone-800 flex justify-between items-center bg-black">
+          <div className="flex items-center gap-2">
+            <CreditCard className="text-ai-500" size={20} />
+            <h2 className="text-white font-serif font-bold">Mi Suscripción</h2>
+          </div>
+          <button onClick={onClose}><X className="text-stone-500 hover:text-white" /></button>
         </div>
-    );
 
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
-            <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-                
-                {/* Header */}
-                <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950">
-                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                        Configuración {isAdmin && <span className="text-[10px] bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded border border-amber-500/50">ADMIN</span>}
-                    </h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-800 rounded-full"><X size={20}/></button>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex border-b border-slate-800 bg-slate-950/50 overflow-x-auto">
-                    <button 
-                        onClick={() => setActiveTab('SUBSCRIPTION')}
-                        className={`flex-1 min-w-[100px] py-3 text-sm font-medium transition-colors relative ${activeTab === 'SUBSCRIPTION' ? 'text-ai-400' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        Suscripción
-                        {activeTab === 'SUBSCRIPTION' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-ai-400" />}
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('PERMISSIONS')}
-                        className={`flex-1 min-w-[100px] py-3 text-sm font-medium transition-colors relative ${activeTab === 'PERMISSIONS' ? 'text-ai-400' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        Permisos
-                        {activeTab === 'PERMISSIONS' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-ai-400" />}
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('NOTIFICATIONS')}
-                        className={`flex-1 min-w-[100px] py-3 text-sm font-medium transition-colors relative ${activeTab === 'NOTIFICATIONS' ? 'text-ai-400' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        Alertas
-                        {activeTab === 'NOTIFICATIONS' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-ai-400" />}
-                    </button>
-                </div>
-
-                {/* Content */}
-                <div className="p-6 space-y-2 overflow-y-auto custom-scrollbar flex-1">
-                    
-                    {activeTab === 'NOTIFICATIONS' && (
-                        <>
-                            {permissionStatus !== 'granted' && (
-                                <div className="mb-4 p-3 bg-amber-900/20 border border-amber-500/30 rounded-lg flex items-center justify-between">
-                                    <div className="text-xs text-amber-200">
-                                        Las notificaciones están desactivadas en el navegador.
-                                    </div>
-                                    <button 
-                                        onClick={requestPermission}
-                                        className="text-xs bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded font-bold flex items-center gap-2 transition-colors"
-                                    >
-                                        <BellRing size={12} /> Activar
-                                    </button>
-                                </div>
-                            )}
-
-                            <p className="text-sm text-slate-400 mb-4 px-1">
-                                Define qué tipo de interrupciones permites a tu Mayordomo Digital.
-                            </p>
-                            <div className="space-y-1">
-                                <SettingRow 
-                                    label="Resumen Matutino" 
-                                    desc="Briefing diario de agenda y objetivos."
-                                    icon={<Clock size={18} className="text-blue-400"/>}
-                                    active={config.morningSummary}
-                                    onClick={() => toggle('morningSummary')}
-                                />
-                                <SettingRow 
-                                    label="Alertas Críticas" 
-                                    desc="Riesgos de seguridad o plazos fatales."
-                                    icon={<ShieldAlert size={18} className="text-red-400"/>}
-                                    active={config.urgentAlerts}
-                                    onClick={() => toggle('urgentAlerts')}
-                                />
-                                <SettingRow 
-                                    label="Consejos Financieros" 
-                                    desc="Oportunidades de ahorro y mercado."
-                                    icon={<Wallet size={18} className="text-amber-400"/>}
-                                    active={config.savingsTips}
-                                    onClick={() => toggle('savingsTips')}
-                                />
-                                <SettingRow 
-                                    label="Bienestar y Salud" 
-                                    desc="Recordatorios de descanso y ergonomía."
-                                    icon={<Heart size={18} className="text-pink-400"/>}
-                                    active={config.healthReminders}
-                                    onClick={() => toggle('healthReminders')}
-                                />
-                                <SettingRow 
-                                    label="Evolución del Sistema" 
-                                    desc="Avisos sobre nuevos permisos o mejoras."
-                                    icon={<Zap size={18} className="text-green-400"/>}
-                                    active={config.systemUpdates}
-                                    onClick={() => toggle('systemUpdates')}
-                                />
-                            </div>
-                        </>
-                    )}
-
-                    {activeTab === 'SUBSCRIPTION' && (
-                        <>
-                           <div className="mb-4 p-4 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-slate-400 uppercase">Plan Actual</p>
-                                    <h3 className="text-lg font-bold text-white">{SUBSCRIPTION_PLANS.find(p => p.id === userProfile.subscriptionTier)?.name}</h3>
-                                    <p className="text-xs text-ai-400">{SUBSCRIPTION_PLANS.find(p => p.id === userProfile.subscriptionTier)?.price}</p>
-                                </div>
-                                <div className="p-3 bg-slate-700 rounded-full text-ai-400">
-                                    <CreditCard size={24} />
-                                </div>
-                           </div>
-
-                           <p className="text-xs text-slate-500 mb-3">Selecciona un nuevo plan para cambiar tu nivel de autonomía.</p>
-
-                           <div className="space-y-3">
-                                {SUBSCRIPTION_PLANS.map(plan => (
-                                    <div 
-                                        key={plan.id}
-                                        onClick={() => {
-                                            // ECHO [STRIPE]: Aquí iría la lógica de redirección al Customer Portal si ya tiene cuenta
-                                            // if (hasStripeId) { window.location.href = portalUrl } else { onUpdateSubscription(...) }
-                                            onUpdateSubscription(plan.id)
-                                        }}
-                                        className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${userProfile.subscriptionTier === plan.id ? 'border-ai-500 bg-ai-900/10' : 'border-slate-800 bg-slate-900 hover:border-slate-700'}`}
-                                    >
-                                        <div>
-                                            <div className="font-bold text-white text-sm">{plan.name}</div>
-                                            <div className="text-xs text-slate-500">{plan.price} • {plan.aiBehavior}</div>
-                                        </div>
-                                        {userProfile.subscriptionTier === plan.id && (
-                                            <div className="text-ai-500 bg-ai-500/10 p-1 rounded-full">
-                                                <Check size={16} />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                           </div>
-                           
-                           <div className="mt-4 p-3 bg-amber-900/10 border border-amber-500/20 rounded-lg text-[10px] text-amber-400">
-                                <strong>Aviso de Seguridad:</strong> Al cambiar a un plan inferior, los módulos avanzados que ya no estén cubiertos por tu suscripción se desactivarán inmediatamente y perderás el acceso a esas funciones de gestión.
-                           </div>
-                        </>
-                    )}
-
-                    {activeTab === 'PERMISSIONS' && lifeStageConfig && (
-                        <div className="space-y-6">
-                            <div className="bg-slate-800/50 p-3 rounded-lg text-xs text-slate-400 border border-slate-700/50">
-                                Gestiona el acceso del sistema a cada módulo. Los permisos bloqueados requieren un plan superior para activarse.
-                            </div>
-                            {lifeStageConfig.modules.map((module) => {
-                                const userTierLevel = getTierLevel(userProfile.subscriptionTier);
-                                const unlockedPermissions = module.permissions.filter(p => userTierLevel >= getTierLevel(p.minTier));
-                                const unlockedIds = unlockedPermissions.map(p => p.id);
-                                const allActive = unlockedIds.length > 0 && unlockedIds.every(id => activeIntegrations.includes(id));
-                                
-                                return (
-                                    <div key={module.id} className="space-y-2">
-                                        <div className="flex items-center justify-between border-b border-slate-800 pb-1">
-                                            <h4 className="text-xs font-bold text-ai-500 uppercase tracking-widest">
-                                                {module.title}
-                                            </h4>
-                                            {unlockedPermissions.length > 0 && (
-                                                <button 
-                                                    onClick={() => handleModuleToggle(module.permissions)}
-                                                    className="text-[10px] text-slate-500 hover:text-ai-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded hover:bg-slate-800"
-                                                    title={allActive ? "Desactivar Todo el Módulo" : "Activar Todo el Módulo"}
-                                                >
-                                                    {allActive ? "Desactivar Todo" : "Activar Todo"}
-                                                    {allActive ? <ToggleRight size={14} className="text-ai-500" /> : <ToggleLeft size={14} />}
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <div className="space-y-1">
-                                            {module.permissions.map((perm) => {
-                                                const isActive = activeIntegrations.includes(perm.id);
-                                                const requiredTierLevel = getTierLevel(perm.minTier);
-                                                const isLocked = userTierLevel < requiredTierLevel;
-
-                                                return (
-                                                    <div 
-                                                        key={perm.id}
-                                                        onClick={() => !isLocked && onTogglePermission(perm.id)}
-                                                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                                                            isLocked 
-                                                                ? 'border-transparent opacity-50 bg-slate-900' 
-                                                                : 'bg-slate-800 border-slate-700 cursor-pointer hover:border-slate-600'
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`p-1.5 rounded-md ${isLocked ? 'bg-slate-800 text-slate-600' : isActive ? 'bg-ai-500/20 text-ai-500' : 'bg-slate-700 text-slate-400'}`}>
-                                                                {isLocked ? <Lock size={14} /> : <Sliders size={14} />}
-                                                            </div>
-                                                            <div>
-                                                                <div className={`text-xs font-medium ${isLocked ? 'text-slate-500' : isActive ? 'text-white' : 'text-slate-400'}`}>
-                                                                    {perm.label}
-                                                                </div>
-                                                                {isLocked && (
-                                                                    <div className="text-[9px] text-amber-700 font-mono">Requiere Plan {perm.minTier}</div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {!isLocked && (
-                                                            <div className={`w-8 h-4 rounded-full relative transition-colors ${isActive ? 'bg-ai-500' : 'bg-slate-600'}`}>
-                                                                <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${isActive ? 'right-0.5' : 'left-0.5'}`} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
+        {/* Content */}
+        <div className="p-8 flex flex-col items-center overflow-y-auto custom-scrollbar">
+            
+            {/* Current Plan Card */}
+            <div className="w-full bg-gradient-to-br from-stone-900 to-black border border-ai-500/30 rounded-xl p-6 relative overflow-hidden mb-8 shadow-lg shadow-ai-900/10">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                    {getTierIcon(currentPlan.id)}
                 </div>
                 
-                {/* Footer Actions */}
-                <div className="p-5 border-t border-slate-800 bg-slate-950">
-                     <div className="flex flex-col gap-4">
-                         {/* ADMIN GOD MODE SECTION */}
-                         {isAdmin && (
-                             <div className="mb-4 p-3 bg-amber-900/10 border border-amber-500/30 rounded-lg">
-                                 <h4 className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                     <MonitorPlay size={12} /> Simulación de Roles (God Mode)
-                                 </h4>
-                                 <div className="grid grid-cols-4 gap-2">
-                                     {SUBSCRIPTION_PLANS.map(plan => (
-                                         <button 
-                                            key={plan.id}
-                                            onClick={() => onUpdateSubscription(plan.id)}
-                                            className={`text-[9px] py-1 px-2 rounded border transition-all uppercase ${
-                                                userProfile.subscriptionTier === plan.id 
-                                                ? 'bg-amber-500 text-black border-amber-500 font-bold' 
-                                                : 'border-slate-700 text-slate-400 hover:border-amber-500/50 hover:text-amber-200'
-                                            }`}
-                                         >
-                                             {plan.name.split(' ')[1]}
-                                         </button>
-                                     ))}
-                                 </div>
-                             </div>
-                         )}
-
-                         <div className="flex justify-between items-center">
-                             {onHardReset && (
-                                 <button 
-                                    onClick={onHardReset}
-                                    className="text-slate-500 hover:text-white text-xs font-bold flex items-center gap-1 px-2 py-1 hover:bg-slate-800 rounded transition-colors"
-                                    title="Reiniciar Simulación Local"
-                                 >
-                                     <Trash2 size={14} /> Reiniciar Demo
-                                 </button>
-                             )}
-                             <button onClick={onClose} className="bg-ai-600 hover:bg-ai-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-ai-500/20">
-                                {activeTab === 'SUBSCRIPTION' || activeTab === 'PERMISSIONS' ? 'Cerrar' : 'Guardar'}
-                             </button>
-                         </div>
-                         
-                         {/* Danger Zone - Legal Requirement for App Store */}
-                         <div className="pt-4 border-t border-slate-800/50">
-                             <button 
-                                onClick={handleDeleteAccount}
-                                className="w-full flex items-center justify-center gap-2 text-[10px] text-red-900 hover:text-red-500 bg-red-950/20 hover:bg-red-950/40 border border-red-900/30 hover:border-red-800 py-2 rounded transition-colors uppercase tracking-widest font-bold"
-                             >
-                                 <Skull size={12} /> Eliminar Cuenta y Datos (Irreversible)
-                             </button>
-                         </div>
-                     </div>
+                <div className="text-[10px] font-bold text-ai-500 uppercase tracking-widest mb-2 border border-ai-500/20 px-2 py-0.5 rounded-full inline-block bg-ai-900/10">
+                    Plan Activo
+                </div>
+                
+                <h1 className="text-3xl font-serif font-bold text-white mb-1">{currentPlan.name}</h1>
+                <p className="text-sm text-stone-400 font-serif italic">{currentPlan.description}</p>
+                
+                <div className="mt-6 flex items-end gap-1">
+                    <span className="text-2xl font-bold text-white">{currentPlan.price}</span>
+                    <span className="text-xs text-stone-500 mb-1">/ mes</span>
                 </div>
             </div>
+
+            {/* THEME SELECTOR */}
+            <div className="w-full mb-8 border-b border-stone-800 pb-6">
+                 <h3 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-4">Apariencia del Sistema</h3>
+                 <div className="grid grid-cols-3 gap-3">
+                     <button 
+                        onClick={() => handleThemeChange('AUTO')}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-sm border transition-all ${currentTheme === 'AUTO' ? 'bg-ai-900/20 border-ai-500/50 text-ai-500' : 'bg-stone-950 border-stone-800 text-stone-500 hover:border-stone-600'}`}
+                     >
+                         <Monitor size={18} />
+                         <span className="text-[10px] font-bold">Auto</span>
+                     </button>
+                     <button 
+                        onClick={() => handleThemeChange('LIGHT')}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-sm border transition-all ${currentTheme === 'LIGHT' ? 'bg-stone-200 border-white text-black' : 'bg-stone-950 border-stone-800 text-stone-500 hover:border-stone-600'}`}
+                     >
+                         <Sun size={18} />
+                         <span className="text-[10px] font-bold">Claro</span>
+                     </button>
+                     <button 
+                        onClick={() => handleThemeChange('DARK')}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-sm border transition-all ${currentTheme === 'DARK' ? 'bg-black border-stone-600 text-white' : 'bg-stone-950 border-stone-800 text-stone-500 hover:border-stone-600'}`}
+                     >
+                         <Moon size={18} />
+                         <span className="text-[10px] font-bold">Oscuro</span>
+                     </button>
+                 </div>
+            </div>
+
+            {/* Benefits List */}
+            <div className="w-full space-y-3 mb-8">
+                <h3 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-4">Capacidades Incluidas</h3>
+                {currentPlan.capabilities.map((cap, idx) => (
+                    <div key={idx} className="flex items-center gap-3 text-sm text-stone-300">
+                        <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                        {cap}
+                    </div>
+                ))}
+            </div>
+
+            {/* Action Button */}
+            <div className="w-full bg-stone-950 p-4 rounded-lg border border-stone-800 text-center">
+                <p className="text-xs text-stone-400 mb-4 px-4 leading-relaxed">
+                  Para cambios de plan, actualizaciones de método de pago o descargar facturas, acceda a nuestra pasarela segura.
+                </p>
+                <button 
+                  onClick={handleManageSubscription}
+                  disabled={isLoading}
+                  className="w-full bg-white hover:bg-stone-200 text-black font-bold py-3 rounded-sm transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? <Loader2 className="animate-spin" size={14} /> : <ExternalLink size={14} />}
+                  {isLoading ? 'Conectando...' : 'Ir al Portal de Cliente'}
+                </button>
+            </div>
+            
+            {/* Legal Links Footer */}
+            <div className="flex items-center gap-6 mt-6">
+                <button 
+                  onClick={() => setLegalType('PRIVACY')}
+                  className="text-[10px] text-stone-500 hover:text-ai-500 transition-colors underline decoration-dotted underline-offset-4"
+                >
+                  Política de Privacidad
+                </button>
+                <button 
+                  onClick={() => setLegalType('TERMS')}
+                  className="text-[10px] text-stone-500 hover:text-ai-500 transition-colors underline decoration-dotted underline-offset-4"
+                >
+                  Términos de Servicio
+                </button>
+            </div>
+
+            <p className="text-[9px] text-stone-600 mt-4">
+                Gestionado por Stripe Payments. Conexión SSL segura.
+            </p>
         </div>
-    );
+      </div>
+      
+      {/* Legal Modal Overlay */}
+      {legalType && <LegalModal type={legalType} onClose={() => setLegalType(null)} />}
+    </div>
+  );
 };

@@ -1,354 +1,485 @@
 
-import { HouseSector, Owner, SectorType, UserProfile, UserArchetype, PermissionModule, LifeStageConfig, SubscriptionPlan, SubscriptionTier, NotificationConfig } from "./types";
 
-// --- ADMIN & SUPPORT CONFIGURATION ---
-// Added the specific email to the allowlist so the App recognizes the backdoor login as an Admin
-export const ADMIN_EMAILS = [
-    'admin@confort.app', 
-    'support@confort.app',
-    'tecnicfitia@tecnicalfitnesartificialintelligence.app' 
-]; 
-export const SUPPORT_EMAILS = ['support@confort.app'];
+import { PillarId, SubscriptionTier, TechnicalPermission, UserArchetype, FeatureMatrixItem } from "./types";
 
-export const DEFAULT_NOTIFICATIONS: NotificationConfig = {
-  morningSummary: true,
-  urgentAlerts: true,
-  savingsTips: false,
-  healthReminders: true,
-  systemUpdates: true
+// --- UNIVERSAL CATEGORIES (New Contextual Engine) ---
+// Estas categorías guían a la IA para buscar datos equivalentes en cualquier jurisdicción.
+
+export const UNIVERSAL_CATEGORIES = {
+  [PillarId.CENTINELA]: [
+    { id: 'global_id', label: 'Identidad Global', keywords: ['Passport', 'Visa', 'Residency', 'DNI', 'Green Card'] },
+    { id: 'geo_tax', label: 'Fiscalidad Territorial', keywords: ['IRPF', 'Tax Return', 'Hacienda', 'IRS', 'Revenue'] },
+    { id: 'legal_mobility', label: 'Movilidad Legal', keywords: ['Driving License', 'Carnet Conducir', 'ITV', 'MOT'] },
+    { id: 'civics', label: 'Civismo', keywords: ['Census', 'Padrón', 'Voting', 'Electoral'] }
+  ],
+  [PillarId.PATRIMONIO]: [
+    { id: 'critical_utils', label: 'Suministros Críticos', keywords: ['Water', 'Electricity', 'Gas', 'Internet', 'Broadband'] },
+    { id: 'real_estate', label: 'Activos Inmobiliarios', keywords: ['Lease', 'Deed', 'Hipoteca', 'Alquiler', 'Escritura'] },
+    { id: 'movable_assets', label: 'Patrimonio Mueble', keywords: ['Vehicle', 'Jewelry', 'Crypto', 'Stocks'] }
+  ]
 };
 
-// --- HELPER: Tier Levels for Comparison ---
+// --- A. LOS 5 PILARES (MÓDULOS) ---
+
+export const PILLAR_DEFINITIONS = {
+  [PillarId.CENTINELA]: {
+    name: "El Centinela",
+    description: "Gestión Legal, Administrativa y Burocrática.",
+    minTier: SubscriptionTier.FREE,
+  },
+  [PillarId.PATRIMONIO]: {
+    name: "Hogar y Finanzas",
+    description: "Activos, Consumos, Garantías y Banca.",
+    minTier: SubscriptionTier.BASIC,
+  },
+  [PillarId.CONCIERGE]: {
+    name: "Concierge",
+    description: "Ocio, Viajes y Experiencias.",
+    minTier: SubscriptionTier.BASIC,
+  },
+  [PillarId.VITAL]: {
+    name: "Coach Vital",
+    description: "Salud, Biometría y Desarrollo Personal.",
+    minTier: SubscriptionTier.PRO,
+  },
+  [PillarId.NUCLEO]: {
+    name: "Núcleo Familiar",
+    description: "Logística de terceros, Empleados y Dependientes.",
+    minTier: SubscriptionTier.VIP,
+  }
+};
+
+// --- B. LISTA MAESTRA DE PERMISOS TÉCNICOS ---
+
+export const TECHNICAL_PERMISSIONS: TechnicalPermission[] = [
+  // SISTÉMICOS (Base)
+  {
+    id: 'sys_notifications',
+    label: 'Notificaciones Push',
+    description: 'Para avisos urgentes del Centinela.',
+    category: 'SYSTEMIC',
+    relatedPillar: PillarId.CENTINELA,
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.FREE
+  },
+  {
+    id: 'sys_storage',
+    label: 'Almacenamiento Local',
+    description: 'Para guardar facturas y documentos encriptados.',
+    category: 'SYSTEMIC',
+    relatedPillar: PillarId.CENTINELA,
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.FREE
+  },
+  {
+    id: 'sys_biometrics',
+    label: 'Biometría',
+    description: 'Acceso seguro mediante FaceID/TouchID.',
+    category: 'SYSTEMIC',
+    relatedPillar: PillarId.CENTINELA,
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.FREE
+  },
+
+  // FUNCIONALES (Por Pilar)
+  { 
+    id: 'func_digital_cert', 
+    label: 'Certificado Digital', 
+    description: 'Consultar multas y puntos DGT.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.CENTINELA, 
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.PRO 
+  },
+  { 
+    id: 'func_dehu_sync', 
+    label: 'Conexión DEHú', 
+    description: 'Lectura de notificaciones oficiales.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.CENTINELA, 
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.PRO 
+  },
+  { 
+    id: 'func_camera_ocr', 
+    label: 'Cámara OCR', 
+    description: 'Escanear tickets y garantías.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.PATRIMONIO, 
+    requiredForFullFeature: false,
+    minTier: SubscriptionTier.BASIC
+  },
+  { 
+    id: 'func_open_banking', 
+    label: 'Banca (PSD2)', 
+    description: 'Lectura de saldos y movimientos.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.PATRIMONIO, 
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.PRO 
+  },
+  { 
+    id: 'func_email_parsing', 
+    label: 'Lectura Email', 
+    description: 'Detecta facturas en inbox.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.PATRIMONIO, 
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.BASIC
+  },
+  { 
+    id: 'func_location', 
+    label: 'Ubicación', 
+    description: 'Logística y clima.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.CONCIERGE, 
+    requiredForFullFeature: false,
+    minTier: SubscriptionTier.FREE 
+  },
+  { 
+    id: 'func_calendar_write', 
+    label: 'Escritura Calendario', 
+    description: 'Agendar reservas.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.CONCIERGE, 
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.BASIC
+  },
+  { 
+    id: 'func_health_kit', 
+    label: 'Salud (HealthKit)', 
+    description: 'Sueño, pasos, estrés.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.VITAL, 
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.PRO 
+  },
+  { 
+    id: 'func_linkedin_sync', 
+    label: 'Perfil Profesional', 
+    description: 'Análisis de carrera.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.VITAL, 
+    requiredForFullFeature: false,
+    minTier: SubscriptionTier.PRO
+  },
+  { 
+    id: 'func_contacts', 
+    label: 'Contactos', 
+    description: 'Coordinar familia.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.NUCLEO, 
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.VIP
+  },
+  { 
+    id: 'func_calendar_read_shared', 
+    label: 'Calendarios Terceros', 
+    description: 'Conflictos familiares.', 
+    category: 'FUNCTIONAL', 
+    relatedPillar: PillarId.NUCLEO, 
+    requiredForFullFeature: true,
+    minTier: SubscriptionTier.VIP
+  }
+];
+
+// --- C. MATRIZ DE PERMISOS MAESTRA (25 FEATURES x 4 TIERS) ---
+
+export const PERMISSIONS_MATRIX: FeatureMatrixItem[] = [
+  
+  // === 1. CENTINELA (5 Features) ===
+  {
+    id: 'cent_expiry_alert', pillarId: PillarId.CENTINELA, name: 'Alertas Documentos', description: 'Caducidad DNI/Pasaporte.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: null, automation_level: 'manual', behavior: "Aviso calculado manualmente." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Lectura OCR y aviso en calendario." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Solicitud de cita previa automática." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Gestión completa de renovación." }
+    }
+  },
+  {
+    id: 'cent_traffic_fine', pillarId: PillarId.CENTINELA, name: 'Detección Multas', description: 'Rastreo BOE/DGT.',
+    requiredPermissionId: 'func_digital_cert',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Alerta de publicación en BOE." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Preparación de recurso o pago para validación." }
+    }
+  },
+  {
+    id: 'cent_taxes', pillarId: PillarId.CENTINELA, name: 'Calendario Fiscal', description: 'Avisos Hacienda.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: null, automation_level: 'manual', behavior: "Calendario genérico nacional." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Personalizado por CCAA." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Estimación de IRPF tiempo real." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Preparación de borradores para revisión." }
+    }
+  },
+  {
+    id: 'cent_digital_id', pillarId: PillarId.CENTINELA, name: 'Identidad Digital', description: 'Gestión de claves.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: 3, automation_level: 'manual', behavior: "Bóveda manual (3 items)." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'manual', behavior: "Bóveda ilimitada encriptada." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Aviso de filtración de claves (Dark Web)." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Rotación automática de passwords." }
+    }
+  },
+  {
+    id: 'cent_official_notif', pillarId: PillarId.CENTINELA, name: 'Buzón 060 / DEHú', description: 'Notificaciones Estado.',
+    requiredPermissionId: 'func_dehu_sync',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Lectura y resumen de notificación." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Acuse de recibo y archivo legal." }
+    }
+  },
+
+  // === 2. PATRIMONIO (5 Features) ===
+  {
+    id: 'pat_expenses', pillarId: PillarId.PATRIMONIO, name: 'Registro de Gastos', description: 'Control de flujo de caja.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: null, automation_level: 'manual', behavior: "Input manual de datos." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Escaneo de tickets (OCR)." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Sincronización bancaria (Lectura)." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Categorización y auditoría fiscal." }
+    }
+  },
+  {
+    id: 'pat_subscriptions', pillarId: PillarId.PATRIMONIO, name: 'Gestor Suscripciones', description: 'Control de recurrentes.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: 5, automation_level: 'manual', behavior: "Lista manual (Max 5)." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Detección vía Email." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Detección vía Banco." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Preparación cancelación en 1-Click." }
+    }
+  },
+  {
+    id: 'pat_warranties', pillarId: PillarId.PATRIMONIO, name: 'Garantías y Activos', description: 'Archivo de compras.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: 3, automation_level: 'manual', behavior: "Foto simple." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Extracción fecha fin garantía." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Aviso pre-fin garantía." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Reclamación automática al vendedor." }
+    }
+  },
+  {
+    id: 'pat_energy', pillarId: PillarId.PATRIMONIO, name: 'Optimización Energía', description: 'Luz y Gas.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'manual', behavior: "Gráficas de consumo." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Comparador de tarifas auto." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Preparación de cambio de compañía." }
+    }
+  },
+  {
+    id: 'pat_wealth', pillarId: PillarId.PATRIMONIO, name: 'Patrimonio Neto', description: 'Valoración total.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Cálculo Activos vs Pasivos." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Proyección a 5 años e inversión." }
+    }
+  },
+
+  // === 3. CONCIERGE (5 Features) ===
+  {
+    id: 'con_agenda', pillarId: PillarId.CONCIERGE, name: 'Agenda Diaria', description: 'Optimización tiempo.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: null, automation_level: 'manual', behavior: "Visualización calendario." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Sugerencia de huecos libres." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Reagendamiento inteligente." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Defensa de tiempo (Rechazo auto)." }
+    }
+  },
+  {
+    id: 'con_travel', pillarId: PillarId.CONCIERGE, name: 'Gestión Viajes', description: 'Logística movimientos.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: null, automation_level: 'manual', behavior: "Lista de empaque genérica." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Agrupación de billetes (Wallet)." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Check-in automático." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Gestión incidencias y reembolsos." }
+    }
+  },
+  {
+    id: 'con_leisure', pillarId: PillarId.CONCIERGE, name: 'Planes y Ocio', description: 'Recomendaciones.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: 3, automation_level: 'manual', behavior: "Sugerencias genéricas locales." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Filtrado por gustos." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Reserva de mesas/entradas." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Acceso a eventos exclusivos/sold-out." }
+    }
+  },
+  {
+    id: 'con_shopping', pillarId: PillarId.CONCIERGE, name: 'Compras Personales', description: 'Regalos y necesidades.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'manual', behavior: "Recordatorio fechas importantes." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Generador ideas regalos." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Preparación de pedido para autorización." }
+    }
+  },
+  {
+    id: 'con_comms', pillarId: PillarId.CONCIERGE, name: 'Secretario Digital', description: 'Gestión llamadas/email.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Borradores de respuesta email." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Respuesta autónoma (IA)." }
+    }
+  },
+
+  // === 4. VITAL (5 Features) ===
+  {
+    id: 'vit_habits', pillarId: PillarId.VITAL, name: 'Tracker Hábitos', description: 'Disciplina diaria.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: 3, automation_level: 'manual', behavior: "Checklist manual." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'manual', behavior: "Estadísticas mensuales." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Correlación con agenda." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Sincronización wearables." }
+    }
+  },
+  {
+    id: 'vit_medical', pillarId: PillarId.VITAL, name: 'Salud Médica', description: 'Citas y documentos.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: null, automation_level: 'manual', behavior: "Archivo PDF manual." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'manual', behavior: "Recordatorio tomas/citas." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Búsqueda especialista por seguro." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Reserva de cita médica." }
+    }
+  },
+  {
+    id: 'vit_stress', pillarId: PillarId.VITAL, name: 'Gestión Estrés', description: 'Análisis biométrico.',
+    requiredPermissionId: 'func_health_kit',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Alerta HRV bajo (Burnout)." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Bloqueo agenda por salud." }
+    }
+  },
+  {
+    id: 'vit_career', pillarId: PillarId.VITAL, name: 'Carrera Profesional', description: 'Desarrollo laboral.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'manual', behavior: "Repositorio CV." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Escaneo mercado laboral." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Aplicación auto a ofertas." }
+    }
+  },
+  {
+    id: 'vit_nutrition', pillarId: PillarId.VITAL, name: 'Nutrición', description: 'Alimentación.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: null, automation_level: 'manual', behavior: "Lista compra manual." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Sugerencia menú semanal." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Generación lista x menú." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Preparación pedido supermercado." }
+    }
+  },
+
+  // === 5. NUCLEO (5 Features) ===
+  {
+    id: 'nuc_calendar', pillarId: PillarId.NUCLEO, name: 'Calendario Familiar', description: 'Coordinación.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: 1, automation_level: 'manual', behavior: "Lectura 1 calendario extra." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'semi', behavior: "Visualización unificada." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'full', behavior: "Detección conflictos logísticos." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Negociación horarios terceros." }
+    }
+  },
+  {
+    id: 'nuc_dependents', pillarId: PillarId.NUCLEO, name: 'Dependientes/Hijos', description: 'Cuidado.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'manual', behavior: "Calendario escolar/vacunas." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Logística transporte/extraescolar." }
+    }
+  },
+  {
+    id: 'nuc_staff', pillarId: PillarId.NUCLEO, name: 'Personal Doméstico', description: 'Empleados hogar.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.PRO]: { access: false, limit: 0, automation_level: 'manual', behavior: "Plantilla contrato/nómina." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Cálculo y preparación de transferencia nómina." }
+    }
+  },
+  {
+    id: 'nuc_elderly', pillarId: PillarId.NUCLEO, name: 'Cuidado Mayores', description: 'Asistencia.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.BASIC]: { access: false, limit: 0, automation_level: 'manual', behavior: "Sin acceso." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Avisos medicación." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Coordinación cuidadores." }
+    }
+  },
+  {
+    id: 'nuc_home_maint', pillarId: PillarId.NUCLEO, name: 'Mantenimiento Hogar', description: 'Reparaciones.',
+    tiers: {
+      [SubscriptionTier.FREE]: { access: true, limit: null, automation_level: 'manual', behavior: "Lista tareas." },
+      [SubscriptionTier.BASIC]: { access: true, limit: null, automation_level: 'manual', behavior: "Recordatorio anuales (Caldera)." },
+      [SubscriptionTier.PRO]: { access: true, limit: null, automation_level: 'semi', behavior: "Búsqueda técnicos." },
+      [SubscriptionTier.VIP]: { access: true, limit: null, automation_level: 'full', behavior: "Gestión cita reparación." }
+    }
+  }
+];
+
+// --- D. PLANES DE SUSCRIPCIÓN (Updated) ---
+
+export const SUBSCRIPTION_PLANS = [
+  {
+    id: SubscriptionTier.FREE,
+    name: 'Invitado',
+    price: '0€',
+    description: 'Información y Alertas Manuales.',
+    capabilities: ['Cálculo Caducidad DNI', 'Archivo Garantías (3 items)', 'Tracker Manual']
+  },
+  {
+    id: SubscriptionTier.BASIC,
+    name: 'Asistente',
+    price: '9.99€',
+    description: 'Gestión Semi-Automática.',
+    capabilities: ['OCR Tickets Ilimitado', 'Sugerencias de Energía', 'Conflictos Agenda']
+  },
+  {
+    id: SubscriptionTier.PRO,
+    name: 'Mayordomo',
+    price: '29.99€',
+    description: 'Ejecución y Trámites.',
+    capabilities: ['Radar Multas', 'Bio-Análisis Estrés', 'Reservas VIP (Limitado)']
+  },
+  {
+    id: SubscriptionTier.VIP,
+    name: 'Gobernante',
+    price: '99.99€',
+    description: 'Autonomía Total.',
+    capabilities: ['Preparación Pago Multas', 'Gestión Empleados', 'Viajes Full Service']
+  }
+];
+
+// --- HELPERS ---
+
 export const getTierLevel = (tier: SubscriptionTier): number => {
   switch (tier) {
-    case SubscriptionTier.FREE: return 0;
-    case SubscriptionTier.BASIC: return 1;
-    case SubscriptionTier.PREMIUM: return 2;
-    case SubscriptionTier.ELITE: return 3;
+    case SubscriptionTier.FREE: return 1;
+    case SubscriptionTier.BASIC: return 2;
+    case SubscriptionTier.PRO: return 3;
+    case SubscriptionTier.VIP: return 4;
     default: return 0;
   }
 };
 
-// --- SUBSCRIPTION PLANS ---
-
-export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
-  {
-    id: SubscriptionTier.FREE,
-    name: 'Usuario Reactivo',
-    price: '0€',
-    description: 'Gestión Básica',
-    aiBehavior: 'Filtro de Ruido',
-    autonomyLevel: 0,
-    features: [
-      'Acceso Visual a todos los módulos',
-      'Permisos de Nivel 0 (Lectura)',
-      'Notificaciones esenciales'
-    ]
-  },
-  {
-    id: SubscriptionTier.BASIC,
-    name: 'Usuario Supervisor',
-    price: '4.99€/mes',
-    description: 'Productividad',
-    aiBehavior: 'Supervisor Funcional',
-    autonomyLevel: 1,
-    features: [
-      'Permisos de Nivel 1 (Sincronización)',
-      'Sugerencias de optimización',
-      'Automatización simple'
-    ]
-  },
-  {
-    id: SubscriptionTier.PREMIUM,
-    name: 'Usuario Estratega',
-    price: '19.99€/mes',
-    description: 'Seguridad y Familia',
-    aiBehavior: 'Gerente Comparativo',
-    autonomyLevel: 2,
-    features: [
-      'Permisos de Nivel 2 (Gestión)',
-      'Control Parental / Bienestar',
-      'Comparativas de mercado'
-    ]
-  },
-  {
-    id: SubscriptionTier.ELITE,
-    name: 'Usuario Delegado',
-    price: '39.99€/mes',
-    description: 'Patrimonio (Full Access)',
-    aiBehavior: 'Agente de Confianza',
-    autonomyLevel: 3,
-    features: [
-      'Permisos de Nivel 3 (Ejecución)',
-      'Gestión de activos legal',
-      'Agente 100% Proactivo'
-    ]
-  }
-];
-
-// --- NEW LOGIC: Permission Modules Definition (Granular Tiers ~12 per module) ---
-
-const MODULE_GESTION_DIARIA: PermissionModule = {
-  id: 'gestion_diaria',
-  title: 'GESTIÓN DIARIA',
-  roleDescription: 'Logística, Agenda y Comunicaciones',
-  permissions: [
-    // TIER 0: FREE (Lectura / Input Manual)
-    { id: 'gd_free_1', label: 'Uso del Micrófono (Comandos)', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    { id: 'gd_free_2', label: 'Lectura del Calendario', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    { id: 'gd_free_3', label: 'Monitoreo de Batería', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    
-    // TIER 1: BASIC (Sincronización)
-    { id: 'gd_basic_1', label: 'Sincronización de Email', defaultEnabled: true, minTier: SubscriptionTier.BASIC },
-    { id: 'gd_basic_2', label: 'Ubicación General (Ciudad)', defaultEnabled: true, minTier: SubscriptionTier.BASIC },
-    { id: 'gd_basic_3', label: 'Almacenamiento Local (Archivos)', defaultEnabled: true, minTier: SubscriptionTier.BASIC },
-    
-    // TIER 2: PREMIUM (Gestión Activa)
-    { id: 'gd_prem_1', label: 'Gestión de Contactos', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'gd_prem_2', label: 'Interceptar Notificaciones Apps', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'gd_prem_3', label: 'Escaneo Inteligente de Galería', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    
-    // TIER 3: ELITE (Autonomía / Ejecución)
-    { id: 'gd_elite_1', label: 'Análisis de Patrones de Uso', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'gd_elite_2', label: 'Historial de Búsquedas Cruzado', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'gd_elite_3', label: 'Responder Mensajes Automáticamente', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-  ]
-};
-
-const MODULE_SEGURIDAD_TUTELA: PermissionModule = {
-  id: 'seguridad_tutela',
-  title: 'SEGURIDAD Y TUTELA',
-  roleDescription: 'Protección Familiar y Personal',
-  permissions: [
-    // TIER 0: FREE
-    { id: 'st_free_1', label: 'Alertar Contactos Emergencia', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    { id: 'st_free_2', label: 'Notificaciones de Riesgo Crítico', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    { id: 'st_free_3', label: 'Botón de Pánico Digital', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    
-    // TIER 1: BASIC
-    { id: 'st_basic_1', label: 'Lectura Calendario Escolar', defaultEnabled: true, minTier: SubscriptionTier.BASIC },
-    { id: 'st_basic_2', label: 'Aviso Instalación Apps Nuevas', defaultEnabled: true, minTier: SubscriptionTier.BASIC },
-    { id: 'st_basic_3', label: 'Ubicación por Batería Baja', defaultEnabled: false, minTier: SubscriptionTier.BASIC },
-    
-    // TIER 2: PREMIUM
-    { id: 'st_prem_1', label: 'Monitoreo de Apps (Modo Tutor)', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'st_prem_2', label: 'Geocerca y Ubicación Real', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'st_prem_3', label: 'Limitar Tiempo de Pantalla', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    
-    // TIER 3: ELITE
-    { id: 'st_elite_1', label: 'Auditoría Historial Búsqueda', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'st_elite_2', label: 'Bloqueo Biométrico Remoto', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'st_elite_3', label: 'Análisis de Tono (Anti-Acoso)', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-  ]
-};
-
-const MODULE_FINANZAS_CRECIMIENTO: PermissionModule = {
-  id: 'finanzas_crecimiento',
-  title: 'FINANZAS Y PATRIMONIO',
-  roleDescription: 'Economía, Activos y Compras',
-  permissions: [
-    // TIER 0: FREE
-    { id: 'fc_free_1', label: 'Lectura Metadatos Facturas', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    { id: 'fc_free_2', label: 'Avisos de Ofertas Generales', defaultEnabled: false, minTier: SubscriptionTier.FREE },
-    { id: 'fc_free_3', label: 'Registro Manual de Gastos', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    
-    // TIER 1: BASIC
-    { id: 'fc_basic_1', label: 'Monitoreo Puntos Lealtad', defaultEnabled: false, minTier: SubscriptionTier.BASIC },
-    { id: 'fc_basic_2', label: 'Alertas de Gastos Impulsivos', defaultEnabled: false, minTier: SubscriptionTier.BASIC },
-    { id: 'fc_basic_3', label: 'Rastreo de Suscripciones', defaultEnabled: true, minTier: SubscriptionTier.BASIC },
-    
-    // TIER 2: PREMIUM
-    { id: 'fc_prem_1', label: 'Sincronización Bancaria (Lectura)', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'fc_prem_2', label: 'Análisis de Deuda y Crédito', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'fc_prem_3', label: 'Negociación Automática Servicios', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    
-    // TIER 3: ELITE
-    { id: 'fc_elite_1', label: 'Gestión Cuentas Inversión', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'fc_elite_2', label: 'Preparación Impuestos Fiscales', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'fc_elite_3', label: 'Ejecutar Transferencias', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-  ]
-};
-
-const MODULE_METAS_PROFESIONALES: PermissionModule = {
-  id: 'metas_profesionales',
-  title: 'METAS PROFESIONALES',
-  roleDescription: 'Carrera, Estudios y Foco',
-  permissions: [
-     // TIER 0: FREE
-    { id: 'mp_free_1', label: 'Lectura Calendario Reuniones', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    { id: 'mp_free_2', label: 'Resumen Notas de Voz', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    { id: 'mp_free_3', label: 'Checklist de Objetivos Diarios', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    
-    // TIER 1: BASIC
-    { id: 'mp_basic_1', label: 'Sincronización Apps Estudio', defaultEnabled: false, minTier: SubscriptionTier.BASIC },
-    { id: 'mp_basic_2', label: 'Modo Foco (Bloqueo Distracciones)', defaultEnabled: true, minTier: SubscriptionTier.BASIC },
-    { id: 'mp_basic_3', label: 'Temporizador Pomodoro Inteligente', defaultEnabled: true, minTier: SubscriptionTier.BASIC },
-    
-    // TIER 2: PREMIUM
-    { id: 'mp_prem_1', label: 'Análisis Perfil LinkedIn/RRSS', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'mp_prem_2', label: 'Rastreo Oportunidades Laborales', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'mp_prem_3', label: 'Digitalización Documentos OCR', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    
-    // TIER 3: ELITE
-    { id: 'mp_elite_1', label: 'Aplicación Automática a Ofertas', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'mp_elite_2', label: 'Redacción Emails a Contactos', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'mp_elite_3', label: 'Análisis Sentimiento Comunicaciones', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-  ]
-};
-
-// --- NUEVO MÓDULO: BIENESTAR Y ENTORNO (El "Mayordomo Físico") ---
-const MODULE_BIENESTAR_ENTORNO: PermissionModule = {
-  id: 'bienestar_entorno',
-  title: 'BIENESTAR Y ENTORNO (IoT)',
-  roleDescription: 'Salud, Energía Vital y Hogar Inteligente',
-  permissions: [
-     // TIER 0: FREE
-    { id: 'be_free_1', label: 'Sincronizar Clima Local', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    { id: 'be_free_2', label: 'Recordatorios de Agua/Descanso', defaultEnabled: true, minTier: SubscriptionTier.FREE },
-    
-    // TIER 1: BASIC
-    { id: 'be_basic_1', label: 'Gestión de Vínculos (Cumpleaños)', defaultEnabled: true, minTier: SubscriptionTier.BASIC },
-    { id: 'be_basic_2', label: 'Sugerencias de Playlist (Spotify)', defaultEnabled: false, minTier: SubscriptionTier.BASIC },
-    
-    // TIER 2: PREMIUM (Bio-Feedback)
-    { id: 'be_prem_1', label: 'Sincronización Wearables (Sueño/Pulso)', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'be_prem_2', label: 'Control Domótico (Luces/Termostato)', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-    { id: 'be_prem_3', label: 'Inventario de Nevera Inteligente', defaultEnabled: false, minTier: SubscriptionTier.PREMIUM },
-
-    // TIER 3: ELITE (Mayordomo Real)
-    { id: 'be_elite_1', label: 'Reagendar Agenda por Nivel de Energía', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'be_elite_2', label: 'Pedido Automático de Suministros', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-    { id: 'be_elite_3', label: 'Reserva Restaurantes Automática', defaultEnabled: false, minTier: SubscriptionTier.ELITE },
-  ]
-};
-
-// --- LOGIC: Archetype Determination ---
 export const determineArchetype = (age: number, occupation: string): UserArchetype => {
   const occ = occupation.toLowerCase();
-  if (occ.includes('arquitect') || occ.includes('ingenier') || occ.includes('program') || occ.includes('diseñ')) {
-    return 'CONSTRUCTOR';
+  if (occ.includes('arquitect') || occ.includes('ingenier') || occ.includes('dev') || occ.includes('diseñ')) {
+    return UserArchetype.CONSTRUCTOR;
   }
-  if (age < 25 || occ.includes('estudiant') || occ.includes('becari') || occ.includes('viajer')) {
-    return 'EXPLORADOR';
+  if (age < 25 || occ.includes('estudiant') || occ.includes('art')) {
+    return UserArchetype.EXPLORADOR;
   }
-  return 'ESENCIALISTA'; 
+  return UserArchetype.ESENCIALISTA; 
 };
 
-// --- LOGIC: Get Permissions by Profile ---
-// Returns ALL modules for EVERYONE. Granularity allows the "Total Experience" feel.
-// Removed 'gender' argument as it was unused, causing strict build failure.
-export const getPermissionsByProfile = (age: number): LifeStageConfig => {
-  let modules = [
-    MODULE_GESTION_DIARIA,
-    MODULE_FINANZAS_CRECIMIENTO,
-    MODULE_METAS_PROFESIONALES,
-    MODULE_SEGURIDAD_TUTELA,
-    MODULE_BIENESTAR_ENTORNO
-  ];
-  
-  let stageName = "ESTÁNDAR";
-
-  if (age < 18) {
-    stageName = "TUTELA DIGITAL";
-  } else if (age >= 18 && age < 30) {
-    stageName = "CRECIMIENTO Y EXPANSIÓN";
-  } else if (age >= 30 && age < 55) {
-    stageName = "CONSOLIDACIÓN Y FAMILIA";
-  } else {
-    stageName = "LEGADO Y BIENESTAR";
-  }
-
-  return { stageName, modules };
-};
-
-// --- LOGIC: Generate Initial Sectors ---
-export const getInitialSectors = (profile: UserProfile): HouseSector[] => {
-  const sectors: HouseSector[] = [];
-  const tierLevel = getTierLevel(profile.subscriptionTier);
-
-  // Common Sector: Finance
-  const financeEfficiencyCap = tierLevel === 3 ? 98 : tierLevel === 2 ? 85 : tierLevel === 1 ? 70 : 50;
-  
-  sectors.push({
-    id: 'finance-1',
-    name: 'Finanzas Operativas',
-    type: SectorType.FINANCE,
-    owner: Owner.AI,
-    status: tierLevel > 0 ? 'OPTIMAL' : 'ATTENTION',
-    description: tierLevel === 0 ? 'Solo registro manual habilitado.' : 'Gestión inteligente de activos activada.',
-    efficiency: financeEfficiencyCap
-  });
-
-  // NEW: Trastero Latente (Storage) - Available for everyone, efficiency depends on permissions (data fed in)
-  sectors.push({
-    id: 'storage-1',
-    name: 'Trastero Latente',
-    type: SectorType.STORAGE,
-    owner: Owner.AI,
-    status: 'IDLE',
-    description: 'Donde guardo lo que olvidas: ideas, regalos potenciales, recomendaciones de amigos y viejos hallazgos.',
-    efficiency: 100 // Always 100 because it's just a passive container (Garage would vary)
-  });
-
-  // Archetype Specific Logic
-  if (profile.archetype === 'CONSTRUCTOR') {
-    sectors.push({
-      id: 'career-1',
-      name: 'Flujo de Trabajo Profundo',
-      type: SectorType.CAREER,
-      owner: Owner.USER,
-      status: 'IDLE',
-      description: 'Espacio protegido para creación y estrategia.',
-      efficiency: 100
-    });
-    sectors.push({
-      id: 'logistics-1',
-      name: 'Agenda & Reuniones',
-      type: SectorType.LOGISTICS,
-      owner: Owner.AI,
-      status: 'ATTENTION',
-      description: 'Optimización de slots de tiempo y recordatorios.',
-      efficiency: tierLevel > 1 ? 90 : 60
-    });
-  } else if (profile.archetype === 'EXPLORADOR') {
-     sectors.push({
-      id: 'social-1',
-      name: 'Red de Contactos',
-      type: SectorType.SOCIAL,
-      owner: Owner.USER,
-      status: 'IDLE',
-      description: 'Interacciones sociales y eventos.',
-      efficiency: 100
-    });
-    sectors.push({
-      id: 'travel-1',
-      name: 'Logística de Movilidad',
-      type: SectorType.LOGISTICS,
-      owner: Owner.AI,
-      status: 'OPTIMAL',
-      description: 'Rutas, reservas y tickets.',
-      efficiency: tierLevel > 0 ? 85 : 50
-    });
-  } else {
-    sectors.push({
-      id: 'home-1',
-      name: 'Entorno Doméstico',
-      type: SectorType.HOME,
-      owner: Owner.AI,
-      status: 'ATTENTION',
-      description: 'Mantenimiento, compras y orden.',
-      efficiency: tierLevel > 1 ? 88 : 65
-    });
-    sectors.push({
-      id: 'health-1',
-      name: 'Bienestar Personal',
-      type: SectorType.HEALTH,
-      owner: Owner.USER,
-      status: 'IDLE',
-      description: 'Descanso, nutrición y desconexión.',
-      efficiency: 100
-    });
-  }
-
-  return sectors;
-};
+export const ADMIN_EMAILS = ['admin@mayordomo.app'];

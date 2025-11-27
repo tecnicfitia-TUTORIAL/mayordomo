@@ -275,7 +275,7 @@ export const analyzeGapAndPropose = async (
             id: result.permissionId || `new_${Date.now()}`,
             label: result.permissionLabel,
             defaultEnabled: false, // Always OFF by default, user must accept
-            minTier: SubscriptionTier.PREMIUM // New evolutionary features default to Premium
+            minTier: SubscriptionTier.PRO // New evolutionary features default to Premium (mapped to PRO)
           }
         };
       }
