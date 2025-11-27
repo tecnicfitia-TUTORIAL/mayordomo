@@ -1,9 +1,13 @@
 
-
 import { HouseSector, Owner, SectorType, UserProfile, UserArchetype, PermissionModule, LifeStageConfig, SubscriptionPlan, SubscriptionTier, NotificationConfig } from "./types";
 
 // --- ADMIN & SUPPORT CONFIGURATION ---
-export const ADMIN_EMAILS = ['admin@confort.app', 'support@confort.app']; 
+// Added the specific email to the allowlist so the App recognizes the backdoor login as an Admin
+export const ADMIN_EMAILS = [
+    'admin@confort.app', 
+    'support@confort.app',
+    'tecnicfitia@tecnicalfitnesartificialintelligence.app' 
+]; 
 export const SUPPORT_EMAILS = ['support@confort.app'];
 
 export const DEFAULT_NOTIFICATIONS: NotificationConfig = {

@@ -130,6 +130,11 @@ const App: React.FC = () => {
     if (userProfile) {
         // ECHO [DATADOG]: datadogRum.setUser({ id: userProfile.email, ... });
         console.log(`[Monitoring] Sesión identificada: ${userProfile.email}`);
+        
+        // Force redirect to Admin panel if user is admin
+        if (ADMIN_EMAILS.includes(userProfile.email)) {
+            setActiveTab('ADMIN');
+        }
     }
   }, [userProfile]);
 

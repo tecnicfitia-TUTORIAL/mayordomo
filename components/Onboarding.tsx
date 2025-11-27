@@ -28,6 +28,8 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
   // Auth Form Data
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   
   const [profile, setProfile] = useState<Partial<UserProfile>>({
@@ -48,6 +50,32 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
       .match(
         /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
       );
+  };
+
+  // BACKDOOR: Direct Link to Admin Panel via Logo
+  const handleLogoDoubleClick = () => {
+      setIsAuthenticating(true);
+      setAuthStatus('DETECTANDO CREDENCIALES DE NÚCLEO...');
+      
+      setTimeout(() => {
+          setAuthStatus('ACCESO ROOT AUTORIZADO.');
+      }, 800);
+
+      setTimeout(() => {
+          const adminProfile: UserProfile = {
+            name: "Administrador",
+            email: 'tecnicfitia@tecnicalfitnesartificialintelligence.app',
+            age: 99,
+            gender: "System",
+            occupation: "Arquitecto",
+            archetype: "CONSTRUCTOR",
+            subscriptionTier: SubscriptionTier.ELITE,
+            setupCompleted: true
+        };
+        // Auto-enable all permissions for admin demo
+        const allPermissions = getPermissionsByProfile(99).modules.flatMap(m => m.permissions.map(p => p.id));
+        onComplete(adminProfile, allPermissions);
+      }, 1500);
   };
 
   useEffect(() => {
@@ -84,20 +112,33 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
         return;
     }
 
-    // Admin Check Simulation
-    if (email.includes('tecnicfitia') && password !== 'admin123') {
-        alert("Error: Credenciales de administrador inválidas.");
+    if (isSignUp && password !== confirmPassword) {
+        alert("Las contraseñas no coinciden.");
         return;
     }
 
+    // Admin Check Simulation (Manual Entry Fallback)
+    const isAdminEmail = email === 'tecnicfitia@tecnicalfitnesartificialintelligence.app' || email === 'admin@confort.app';
+    
+    if (isAdminEmail) {
+        if (password !== 'admin123') {
+            alert("Error: Contraseña de administrador incorrecta.");
+            return;
+        }
+        // If manual login correct, treat as backdoor
+        handleLogoDoubleClick();
+        return;
+    }
+
+    // ECHO [FIREBASE]: auth.signInWithEmailAndPassword(email, password)
     setIsAuthenticating(true);
-    setAuthStatus('Validando credenciales manuales...');
+    setAuthStatus(isSignUp ? 'Creando cuenta segura...' : 'Validando credenciales...');
     
     setTimeout(() => {
-        const demoEmail = email || "admin@confort.app"; 
+        const demoEmail = email;
         setProfile(prev => ({
             ...prev,
-            name: prev.name || "Usuario Demo",
+            name: prev.name || "Usuario",
             email: demoEmail
         }));
         setEmail(demoEmail);
@@ -123,7 +164,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
       }, 2400);
 
       setTimeout(() => {
-          const demoEmail = `admin+${provider.toLowerCase()}@confort.app`;
+          const demoEmail = `usuario+${provider.toLowerCase()}@confort.app`;
           setProfile(prev => ({
             ...prev,
             name: `Usuario ${provider}`,
@@ -216,7 +257,15 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
         <div className="w-full md:w-1/3 bg-slate-950 p-8 flex flex-col justify-between relative overflow-hidden">
             <div className="absolute top-0 left-0 w-64 h-64 bg-ai-500/10 rounded-full blur-[80px]"></div>
             <div className="relative z-10">
-                <Logo className="w-16 h-16 mb-6" />
+                {/* BACKDOOR TRIGGER: Double Click on Logo */}
+                <div 
+                    onDoubleClick={handleLogoDoubleClick} 
+                    className="cursor-pointer inline-block transition-transform active:scale-95" 
+                    title="Confort OS"
+                >
+                    <Logo className="w-16 h-16 mb-6" />
+                </div>
+                
                 <h2 className="text-2xl font-bold text-white mb-2">
                     {step === 0 ? "Bienvenido a Confort" : 
                      step === 1 ? "Define tu Contexto" :
@@ -254,40 +303,89 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
                         {isAuthenticating && (
                              <div className="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center rounded-xl text-center animate-fadeIn">
                                  <Loader2 className="text-ai-500 animate-spin mb-3" size={32} />
-                                 <h3 className="text-white font-bold text-sm">Conectando al Núcleo...</h3>
-                                 <p className="text-xs text-slate-400 mt-1">{authStatus}</p>
+                                 <h3 className="text-white font-bold text-sm uppercase tracking-widest">{authStatus}</h3>
                              </div>
                         )}
+                        
                         <div className="grid grid-cols-3 gap-3">
                             {/* Social Buttons */}
                             <button onClick={() => handleSocialLogin('Google')} className="h-12 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 flex items-center justify-center group"><svg className="w-5 h-5 text-slate-300 group-hover:text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></button>
                             <button onClick={() => handleSocialLogin('Apple')} className="h-12 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 flex items-center justify-center group"><svg className="w-5 h-5 text-slate-300 group-hover:text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.74s2.57-.9 4.35-.68c1.53.18 2.69.94 3.39 1.93-2.96 1.8-2.46 5.82.54 7.05-.53 1.54-1.27 2.72-2.2 3.93-.36.47-.75.92-1.16 1.36zM12.35 4.22c-.3-1.77 1.03-3.13 2.45-3.22.41 2.03-1.77 3.65-2.45 3.22z"/></svg></button>
                             <button onClick={() => handleSocialLogin('Facebook')} className="h-12 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 flex items-center justify-center group"><svg className="w-5 h-5 text-slate-300 group-hover:text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></button>
                         </div>
+                        
                         <div className="relative flex items-center">
                             <div className="flex-grow border-t border-slate-800"></div>
                             <span className="flex-shrink-0 mx-4 text-slate-600 text-xs">o usa tu email</span>
                             <div className="flex-grow border-t border-slate-800"></div>
                         </div>
+                        
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-medium text-slate-400 mb-1">Email</label>
-                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-ai-500 focus:ring-1 focus:ring-ai-500 outline-none transition-all" />
+                                <input 
+                                    type="email" 
+                                    value={email} 
+                                    onChange={(e) => setEmail(e.target.value)} 
+                                    placeholder="tu@email.com" 
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-ai-500 focus:ring-1 focus:ring-ai-500 outline-none transition-all" 
+                                />
                             </div>
                             <div>
                                 <label className="block text-xs font-medium text-slate-400 mb-1">Contraseña</label>
-                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-ai-500 focus:ring-1 focus:ring-ai-500 outline-none transition-all" />
+                                <div className="relative">
+                                    <input 
+                                        type={showPassword ? "text" : "password"} 
+                                        value={password} 
+                                        onChange={(e) => setPassword(e.target.value)} 
+                                        placeholder="••••••••" 
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-ai-500 focus:ring-1 focus:ring-ai-500 outline-none transition-all pr-10" 
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
+                                    >
+                                        {showPassword ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                                    </button>
+                                </div>
                             </div>
+                            
+                            {isSignUp && (
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Confirmar Contraseña</label>
+                                    <input 
+                                        type="password" 
+                                        value={confirmPassword} 
+                                        onChange={(e) => setConfirmPassword(e.target.value)} 
+                                        placeholder="••••••••" 
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-ai-500 focus:ring-1 focus:ring-ai-500 outline-none transition-all" 
+                                    />
+                                </div>
+                            )}
                         </div>
+                        
                         <div className="flex items-center gap-2">
-                            <input type="checkbox" id="terms" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="w-4 h-4 rounded bg-slate-800 border-slate-700 text-ai-500 focus:ring-ai-500" />
+                            <input 
+                                type="checkbox" 
+                                id="terms" 
+                                checked={termsAccepted} 
+                                onChange={(e) => setTermsAccepted(e.target.checked)} 
+                                className="w-4 h-4 rounded bg-slate-800 border-slate-700 text-ai-500 focus:ring-ai-500" 
+                            />
                             <label htmlFor="terms" className="text-xs text-slate-400">
                                 He leído y acepto las <span onClick={() => setShowTerms(true)} className="text-slate-300 font-bold cursor-pointer hover:text-white hover:underline">Condiciones de Uso</span> y la Política de Privacidad.
                             </label>
                         </div>
-                        <button onClick={handleLogin} disabled={!termsAccepted || isAuthenticating} className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                            {isSignUp ? 'Iniciar Sesión' : 'Crear Cuenta'} <ArrowRight size={18} />
+                        
+                        <button 
+                            onClick={handleLogin} 
+                            disabled={!termsAccepted || isAuthenticating} 
+                            className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {isSignUp ? 'Registrarse' : 'Iniciar Sesión'} <ArrowRight size={18} />
                         </button>
+                        
                         <p className="text-center text-xs text-slate-500 cursor-pointer hover:text-slate-300" onClick={() => setIsSignUp(!isSignUp)}>
                             {isSignUp ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Regístrate"}
                         </p>
@@ -443,7 +541,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete }) => {
                     <span onClick={() => setShowTerms(true)} className="hover:text-slate-300 cursor-pointer">Términos de Servicio</span>
                     <span onClick={() => setShowSupport(true)} className="hover:text-slate-300 cursor-pointer">Soporte</span>
                 </div>
-                <div className="font-mono text-slate-600">v3.0.0 (RC1)</div>
+                <div className="font-mono text-slate-600">v3.1.2 (Admin Access)</div>
             </div>
         </div>
       </div>

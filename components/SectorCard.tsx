@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { HouseSector, Owner } from '../types';
 import { Activity, ShieldCheck, AlertCircle, User, Cpu } from 'lucide-react';
 
@@ -9,7 +9,7 @@ interface Props {
   loading: boolean;
 }
 
-export const SectorCard: React.FC<Props> = ({ sector, onOptimize, loading }) => {
+const SectorCardComponent: React.FC<Props> = ({ sector, onOptimize, loading }) => {
   const isAI = sector.owner === Owner.AI;
   
   return (
@@ -79,3 +79,17 @@ export const SectorCard: React.FC<Props> = ({ sector, onOptimize, loading }) => 
     </div>
   );
 };
+
+// Optimization: Use memo with custom comparison to prevent re-renders unless essential data changes
+// We ignore 'onOptimize' function reference changes to allow parent to pass inline functions if needed without cost
+export const SectorCard = memo(SectorCardComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.loading === nextProps.loading &&
+    prevProps.sector.id === nextProps.sector.id &&
+    prevProps.sector.efficiency === nextProps.sector.efficiency &&
+    prevProps.sector.status === nextProps.sector.status &&
+    prevProps.sector.description === nextProps.sector.description &&
+    prevProps.sector.name === nextProps.sector.name &&
+    prevProps.sector.owner === nextProps.sector.owner
+  );
+});
