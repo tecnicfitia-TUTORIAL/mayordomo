@@ -19,6 +19,36 @@ export const UNIVERSAL_CATEGORIES = {
   ]
 };
 
+// --- VISUAL ATMOSPHERE PRESETS ---
+// Definición de los temas visuales del sistema
+
+export const VISUAL_PRESETS = [
+  { 
+    id: 'ONYX', 
+    label: 'Onyx', 
+    cssClass: 'bg-[#0c0a09]', 
+    previewColor: '#0c0a09' 
+  },
+  { 
+    id: 'ROYAL', 
+    label: 'Royal', 
+    cssClass: 'bg-gradient-to-br from-stone-950 via-black to-ai-900/20', 
+    previewColor: 'linear-gradient(135deg, #0c0a09, #332a15)' 
+  },
+  { 
+    id: 'MIDNIGHT', 
+    label: 'Midnight', 
+    cssClass: 'bg-gradient-to-b from-[#020617] to-black', 
+    previewColor: '#020617' 
+  },
+  { 
+    id: 'EXECUTIVE', 
+    label: 'Executive', 
+    cssClass: 'bg-stone-900', 
+    previewColor: '#1c1917' 
+  }
+];
+
 // --- A. LOS 5 PILARES (MÓDULOS) ---
 
 export const PILLAR_DEFINITIONS = {

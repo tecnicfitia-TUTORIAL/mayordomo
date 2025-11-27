@@ -2,6 +2,7 @@
 import React from 'react';
 import { DashboardItem } from '../types';
 import { Lock, ArrowRight, Stamp, Coffee, Image as ImageIcon } from 'lucide-react';
+import { SixthSenseWidget } from './SixthSenseWidget';
 
 interface Props {
   items: DashboardItem[];
@@ -15,6 +16,11 @@ export const SmartDashboard: React.FC<Props> = ({ items }) => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
        {items.map(item => {
            
+           // RENDER: SIXTH SENSE (NEW)
+           if (item.type === 'SIXTH_SENSE' && item.opportunities) {
+               return <SixthSenseWidget key={item.id} opportunities={item.opportunities} />;
+           }
+
            // RENDER: ZEN CARD (Empty State for VIPs)
            if (item.type === 'ZEN') {
                return (

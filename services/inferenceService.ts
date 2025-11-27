@@ -34,20 +34,18 @@ export const InferenceEngine = {
         - Jurisdicción de Residencia: ${jurisdiction}
 
         TAREA:
-        Genera una lista de las 3 a 5 obligaciones críticas (Burocracia, Identidad, Vivienda) que esta persona debería tener activas en su "Panel de Control de Vida" según las leyes locales de ${jurisdiction}.
-        
-        EJEMPLO PARA ESPAÑA: "Renovación DNI", "Declaración IRPF", "Certificado Digital".
-        EJEMPLO PARA TAILANDIA: "90-Day Reporting", "Visa Extension", "TM30 Notification".
+        Genera una lista CONCISA de las 3 a 5 obligaciones críticas (Burocracia, Identidad, Vivienda) para este perfil en ${jurisdiction}.
+        No inventes textos largos. Sé directo.
 
-        FORMATO JSON REQUERIDO:
+        FORMATO JSON REQUERIDO (Array de objetos):
         [
           {
-            "id": "string (unique_slug)",
-            "title": "string (Titulo corto)",
+            "id": "string (slug único)",
+            "title": "string (max 30 chars)",
             "category": "IDENTITY" | "TAX" | "HOUSING" | "LEGAL",
             "jurisdiction": "${jurisdiction}",
-            "description": "Breve explicación de por qué es obligatorio",
-            "status": "WARNING" (Por defecto, ya que no lo tenemos registrado)
+            "description": "string (max 100 chars)",
+            "status": "WARNING"
           }
         ]
       `;
@@ -56,6 +54,7 @@ export const InferenceEngine = {
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
+          maxOutputTokens: 1500, // Limit response size to prevent cut-off JSON
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.ARRAY,
@@ -77,13 +76,21 @@ export const InferenceEngine = {
       });
 
       if (response.text) {
-        const data = JSON.parse(response.text);
-        // Map to LifeObligation interface ensuring enums match
-        return data.map((item: any) => ({
-          ...item,
-          category: item.category as ObligationCategory,
-          status: item.status as ObligationStatus
-        }));
+        // Clean potential Markdown code blocks
+        const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        try {
+            const data = JSON.parse(cleanText);
+            // Map to LifeObligation interface ensuring enums match
+            return data.map((item: any) => ({
+              ...item,
+              category: item.category as ObligationCategory,
+              status: item.status as ObligationStatus
+            }));
+        } catch (parseError) {
+            console.warn("Inference Engine: Failed to parse JSON response. Falling back to empty list.", parseError);
+            return [];
+        }
       }
 
       return [];

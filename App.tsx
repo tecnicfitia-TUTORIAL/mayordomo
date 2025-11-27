@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { UserProfile, PillarId, CapabilityStatus, SubscriptionTier, PillarStatus, LifeStageConfig, PermissionItem, UserArchetype, Mission, DashboardConfig } from './types';
-import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS } from './constants';
+import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS, VISUAL_PRESETS } from './constants';
 import { Onboarding } from './components/Onboarding';
 import { ChatInterface } from './components/ChatInterface';
 import { SettingsModal } from './components/SettingsModal';
+import { AppearanceModal } from './components/AppearanceModal';
 import { EvolutionPanel } from './components/EvolutionPanel';
 import { PillarCard } from './components/PillarCard';
 import { PillarDetailView } from './components/PillarDetailView';
@@ -12,12 +13,16 @@ import { MissionBriefingCard } from './components/MissionBriefingCard';
 import { PermissionsTreeScreen } from './components/PermissionsTreeScreen';
 import { SmartDashboard } from './components/SmartDashboard';
 import { SupportDashboard } from './components/SupportDashboard';
+import { SupportModal } from './components/SupportModal';
+import { Toast } from './components/Toast'; // Import Toast
 import { Logo } from './components/Logo';
 import { SubscriptionService } from './services/subscriptionService';
 import { PreparationService } from './services/preparationService';
 import { InferenceEngine } from './services/inferenceService';
 import { DashboardBuilder } from './services/dashboardBuilder';
-import { Settings, LogOut, MessageSquare, X, Eye, Shield, CreditCard, ChevronRight, Edit3, Check, MoveUp, MoveDown, EyeOff, CloudOff, LifeBuoy, Undo2 } from 'lucide-react';
+import { BackgroundService } from './services/backgroundService'; // Import BackgroundService
+import { NotificationService, AppNotification } from './services/notificationService'; // Import NotificationService
+import { Settings, LogOut, MessageSquare, X, Eye, Shield, CreditCard, ChevronRight, Edit3, Check, MoveUp, MoveDown, EyeOff, CloudOff, LifeBuoy, Undo2, HelpCircle, Palette, RefreshCw } from 'lucide-react';
 
 const PROFILE_KEY = 'mayordomo_profile';
 
@@ -40,14 +45,20 @@ const DEFAULT_PILLAR_ORDER = Object.values(PillarId);
 const App: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showAppearanceModal, setShowAppearanceModal] = useState(false);
   const [showPermissionsTree, setShowPermissionsTree] = useState(false);
   const [showSupportDashboard, setShowSupportDashboard] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
   const [showEvolution, setShowEvolution] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  
+  // Alert State
+  const [criticalAlert, setCriticalAlert] = useState<AppNotification | null>(null);
   
   // UX States
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false); // Manual Refresh State
 
   // Sidebar Menu State
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
@@ -64,7 +75,7 @@ const App: React.FC = () => {
   // Dashboard Items (Generative)
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
 
-  // 0. OFFLINE DETECTION & THEME APPLICATION
+  // 0. OFFLINE DETECTION & THEME APPLICATION & BACKGROUND SERVICE
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -72,15 +83,25 @@ const App: React.FC = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Initialize Background Service
+    BackgroundService.init();
+
+    // Subscribe to Critical Alerts
+    const unsubscribe = NotificationService.onCriticalAlert((notification) => {
+        setCriticalAlert(notification);
+    });
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      unsubscribe();
+      BackgroundService.stop();
     };
   }, []);
 
   useEffect(() => {
     if (profile) {
-        // Apply Theme
+        // Apply Theme (Light/Dark Mode)
         const pref = profile.themePreference || 'AUTO';
         const isDark = pref === 'DARK' || (pref === 'AUTO' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         
@@ -182,7 +203,8 @@ const App: React.FC = () => {
     const initializedProfile = {
         ...newProfile,
         dashboardConfig: { pillarOrder: DEFAULT_PILLAR_ORDER, hiddenPillars: [] },
-        themePreference: 'AUTO'
+        themePreference: 'AUTO',
+        themeConfig: { type: 'PRESET', value: 'ONYX' }
     };
     setProfile(initializedProfile);
     localStorage.setItem(PROFILE_KEY, JSON.stringify(initializedProfile));
@@ -211,6 +233,22 @@ const App: React.FC = () => {
 
   const handleForceOpenAdmin = () => {
     setShowEvolution(true);
+  };
+
+  // MANUAL REFRESH ACTION
+  const handleManualRefresh = async () => {
+      if (isRefreshing || isOffline) return;
+      
+      setIsRefreshing(true);
+      await BackgroundService.runFullScan('MANUAL');
+      
+      // Force UI refresh logic if needed (e.g. reload missions)
+      if (profile) {
+          const items = await DashboardBuilder.buildDashboard(profile, activeMission);
+          setDashboardItems(items);
+      }
+      
+      setIsRefreshing(false);
   };
 
   const handleSimulationChange = (tier: SubscriptionTier) => {
@@ -372,10 +410,20 @@ const App: React.FC = () => {
     setIsSettingsMenuOpen(false);
     setShowSubscriptionModal(true);
   };
+
+  const handleOpenAppearance = () => {
+    setIsSettingsMenuOpen(false);
+    setShowAppearanceModal(true);
+  };
   
   const handleOpenSupport = () => {
       setIsSettingsMenuOpen(false);
       setShowSupportDashboard(true);
+  }
+
+  const handleOpenHelp = () => {
+      setIsSettingsMenuOpen(false);
+      setShowSupportModal(true);
   }
 
   // Draggable logic variables
@@ -412,10 +460,45 @@ const App: React.FC = () => {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(updatedProfile));
   };
 
+  // --- BACKGROUND / ATMOSPHERE LOGIC ---
+  const getAppBackgroundStyle = () => {
+      if (!profile || !profile.themeConfig) return 'bg-[#0c0a09]'; // Fallback Onyx
+
+      const { type, value } = profile.themeConfig;
+
+      if (type === 'PRESET') {
+          const preset = VISUAL_PRESETS.find(p => p.id === value);
+          return preset ? preset.cssClass : 'bg-[#0c0a09]';
+      }
+      // If CUSTOM, handled via inline style
+      return 'bg-black';
+  };
+
+  const customBackgroundStyle = profile?.themeConfig?.type === 'CUSTOM' 
+      ? { backgroundImage: `url(${profile.themeConfig.value})`, backgroundSize: 'cover', backgroundPosition: 'center' } 
+      : {};
+
 
   return (
-    <div className="min-h-screen bg-dark-950 text-stone-200 font-sans flex flex-col md:flex-row overflow-hidden relative transition-colors duration-500">
+    <div 
+        className={`min-h-screen text-stone-200 font-sans flex flex-col md:flex-row overflow-hidden relative transition-all duration-500 ${getAppBackgroundStyle()}`}
+        style={customBackgroundStyle}
+    >
       
+      {/* CRITICAL ALERT POPUP */}
+      {criticalAlert && (
+          <Toast 
+             message={criticalAlert.body} 
+             type="ERROR" 
+             onClose={() => setCriticalAlert(null)} 
+          />
+      )}
+
+      {/* CUSTOM THEME VEIL (Luxury Overlay for Readability) */}
+      {profile?.themeConfig?.type === 'CUSTOM' && (
+          <div className="absolute inset-0 bg-black/70 pointer-events-none z-0"></div>
+      )}
+
       {/* OFFLINE BANNER */}
       {isOffline && (
           <div className="fixed top-0 left-0 w-full z-[100] bg-amber-600/90 text-white text-[10px] font-bold uppercase tracking-widest text-center py-1 backdrop-blur-md shadow-lg flex items-center justify-center gap-2">
@@ -432,15 +515,26 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* SUPPORT DASHBOARD */}
+      {/* SUPPORT DASHBOARD (ADMIN) */}
       {showSupportDashboard && (
           <SupportDashboard onClose={() => setShowSupportDashboard(false)} />
+      )}
+
+      {/* SUPPORT MODAL (USER CONTACT) */}
+      {showSupportModal && (
+          <SupportModal onClose={() => setShowSupportModal(false)} />
       )}
 
       {/* SUBSCRIPTION MODAL */}
       {showSubscriptionModal && profile && <SettingsModal 
         profile={profile} 
         onClose={() => setShowSubscriptionModal(false)}
+      />}
+
+      {/* APPEARANCE MODAL */}
+      {showAppearanceModal && profile && <AppearanceModal 
+        profile={profile} 
+        onClose={() => setShowAppearanceModal(false)}
         onUpdate={(p) => { setProfile(p); localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }}
       />}
 
@@ -594,8 +688,21 @@ const App: React.FC = () => {
                              </div>
                              <ChevronRight size={14} className="ml-auto opacity-50" />
                           </button>
+
+                          {/* OPTION 2: APPEARANCE (NEW) */}
+                          <button 
+                             onClick={handleOpenAppearance}
+                             className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800"
+                          >
+                             <Palette size={16} className="text-purple-500" />
+                             <div>
+                                <div className="text-xs font-bold">Apariencia y Temas</div>
+                                <div className="text-[9px] text-stone-500">Personalización Visual</div>
+                             </div>
+                             <ChevronRight size={14} className="ml-auto opacity-50" />
+                          </button>
                           
-                          {/* OPTION 2: SUBSCRIPTION */}
+                          {/* OPTION 3: SUBSCRIPTION */}
                           <button 
                              onClick={handleOpenSubscription}
                              className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800"
@@ -608,20 +715,20 @@ const App: React.FC = () => {
                              <ChevronRight size={14} className="ml-auto opacity-50" />
                           </button>
 
-                          {/* OPTION 3: SUPPORT (New) */}
+                          {/* OPTION 4: USER HELP */}
                           <button 
-                             onClick={handleOpenSupport}
+                             onClick={handleOpenHelp}
                              className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800"
                           >
-                             <LifeBuoy size={16} className="text-blue-500" />
+                             <HelpCircle size={16} className="text-blue-500" />
                              <div>
-                                <div className="text-xs font-bold">Soporte y Monitorización</div>
-                                <div className="text-[9px] text-stone-500">Estados y Logs</div>
+                                <div className="text-xs font-bold">Ayuda y Contacto</div>
+                                <div className="text-[9px] text-stone-500">Enviar Consulta</div>
                              </div>
                              <ChevronRight size={14} className="ml-auto opacity-50" />
                           </button>
 
-                          {/* OPTION 4: RETURN TO ADMIN (Only in Simulation) */}
+                          {/* OPTION 5: RETURN TO ADMIN (Only in Simulation) */}
                           {isSimulating && (
                               <button 
                                 onClick={() => { setIsSettingsMenuOpen(false); handleExitSimulation(); }}
@@ -654,11 +761,27 @@ const App: React.FC = () => {
           </aside>
 
           {/* MAIN CONTENT AREA */}
-          <main className="flex-1 flex flex-col bg-dark-950 relative overflow-hidden transition-colors duration-500">
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
+          <main className="flex-1 flex flex-col relative overflow-hidden transition-colors duration-500 bg-transparent">
+            
+            {/* MANUAL REFRESH BUTTON (Top Right) */}
+            <div className="absolute top-4 right-4 z-40">
+                <button 
+                    onClick={handleManualRefresh}
+                    disabled={isRefreshing || isOffline}
+                    className={`p-2 rounded-full bg-black/40 text-stone-400 hover:text-white border border-stone-700 hover:border-ai-500 backdrop-blur-sm transition-all shadow-lg ${isRefreshing ? 'opacity-70 cursor-wait' : ''}`}
+                    title="Actualizar Sistema (Escaneo Manual)"
+                >
+                    <RefreshCw size={18} className={isRefreshing ? 'animate-spin text-ai-500' : ''} />
+                </button>
+            </div>
+
+            {/* Standard Noise Effect - Only if not Custom Image */}
+            {profile.themeConfig?.type !== 'CUSTOM' && (
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
+            )}
             
             {isSimulating && (
-                <div className="absolute top-2 right-2 z-50 opacity-50 pointer-events-none">
+                <div className="absolute top-2 right-16 z-50 opacity-50 pointer-events-none">
                     <Eye className="text-red-500 animate-pulse" />
                 </div>
             )}
@@ -689,7 +812,7 @@ const App: React.FC = () => {
                 />
             ) : (
                 // VIEW 2: DASHBOARD HOME (MISSION CONTROL)
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 relative z-10">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 relative z-10 pt-16 md:pt-8">
                    
                    {/* 1. MISSION BRIEFING (PREPARATION ENGINE) */}
                    {activeMission && (

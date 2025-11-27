@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { UserProfile, SubscriptionTier, ThemePreference } from '../types';
+import { UserProfile, SubscriptionTier } from '../types';
 import { SUBSCRIPTION_PLANS } from '../constants';
 import { StripeService } from '../services/stripeService';
-import { X, ExternalLink, CreditCard, CheckCircle2, Crown, Shield, Star, Zap, Monitor, Moon, Sun, Loader2 } from 'lucide-react';
+import { X, ExternalLink, CreditCard, CheckCircle2, Crown, Shield, Star, Zap, Loader2 } from 'lucide-react';
 import { LegalModal } from './LegalModal';
 
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-export const SettingsModal: React.FC<Props> = ({ profile, onClose, onUpdate }) => {
+export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [legalType, setLegalType] = React.useState<'PRIVACY' | 'TERMS' | null>(null);
   
@@ -21,12 +21,6 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose, onUpdate }) =
     // Delegamos la gestión al servicio de Stripe
     await StripeService.openCustomerPortal(profile.email);
     setIsLoading(false);
-  };
-
-  const handleThemeChange = (theme: ThemePreference) => {
-    if (onUpdate) {
-        onUpdate({ ...profile, themePreference: theme });
-    }
   };
 
   const getTierIcon = (tierId: string) => {
@@ -40,7 +34,6 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose, onUpdate }) =
   };
 
   const currentPlan = SUBSCRIPTION_PLANS.find(p => p.id === profile.subscriptionTier) || SUBSCRIPTION_PLANS[0];
-  const currentTheme = profile.themePreference || 'AUTO';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fadeIn">
@@ -49,7 +42,7 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose, onUpdate }) =
         {/* Header */}
         <div className="p-4 border-b border-stone-800 flex justify-between items-center bg-black">
           <div className="flex items-center gap-2">
-            <CreditCard className="text-ai-500" size={20} />
+            <CreditCard className="text-emerald-500" size={20} />
             <h2 className="text-white font-serif font-bold">Mi Suscripción</h2>
           </div>
           <button onClick={onClose}><X className="text-stone-500 hover:text-white" /></button>
@@ -64,8 +57,10 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose, onUpdate }) =
                     {getTierIcon(currentPlan.id)}
                 </div>
                 
-                <div className="text-[10px] font-bold text-ai-500 uppercase tracking-widest mb-2 border border-ai-500/20 px-2 py-0.5 rounded-full inline-block bg-ai-900/10">
-                    Plan Activo
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest border border-emerald-500/20 px-2 py-0.5 rounded-full bg-emerald-900/10">
+                        Estado: Activo
+                    </span>
                 </div>
                 
                 <h1 className="text-3xl font-serif font-bold text-white mb-1">{currentPlan.name}</h1>
@@ -77,37 +72,9 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose, onUpdate }) =
                 </div>
             </div>
 
-            {/* THEME SELECTOR */}
-            <div className="w-full mb-8 border-b border-stone-800 pb-6">
-                 <h3 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-4">Apariencia del Sistema</h3>
-                 <div className="grid grid-cols-3 gap-3">
-                     <button 
-                        onClick={() => handleThemeChange('AUTO')}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-sm border transition-all ${currentTheme === 'AUTO' ? 'bg-ai-900/20 border-ai-500/50 text-ai-500' : 'bg-stone-950 border-stone-800 text-stone-500 hover:border-stone-600'}`}
-                     >
-                         <Monitor size={18} />
-                         <span className="text-[10px] font-bold">Auto</span>
-                     </button>
-                     <button 
-                        onClick={() => handleThemeChange('LIGHT')}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-sm border transition-all ${currentTheme === 'LIGHT' ? 'bg-stone-200 border-white text-black' : 'bg-stone-950 border-stone-800 text-stone-500 hover:border-stone-600'}`}
-                     >
-                         <Sun size={18} />
-                         <span className="text-[10px] font-bold">Claro</span>
-                     </button>
-                     <button 
-                        onClick={() => handleThemeChange('DARK')}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-sm border transition-all ${currentTheme === 'DARK' ? 'bg-black border-stone-600 text-white' : 'bg-stone-950 border-stone-800 text-stone-500 hover:border-stone-600'}`}
-                     >
-                         <Moon size={18} />
-                         <span className="text-[10px] font-bold">Oscuro</span>
-                     </button>
-                 </div>
-            </div>
-
-            {/* Benefits List */}
+            {/* Benefits List (Simplified) */}
             <div className="w-full space-y-3 mb-8">
-                <h3 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-4">Capacidades Incluidas</h3>
+                <h3 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-4">Su plan actual incluye:</h3>
                 {currentPlan.capabilities.map((cap, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-sm text-stone-300">
                         <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />

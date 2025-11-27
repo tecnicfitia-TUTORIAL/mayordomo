@@ -210,6 +210,7 @@ export const analyzeGapAndPropose = async (
               model: 'gemini-2.5-flash',
               contents: prompt,
               config: {
+                maxOutputTokens: 1000, // SAFETY: Prevent infinite loops
                 responseMimeType: 'application/json',
                 responseSchema: {
                     type: Type.OBJECT,
@@ -263,21 +264,29 @@ export const analyzeGapAndPropose = async (
     }
 
     if (response && response.text) {
-      const result = JSON.parse(response.text);
-      if (result.proposalRequired) {
-        return {
-          id: Math.random().toString(36).substring(7),
-          relatedMacroEventId: event.id,
-          title: result.title,
-          targetModuleId: result.targetModuleId,
-          reasoning: result.justification,
-          proposedPermission: {
-            id: result.permissionId || `new_${Date.now()}`,
-            label: result.permissionLabel,
-            defaultEnabled: false, // Always OFF by default, user must accept
-            minTier: SubscriptionTier.PRO // New evolutionary features default to Premium (mapped to PRO)
+      // SAFETY: Clean Markdown before parsing
+      const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      try {
+          const result = JSON.parse(cleanText);
+          if (result.proposalRequired) {
+            return {
+              id: Math.random().toString(36).substring(7),
+              relatedMacroEventId: event.id,
+              title: result.title,
+              targetModuleId: result.targetModuleId,
+              reasoning: result.justification,
+              proposedPermission: {
+                id: result.permissionId || `new_${Date.now()}`,
+                label: result.permissionLabel,
+                defaultEnabled: false, // Always OFF by default, user must accept
+                minTier: SubscriptionTier.PRO // New evolutionary features default to Premium (mapped to PRO)
+              }
+            };
           }
-        };
+      } catch (parseError) {
+          console.warn("Evolution Engine: JSON Parse Error - Response truncated or malformed.", parseError);
+          return null;
       }
     }
     return null;

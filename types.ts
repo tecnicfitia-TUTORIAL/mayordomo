@@ -156,9 +156,22 @@ export interface FeatureMatrixItem {
   tiers: Record<SubscriptionTier, FeatureConfig>;
 }
 
+// --- SIXTH SENSE (New Module) ---
+
+export type OpportunityType = 'SAVING' | 'NETWORKING' | 'LOGISTICS' | 'NOSTALGIA';
+
+export interface SixthSenseOpportunity {
+  id: string;
+  type: OpportunityType;
+  title: string;
+  description: string;
+  impactLabel: string; // "+150€/mes", "Conexión Clave"
+  actionLabel: string;
+}
+
 // --- DASHBOARD ITEMS (Generative) ---
 
-export type DashboardItemType = 'NOSTALGIA' | 'DECISION' | 'ZEN';
+export type DashboardItemType = 'NOSTALGIA' | 'DECISION' | 'ZEN' | 'SIXTH_SENSE';
 
 export interface DashboardItem {
   id: string;
@@ -169,11 +182,22 @@ export interface DashboardItem {
   isLocked?: boolean;
   metadata?: any;
   priority: number; // 0-100 (Higher shows first)
+  
+  // Specific for Sixth Sense Wrapper
+  opportunities?: SixthSenseOpportunity[];
 }
 
-// --- UX / UI PREFERENCES (New) ---
+// --- UX / UI PREFERENCES ---
 
 export type ThemePreference = 'AUTO' | 'LIGHT' | 'DARK';
+
+// VISUAL ATMOSPHERE ENGINE
+export type VisualThemeType = 'PRESET' | 'CUSTOM';
+
+export interface AppThemeConfig {
+  type: VisualThemeType;
+  value: string; // ID del Preset (ej: 'ROYAL') o Base64 Data URI de la imagen
+}
 
 export interface DashboardConfig {
   pillarOrder: PillarId[];
@@ -272,8 +296,9 @@ export interface UserProfile {
   // New Life Context
   lifeContext?: LifeContext;
   
-  // UX Preferences (New)
+  // UX Preferences
   themePreference?: ThemePreference;
+  themeConfig?: AppThemeConfig; // NEW: Visual Atmosphere settings
   dashboardConfig?: DashboardConfig;
 }
 

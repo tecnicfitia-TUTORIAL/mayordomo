@@ -1,5 +1,6 @@
 
-import { UserProfile, DashboardItem, DashboardItemType, Mission, SubscriptionTier, PillarId } from '../types';
+import { UserProfile, DashboardItem, Mission, SubscriptionTier, PillarId } from '../types';
+import { SixthSenseService } from './sixthSenseService';
 
 /**
  * DASHBOARD BUILDER (Generative UI)
@@ -12,6 +13,20 @@ export const DashboardBuilder = {
   buildDashboard: async (profile: UserProfile, mission: Mission | null): Promise<DashboardItem[]> => {
     const items: DashboardItem[] = [];
     const tier = profile.subscriptionTier;
+
+    // 0. SEXTO SENTIDO (NUEVO - EMERGENTE)
+    // Genera oportunidades latentes basadas en el cruce de datos
+    const sixthSenseOpps = SixthSenseService.generateOpportunities(profile, mission);
+    if (sixthSenseOpps.length > 0) {
+        items.push({
+            id: 'sixth_sense_widget',
+            type: 'SIXTH_SENSE',
+            title: 'Sexto Sentido',
+            description: 'Oportunidades latentes detectadas.',
+            priority: 200, // Absolute Top Priority
+            opportunities: sixthSenseOpps
+        });
+    }
 
     // 1. CARDS DE DECISIÓN (Prioridad Máxima)
     // Si hay una misión activa con items financieros pendientes de firma
@@ -33,16 +48,6 @@ export const DashboardBuilder = {
 
     // 2. LÓGICA TIER 1 (INVITADO) -> Generar "Envidia/Deseo" (Nostalgia + Bloqueos)
     if (tier === SubscriptionTier.FREE) {
-        // Tarjeta de Nostalgia (Gancho emocional)
-        items.push({
-            id: 'nostalgia_01',
-            type: 'NOSTALGIA',
-            title: 'Hace 2 años',
-            description: 'Recuerdo de tu viaje a Bali. "La libertad es esto."',
-            priority: 50,
-            metadata: { image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80' }
-        });
-
         // Tarjeta Bloqueada (Upselling)
         items.push({
             id: 'upsell_finance',
@@ -58,7 +63,10 @@ export const DashboardBuilder = {
     // 3. LÓGICA TIER 4 (GOBERNANTE) -> Eficiencia y Zen
     if (tier === SubscriptionTier.VIP) {
         // El VIP no quiere nostalgia ni ruido. Solo decisiones o silencio.
-        if (items.length === 0) {
+        // Si no hay decisiones y no hay sexto sentido urgente, Zen.
+        const hasActionableItems = items.some(i => i.type === 'DECISION' || i.type === 'SIXTH_SENSE');
+        
+        if (!hasActionableItems) {
             items.push({
                 id: 'zen_mode',
                 type: 'ZEN',

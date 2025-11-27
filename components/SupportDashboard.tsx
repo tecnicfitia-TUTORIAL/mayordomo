@@ -1,7 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SupportUserStatus, SubscriptionTier } from '../types';
-import { ArrowLeft, LifeBuoy, AlertTriangle, CheckCircle2, XCircle, MoreVertical, RefreshCw, PauseCircle, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, LifeBuoy, AlertTriangle, CheckCircle2, XCircle, MoreVertical, RefreshCw, PauseCircle, ShieldAlert, History, Lock, PenTool } from 'lucide-react';
+import { RegulatoryIntelligenceFeed } from './RegulatoryIntelligenceFeed';
+import { AuditLogModal, ForceLogoutModal, OverrideSubscriptionModal } from './AdminModals';
 
 interface Props {
   onClose: () => void;
@@ -19,6 +21,27 @@ const MOCK_USERS: SupportUserStatus[] = [
 export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
   const [users, setUsers] = useState<SupportUserStatus[]>(MOCK_USERS);
   const [filter, setFilter] = useState('');
+  
+  // State for Dropdown Menu
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // State for Modals
+  const [modalState, setModalState] = useState<{
+      type: 'AUDIT' | 'LOGOUT' | 'OVERRIDE';
+      user: SupportUserStatus;
+  } | null>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+          if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+              setOpenMenuId(null);
+          }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const getHealthIcon = (status: string) => {
       switch(status) {
@@ -42,11 +65,42 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
       );
   };
 
+  // Action Handlers
+  const handleAction = (action: 'AUDIT' | 'LOGOUT' | 'OVERRIDE', user: SupportUserStatus) => {
+      setOpenMenuId(null);
+      setModalState({ type: action, user });
+  };
+
+  const confirmLogout = (reason: string) => {
+      console.log(`[ADMIN] Force Logout for ${modalState?.user.email}. Reason: ${reason}`);
+      // TODO: Call Backend API
+      setModalState(null);
+  };
+
+  const confirmOverride = (data: { tier: SubscriptionTier, justification: string }) => {
+      console.log(`[ADMIN] Override Tier for ${modalState?.user.email} to ${data.tier}. Reason: ${data.justification}`);
+      // TODO: Call Backend API
+      // Optimistic Update
+      setUsers(prev => prev.map(u => u.uid === modalState?.user.uid ? { ...u, tier: data.tier } : u));
+      setModalState(null);
+  };
+
   const filteredUsers = users.filter(u => u.email.toLowerCase().includes(filter.toLowerCase()) || u.uid.includes(filter));
 
   return (
     <div className="fixed inset-0 z-[120] bg-[#0c0a09] flex flex-col animate-fadeIn font-sans">
         
+        {/* MODALS LAYER */}
+        {modalState?.type === 'AUDIT' && (
+            <AuditLogModal user={modalState.user} onClose={() => setModalState(null)} onConfirm={() => {}} />
+        )}
+        {modalState?.type === 'LOGOUT' && (
+            <ForceLogoutModal user={modalState.user} onClose={() => setModalState(null)} onConfirm={confirmLogout} />
+        )}
+        {modalState?.type === 'OVERRIDE' && (
+            <OverrideSubscriptionModal user={modalState.user} onClose={() => setModalState(null)} onConfirm={confirmOverride} />
+        )}
+
         {/* Header */}
         <div className="px-6 py-4 border-b border-stone-800 bg-dark-900 flex justify-between items-center">
             <div className="flex items-center gap-4">
@@ -84,9 +138,14 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
             </div>
         </div>
 
-        {/* Data Grid */}
-        <div className="flex-1 overflow-auto p-6">
-            <div className="bg-stone-900 border border-stone-800 rounded-lg overflow-hidden">
+        {/* Content Area */}
+        <div className="flex-1 overflow-auto p-6 custom-scrollbar" onClick={() => setOpenMenuId(null)}>
+            
+            {/* REGULATORY INTELLIGENCE FEED */}
+            <RegulatoryIntelligenceFeed />
+
+            {/* Data Grid */}
+            <div className="bg-stone-900 border border-stone-800 rounded-lg overflow-visible shadow-2xl min-h-[400px]">
                 
                 {/* Table Header */}
                 <div className="grid grid-cols-12 bg-black border-b border-stone-800 p-3 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
@@ -101,7 +160,7 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
                 {/* Rows */}
                 <div className="divide-y divide-stone-800">
                     {filteredUsers.map(user => (
-                        <div key={user.uid} className="grid grid-cols-12 items-center p-4 hover:bg-stone-800/30 transition-colors group">
+                        <div key={user.uid} className="grid grid-cols-12 items-center p-4 hover:bg-stone-800/30 transition-colors group relative">
                             
                             {/* User Info */}
                             <div className="col-span-3 pr-2">
@@ -152,17 +211,45 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
                                 </div>
                             </div>
 
-                            {/* Actions */}
-                            <div className="col-span-1 flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                                <button className="p-1.5 hover:bg-stone-700 rounded text-stone-400 hover:text-white" title="Reset Password">
-                                    <RefreshCw size={14} />
+                            {/* Actions (Menu Kebab) */}
+                            <div className="col-span-1 flex justify-end relative">
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenMenuId(openMenuId === user.uid ? null : user.uid);
+                                    }}
+                                    className={`p-1.5 rounded transition-colors ${openMenuId === user.uid ? 'bg-ai-500 text-black' : 'text-stone-400 hover:text-white hover:bg-stone-700'}`}
+                                >
+                                    <MoreVertical size={16} />
                                 </button>
-                                <button className="p-1.5 hover:bg-stone-700 rounded text-stone-400 hover:text-red-400" title="Pausar Cuenta">
-                                    <PauseCircle size={14} />
-                                </button>
-                                <button className="p-1.5 hover:bg-stone-700 rounded text-stone-400 hover:text-white" title="Más Opciones">
-                                    <MoreVertical size={14} />
-                                </button>
+
+                                {/* DROPDOWN MENU */}
+                                {openMenuId === user.uid && (
+                                    <div 
+                                        ref={menuRef}
+                                        className="absolute right-0 top-full mt-2 w-48 bg-stone-900 border border-stone-700 rounded shadow-xl z-20 flex flex-col overflow-hidden animate-fadeIn origin-top-right"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <button 
+                                            onClick={() => handleAction('AUDIT', user)}
+                                            className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left text-xs border-b border-stone-800"
+                                        >
+                                            <History size={14} className="text-stone-500" /> Ver Log Auditoría
+                                        </button>
+                                        <button 
+                                            onClick={() => handleAction('LOGOUT', user)}
+                                            className="flex items-center gap-3 p-3 hover:bg-red-900/20 text-stone-300 hover:text-red-400 text-left text-xs border-b border-stone-800"
+                                        >
+                                            <Lock size={14} className="text-red-500" /> Forzar Cierre Sesión
+                                        </button>
+                                        <button 
+                                            onClick={() => handleAction('OVERRIDE', user)}
+                                            className="flex items-center gap-3 p-3 hover:bg-ai-900/20 text-stone-300 hover:text-ai-500 text-left text-xs"
+                                        >
+                                            <PenTool size={14} className="text-ai-500" /> Cambiar Nivel (Override)
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                         </div>
