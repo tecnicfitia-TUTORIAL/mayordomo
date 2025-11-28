@@ -14,7 +14,7 @@ interface Props {
 
 export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
   const [isLoading, setIsLoading] = React.useState(false);
-  const [legalType, setLegalType] = React.useState<'PRIVACY' | 'TERMS' | null>(null);
+  const [legalType, setLegalType] = React.useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
   
   const handleManageSubscription = async () => {
     setIsLoading(true);
@@ -99,7 +99,7 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
             </div>
             
             {/* Legal Links Footer */}
-            <div className="flex items-center gap-6 mt-6">
+            <div className="flex items-center justify-center gap-4 mt-6 flex-wrap">
                 <button 
                   onClick={() => setLegalType('PRIVACY')}
                   className="text-[10px] text-stone-500 hover:text-ai-500 transition-colors underline decoration-dotted underline-offset-4"
@@ -112,9 +112,15 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
                 >
                   Términos de Servicio
                 </button>
+                <button 
+                  onClick={() => setLegalType('NOTICE')}
+                  className="text-[10px] text-stone-500 hover:text-ai-500 transition-colors underline decoration-dotted underline-offset-4"
+                >
+                  Aviso Legal
+                </button>
             </div>
 
-            <p className="text-[9px] text-stone-600 mt-4">
+            <p className="text-[9px] text-stone-600 mt-4 text-center">
                 Gestionado por Stripe Payments. Conexión SSL segura.
             </p>
         </div>

@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { UserProfile, PillarId } from '../types';
-import { TECHNICAL_PERMISSIONS, PILLAR_DEFINITIONS } from '../constants';
-import { Shield, Zap, Lock, ChevronDown, ChevronRight, CheckCircle2, ArrowLeft, Database, Globe, Brain } from 'lucide-react';
+import { UserProfile, PillarId, SubscriptionTier } from '../types';
+import { TECHNICAL_PERMISSIONS, PILLAR_DEFINITIONS, getTierLevel } from '../constants';
+import { Shield, Zap, Lock, ChevronRight, CheckCircle2, ArrowLeft, Database, Brain, Crown } from 'lucide-react';
+import { MfaModal } from './MfaModal';
 
 interface Props {
   profile: UserProfile;
@@ -10,8 +11,19 @@ interface Props {
   onClose: () => void;
 }
 
+// DEFINICIÓN DE PERMISOS CRÍTICOS (MFA GATE)
+const CRITICAL_PERMISSIONS_IDS = [
+    'func_digital_cert',  // Certificado Digital
+    'func_dehu_sync',     // Conexión DEHú
+    'func_open_banking',  // Banca PSD2
+    'func_health_kit'     // Datos de Salud
+];
+
 export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onClose }) => {
   const [expandedPillars, setExpandedPillars] = useState<Set<PillarId>>(new Set([PillarId.CENTINELA]));
+  
+  // MFA STATE
+  const [verifyingPermission, setVerifyingPermission] = useState<{id: string, label: string} | null>(null);
 
   const togglePillar = (id: PillarId) => {
     const newSet = new Set(expandedPillars);
@@ -23,7 +35,36 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
     setExpandedPillars(newSet);
   };
 
-  const togglePermission = (id: string) => {
+  const handlePermissionClick = (perm: { id: string, label: string, minTier?: SubscriptionTier }) => {
+      // 1. FILTRO DE SUSCRIPCIÓN (Tier Check)
+      const userLevel = getTierLevel(profile.subscriptionTier);
+      const reqLevel = getTierLevel(perm.minTier || SubscriptionTier.FREE);
+      
+      if (userLevel < reqLevel) {
+          // Bloqueo por Nivel
+          alert(`🔒 ACCESO RESTRINGIDO\n\nEsta es una función ejecutiva. Mejora tu plan a ${perm.minTier || 'Superior'} para desbloquearla.`);
+          return;
+      }
+
+      const isCurrentlyGranted = profile.grantedPermissions.includes(perm.id);
+
+      // CASO A: Si ya está activo y queremos desactivar -> No requiere MFA (Degradar seguridad es fácil)
+      if (isCurrentlyGranted) {
+          executeToggle(perm.id);
+          return;
+      }
+
+      // CASO B: Si está inactivo y queremos activar -> Verificar si es CRÍTICO (MFA Gate)
+      if (CRITICAL_PERMISSIONS_IDS.includes(perm.id)) {
+          // Open MFA Modal
+          setVerifyingPermission(perm);
+      } else {
+          // Standard Toggle
+          executeToggle(perm.id);
+      }
+  };
+
+  const executeToggle = (id: string) => {
     const newSet = new Set(profile.grantedPermissions);
     if (newSet.has(id)) {
       newSet.delete(id);
@@ -31,6 +72,13 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
       newSet.add(id);
     }
     onUpdate({ ...profile, grantedPermissions: Array.from(newSet) });
+  };
+
+  const handleMfaSuccess = () => {
+      if (verifyingPermission) {
+          executeToggle(verifyingPermission.id);
+          setVerifyingPermission(null);
+      }
   };
 
   const systemicPermissions = TECHNICAL_PERMISSIONS.filter(p => p.category === 'SYSTEMIC');
@@ -47,6 +95,16 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0c0a09] flex flex-col animate-fadeIn">
+      
+      {/* MFA MODAL LAYER */}
+      {verifyingPermission && (
+          <MfaModal 
+            permissionLabel={verifyingPermission.label}
+            onVerified={handleMfaSuccess}
+            onClose={() => setVerifyingPermission(null)}
+          />
+      )}
+
       {/* Header */}
       <div className="p-6 border-b border-stone-800 flex items-center justify-between bg-dark-900">
         <div className="flex items-center gap-4">
@@ -149,28 +207,36 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
                             <div className="p-4 pt-0 pl-12 space-y-3 animate-fadeIn border-t border-stone-800/50 mt-2">
                                {perms.map(perm => {
                                   const isGranted = profile.grantedPermissions.includes(perm.id);
+                                  const isCritical = CRITICAL_PERMISSIONS_IDS.includes(perm.id);
+                                  
+                                  // LOGIC: Check Tier Lock
+                                  const userLevel = getTierLevel(profile.subscriptionTier);
+                                  const reqLevel = getTierLevel(perm.minTier || SubscriptionTier.FREE);
+                                  const isLockedByTier = userLevel < reqLevel;
+
                                   return (
-                                     <div key={perm.id} className="flex items-center justify-between p-3 rounded-sm hover:bg-black/20 transition-colors group">
+                                     <div key={perm.id} className={`flex items-center justify-between p-3 rounded-sm transition-colors group ${isLockedByTier ? 'opacity-50' : 'hover:bg-black/20'}`}>
                                         <div className="flex items-center gap-3">
                                            <div className={`p-1.5 rounded-full ${isGranted ? 'bg-ai-900/20 text-ai-500' : 'bg-stone-800 text-stone-600'}`}>
-                                              <Zap size={12} />
+                                              {isLockedByTier ? <Lock size={12} /> : <Zap size={12} />}
                                            </div>
                                            <div>
-                                              <div className={`text-xs font-bold transition-colors ${isGranted ? 'text-stone-200' : 'text-stone-500 group-hover:text-stone-400'}`}>
+                                              <div className={`text-xs font-bold transition-colors flex items-center gap-2 ${isGranted ? 'text-stone-200' : 'text-stone-500 group-hover:text-stone-400'}`}>
                                                  {perm.label}
+                                                 {isCritical && !isLockedByTier && <Shield size={10} className="text-ai-500" title="Alta Seguridad (MFA)" />}
                                               </div>
                                               <div className="text-[10px] text-stone-600 italic">
-                                                 {perm.description}
+                                                 {isLockedByTier ? `Requiere ${perm.minTier}` : perm.description}
                                               </div>
                                            </div>
                                         </div>
                                         
                                         {/* Toggle Switch */}
                                         <button 
-                                           onClick={() => togglePermission(perm.id)}
-                                           className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${isGranted ? 'bg-ai-600' : 'bg-stone-800'}`}
+                                           onClick={() => handlePermissionClick(perm)}
+                                           className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${isLockedByTier ? 'bg-stone-900 cursor-not-allowed' : (isGranted ? 'bg-ai-600' : 'bg-stone-800')}`}
                                         >
-                                           <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform duration-300 ${isGranted ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                           <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform duration-300 ${isGranted ? 'translate-x-5' : 'translate-x-0'} ${isLockedByTier ? 'opacity-20' : ''}`}></div>
                                         </button>
                                      </div>
                                   );

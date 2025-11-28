@@ -1,8 +1,9 @@
 
-import React from 'react';
-import { PillarId, PillarStatus, UserProfile } from '../types';
-import { PERMISSIONS_MATRIX, PILLAR_DEFINITIONS } from '../constants';
-import { Shield, Home, Coffee, Activity, Users, Lock, CheckCircle2, AlertTriangle, Database, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { PillarId, PillarStatus, UserProfile, SubscriptionTier, FeatureMatrixItem } from '../types';
+import { PERMISSIONS_MATRIX, PILLAR_DEFINITIONS, getTierLevel } from '../constants';
+import { Shield, Home, Coffee, Activity, Users, Lock, CheckCircle2, AlertTriangle, Database, Zap, EyeOff, Settings, Crown, ExternalLink, X } from 'lucide-react';
+import { UniversalDetailModal } from './UniversalDetailModal';
 
 interface Props {
   pillarId: PillarId;
@@ -52,6 +53,10 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
   const def = PILLAR_DEFINITIONS[pillarId];
   const features = PERMISSIONS_MATRIX.filter(f => f.pillarId === pillarId);
   
+  // States for Modals
+  const [showUpsell, setShowUpsell] = useState<{featureName: string, requiredTier: string} | null>(null);
+  const [selectedFeature, setSelectedFeature] = useState<FeatureMatrixItem | null>(null);
+
   const getPillarIcon = () => {
     switch(pillarId) {
       case PillarId.CENTINELA: return <Shield size={32} className="text-ai-500" />;
@@ -62,12 +67,70 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
     }
   };
 
+  const handleCardClick = (feature: FeatureMatrixItem, hasAccess: boolean, hasPermission: boolean, requiredTierName: string) => {
+      // CASE 1: BLOCKED (The Paywall)
+      if (!hasAccess) {
+          setShowUpsell({ featureName: feature.name, requiredTier: requiredTierName });
+          return;
+      }
+
+      // CASE 1.B: MISSING PERMISSION
+      if (hasAccess && !hasPermission) {
+          // Just flash a toast or alert (Handled visually by the card, but action here for safety)
+          alert("Por favor, active el permiso técnico correspondiente en Ajustes para ver este dato.");
+          return;
+      }
+
+      // CASE 2 & 3: ACTIVE (Read or Execute)
+      // Open Universal Modal (The modal internal logic handles the difference)
+      setSelectedFeature(feature);
+  };
+
   return (
-    <div className="h-full flex flex-col bg-[#0c0a09] overflow-y-auto custom-scrollbar relative">
+    <div className="h-full flex flex-col bg-[#0c0a09] overflow-y-auto custom-scrollbar relative animate-fadeIn">
       
+      {/* --- UPSELL MODAL --- */}
+      {showUpsell && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-scaleIn">
+              <div className="bg-stone-900 border border-ai-500/50 rounded-xl p-8 max-w-sm text-center shadow-[0_0_50px_rgba(212,175,55,0.2)]">
+                  <div className="mb-6 relative inline-block">
+                      <div className="absolute inset-0 bg-ai-500 blur-xl opacity-30 rounded-full"></div>
+                      <div className="relative bg-stone-950 p-4 rounded-full border border-ai-500/50 text-ai-500">
+                          <Crown size={32} />
+                      </div>
+                  </div>
+                  <h3 className="text-xl font-serif font-bold text-white mb-2">Acceso Restringido</h3>
+                  <p className="text-sm text-stone-400 mb-6 leading-relaxed">
+                      La función <span className="text-ai-500 font-bold">"{showUpsell.featureName}"</span> está reservada para miembros del plan <span className="text-white font-bold">{showUpsell.requiredTier}</span>.
+                  </p>
+                  <button 
+                    onClick={() => setShowUpsell(null)}
+                    className="w-full bg-ai-600 hover:bg-ai-500 text-black font-bold py-3 rounded-lg uppercase tracking-widest text-xs mb-3 shadow-lg"
+                  >
+                      Mejorar Plan
+                  </button>
+                  <button 
+                    onClick={() => setShowUpsell(null)}
+                    className="text-stone-500 hover:text-white text-xs uppercase tracking-widest font-bold"
+                  >
+                      Cerrar
+                  </button>
+              </div>
+          </div>
+      )}
+
+      {/* --- UNIVERSAL DETAIL MODAL --- */}
+      {selectedFeature && (
+          <UniversalDetailModal 
+            feature={selectedFeature}
+            currentTier={userProfile.subscriptionTier}
+            mockData={MOCK_DATA_VALUES[selectedFeature.id] || { value: '---', label: selectedFeature.name, source: 'SYSTEM' }}
+            onClose={() => setSelectedFeature(null)}
+          />
+      )}
+
       {/* 1. HERO HEADER */}
       <div className="bg-dark-900 border-b border-stone-800 p-8 flex items-center justify-between shrink-0 relative overflow-hidden">
-        {/* Background Noise/Pattern */}
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/black-linen.png')] pointer-events-none"></div>
         
         <div className="flex items-center gap-6 z-10">
@@ -110,37 +173,58 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
       {/* 2. BENTO GRID */}
       <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 auto-rows-[140px]">
          {features.map((feature) => {
-             // Lógica de Permisos Granular
+             // Logic
              const tierConfig = feature.tiers[userProfile.subscriptionTier];
-             const hasAccess = tierConfig.access && status.isActive;
-             const mockData = MOCK_DATA_VALUES[feature.id] || { value: '---', label: feature.name, source: 'SYSTEM' };
+             const hasTierAccess = tierConfig.access && status.isActive;
              const requiredTierName = Object.entries(feature.tiers).find(([_, cfg]) => cfg.access)?.[0] || 'SUPERIOR';
+             const requiredPermissionId = feature.requiredPermissionId;
+             const hasTechnicalPermission = !requiredPermissionId || userProfile.grantedPermissions.includes(requiredPermissionId);
+             
+             // Visual state logic
+             const isVisible = hasTierAccess && hasTechnicalPermission;
+             const mockData = MOCK_DATA_VALUES[feature.id] || { value: '---', label: feature.name, source: 'SYSTEM' };
 
              return (
                  <div 
                     key={feature.id} 
-                    className={`relative rounded-sm border transition-all duration-300 group overflow-hidden ${
-                        hasAccess 
-                            ? 'bg-stone-900/40 border-ai-500/20 hover:border-ai-500/50 hover:bg-stone-900/60' 
-                            : 'bg-stone-950 border-stone-800'
+                    onClick={() => handleCardClick(feature, hasTierAccess, hasTechnicalPermission, requiredTierName)}
+                    className={`relative rounded-sm border transition-all duration-300 group overflow-hidden cursor-pointer ${
+                        isVisible
+                            ? 'bg-stone-900/40 border-ai-500/20 hover:border-ai-500/50 hover:bg-stone-900/60 active:scale-[0.98]' 
+                            : 'bg-stone-950 border-stone-800 hover:border-stone-700'
                     }`}
                  >
-                    {/* LOCKED STATE OVERLAY */}
-                    {!hasAccess && (
-                        <div className="absolute inset-0 z-20 backdrop-blur-sm bg-black/40 flex flex-col items-center justify-center text-center p-4 transition-opacity duration-300">
-                            <Lock className="text-ai-600 mb-2" size={24} />
+                    {/* STATE 1: LOCKED BY TIER */}
+                    {!hasTierAccess && (
+                        <div className="absolute inset-0 z-20 backdrop-blur-sm bg-black/40 flex flex-col items-center justify-center text-center p-4 transition-opacity duration-300 group-hover:bg-black/50">
+                            <Lock className="text-stone-600 mb-2 group-hover:text-stone-400 transition-colors" size={24} />
                             <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">
                                 Disponible en plan
                             </span>
-                            <span className="text-xs font-serif font-bold text-ai-500 mt-1">
+                            <span className="text-xs font-serif font-bold text-stone-400 mt-1">
                                 {requiredTierName}
                             </span>
                         </div>
                     )}
 
+                    {/* STATE 2: BLOCKED BY PERMISSION */}
+                    {hasTierAccess && !hasTechnicalPermission && (
+                        <div className="absolute inset-0 z-20 backdrop-blur-md bg-amber-950/10 flex flex-col items-center justify-center text-center p-4 group-hover:bg-amber-950/20 transition-colors">
+                            <div className="p-3 bg-amber-900/20 rounded-full mb-2 border border-amber-500/20">
+                                <EyeOff className="text-amber-500" size={20} />
+                            </div>
+                            <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-1">
+                                Datos Ocultos
+                            </span>
+                            <div className="flex items-center gap-1 text-[9px] text-stone-400">
+                                <Settings size={10} />
+                                <span>Active el permiso en Ajustes</span>
+                            </div>
+                        </div>
+                    )}
+
                     {/* CONTENT */}
-                    <div className={`p-5 h-full flex flex-col justify-between ${!hasAccess ? 'opacity-20 blur-[2px]' : ''}`}>
-                        
+                    <div className={`p-5 h-full flex flex-col justify-between ${!isVisible ? 'opacity-10 blur-[3px]' : ''}`}>
                         <div className="flex justify-between items-start">
                              <div className="p-1.5 rounded-sm bg-stone-800/50 text-stone-400">
                                  <Zap size={14} />
@@ -150,7 +234,6 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
                                  {mockData.source}
                              </div>
                         </div>
-
                         <div>
                             <div className="text-2xl font-serif font-bold text-stone-200 group-hover:text-white transition-colors truncate">
                                 {mockData.value}
@@ -159,12 +242,16 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
                                 {mockData.label}
                             </div>
                         </div>
+                        {isVisible && (
+                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <ExternalLink size={12} className="text-ai-500" />
+                            </div>
+                        )}
                     </div>
                  </div>
              );
          })}
       </div>
-
     </div>
   );
 };

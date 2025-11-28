@@ -5,6 +5,7 @@ import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierL
 import { ArrowRight, Check, Shield, Lock, Zap, ToggleLeft, ToggleRight, Fingerprint, CreditCard, User, Mail, Loader2, ExternalLink, Eye, EyeOff, Crown, Star, Gem, Database, Smartphone, Globe, Brain, ChevronLeft } from 'lucide-react';
 import { Logo } from './Logo';
 import { SubscriptionService } from '../services/subscriptionService';
+import { LegalModal } from './LegalModal';
 
 interface Props {
   onComplete: (profile: UserProfile) => void;
@@ -33,6 +34,9 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   // Auth State
   const [isLoginMode, setIsLoginMode] = useState(true); // Default to Login for cleaner look
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Legal State
+  const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | null>(null);
   
   // 1. Auth Data
   const [email, setEmail] = useState('');
@@ -180,11 +184,10 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   const functionalPermissions = TECHNICAL_PERMISSIONS.filter(p => p.category === 'FUNCTIONAL');
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-4 font-sans bg-[#0c0a09]">
+    <div className="fixed inset-0 w-full h-full flex items-center justify-center p-4 font-sans bg-[#0c0a09]">
       
       {/* --- BACKGROUND LAYER (FIXED) --- */}
       <div className="fixed inset-0 z-0 w-full h-full">
-          
           {/* Daily Abstract Image */}
           <div 
             className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-1000 ease-in-out"
@@ -201,7 +204,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
       </div>
 
       {/* --- CENTRAL CARD --- */}
-      <div className="relative z-10 w-full max-w-[450px] bg-stone-900/60 backdrop-blur-xl border border-stone-800/60 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden animate-scaleIn ring-1 ring-white/5 my-auto">
+      <div className="relative z-10 w-full max-w-[450px] bg-stone-900/60 backdrop-blur-xl border border-stone-800/60 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden animate-scaleIn ring-1 ring-white/5">
         
         {/* Progress Bar (Top) */}
         <div className="h-1 w-full bg-stone-800/50">
@@ -298,6 +301,12 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
                         {isAuthLoading ? <Loader2 className="animate-spin" size={20} /> : <Fingerprint size={20} />}
                         {isLoginMode ? "Autenticar" : "Crear Cuenta"}
                     </button>
+
+                    {!isLoginMode && (
+                        <p className="text-[10px] text-stone-500 text-center leading-relaxed px-4">
+                            Al crear su cuenta, acepta nuestra <button onClick={() => setLegalType('PRIVACY')} className="text-stone-400 hover:text-ai-500 underline decoration-dotted transition-colors">Política de Privacidad</button> y nuestros <button onClick={() => setLegalType('TERMS')} className="text-stone-400 hover:text-ai-500 underline decoration-dotted transition-colors">Términos y Condiciones</button>.
+                        </p>
+                    )}
 
                     <div className="text-center">
                         <button 
@@ -454,6 +463,9 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
       <div className="absolute bottom-4 text-center w-full z-10 opacity-30">
           <p className="text-[10px] font-mono text-stone-500 uppercase tracking-[0.2em]">Confort OS v1.0 // Secure Core</p>
       </div>
+
+      {/* Legal Modal Overlay */}
+      {legalType && <LegalModal type={legalType} onClose={() => setLegalType(null)} />}
 
     </div>
   );
