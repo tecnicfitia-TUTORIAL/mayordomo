@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Regla global para asegurar que solo los usuarios autenticados puedan acceder a Firestore.
+    // {uid} representa el ID del usuario.
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+
+      // Subcolecciones: El usuario solo puede gestionar sus Obligaciones, Assets, Logs, etc.
+      match /{document=**} {
+        allow read, write: if request.auth.uid == userId;
+      }
+    }
+
+    // Colecciones de la aplicación (ej: Colección de información pública o configuración global).
+    // Si tienes alguna colección que deba ser de solo lectura (como la lista de productos Stripe),
+    // la definirías aquí. Por ahora, asumimos que todos los datos sensibles son por usuario.
+    match /{document=**} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}
