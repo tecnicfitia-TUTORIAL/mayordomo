@@ -1,6 +1,13 @@
 
-
 import { PillarId, SubscriptionTier, TechnicalPermission, UserArchetype, FeatureMatrixItem } from "./types";
+
+// --- STRIPE CONFIGURATION ---
+export const STRIPE_URLS = {
+  [SubscriptionTier.BASIC]: 'https://buy.stripe.com/bJe6oJcyifwI0bnaVxc7u05', // Asistente
+  [SubscriptionTier.PRO]: 'https://buy.stripe.com/fZu3cxgOy2JW9LX7Jlc7u06',   // Mayordomo
+  [SubscriptionTier.VIP]: 'https://buy.stripe.com/bJecN755QdoA9LXd3Fc7u07',   // Gobernante
+  PORTAL: 'https://billing.stripe.com/p/login/28E28t7dYesE2jv0gTc7u01'        // Customer Portal
+};
 
 // --- UNIVERSAL CATEGORIES (New Contextual Engine) ---
 // Estas categorías guían a la IA para buscar datos equivalentes en cualquier jurisdicción.

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { UserProfile, PillarId, CapabilityStatus, SubscriptionTier, PillarStatus, LifeStageConfig, PermissionItem, UserArchetype, Mission, DashboardConfig } from './types';
 import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS, VISUAL_PRESETS } from './constants';
@@ -82,10 +83,13 @@ const App: React.FC = () => {
     // Initialize Services
     BackgroundService.init();
     
-    // Initialize Stripe with Vercel Env Var
-    const stripeKey = (import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY;
+    // Initialize Stripe with Vercel Env Var (Safe Access)
+    const env = (import.meta as any).env || {};
+    const stripeKey = env.VITE_STRIPE_PUBLISHABLE_KEY;
     if (stripeKey) {
         StripeService.initStripe(stripeKey);
+    } else {
+        console.log("[System] Stripe Key missing in environment.");
     }
 
     const unsubscribe = NotificationService.onCriticalAlert((notification) => {

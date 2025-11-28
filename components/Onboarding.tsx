@@ -5,6 +5,7 @@ import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierL
 import { ArrowRight, Check, Shield, Lock, Zap, ToggleLeft, ToggleRight, Fingerprint, CreditCard, User, Mail, Loader2, ExternalLink, Eye, EyeOff, Crown, Star, Gem, Database, Smartphone, Globe, Brain, ChevronLeft } from 'lucide-react';
 import { Logo } from './Logo';
 import { SubscriptionService } from '../services/subscriptionService';
+import { StripeService } from '../services/stripeService';
 import { LegalModal } from './LegalModal';
 
 interface Props {
@@ -36,7 +37,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   const [showPassword, setShowPassword] = useState(false);
   
   // Legal State
-  const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | null>(null);
+  const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
   
   // 1. Auth Data
   const [email, setEmail] = useState('');
@@ -110,12 +111,16 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
 
   const handleManageSubscription = () => {
     setIsLoadingPayment(true);
-    window.open('https://billing.stripe.com/p/login/test_portal', '_blank');
+    
+    // Redirect to specific checkout based on selected plan
+    StripeService.openCheckout(selectedPlan);
+
+    // Mock flow for demo purposes (assuming user pays and comes back)
     setTimeout(() => {
         setIsLoadingPayment(false);
-        setSelectedPlan(SubscriptionTier.VIP);
+        // Note: In real app, webhook would update this. Here we assume success.
         handleNext();
-    }, 3000);
+    }, 5000);
   };
 
   const handleContinueAsGuest = () => {
@@ -384,36 +389,50 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
                     <div className="flex-1 overflow-y-auto custom-scrollbar -mr-4 pr-4 space-y-2 max-h-[300px]">
                         {SUBSCRIPTION_PLANS.map((plan) => {
                             const Icon = plan.id === SubscriptionTier.VIP ? Crown : plan.id === SubscriptionTier.PRO ? Star : plan.id === SubscriptionTier.BASIC ? Zap : Shield;
+                            const isSelected = selectedPlan === plan.id;
+                            
                             return (
-                                <div key={plan.id} className="flex items-center justify-between p-3 rounded-lg border border-stone-800 bg-stone-950/30">
+                                <div 
+                                    key={plan.id} 
+                                    onClick={() => setSelectedPlan(plan.id as SubscriptionTier)}
+                                    className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                                        isSelected 
+                                            ? 'bg-ai-900/20 border-ai-500 shadow-lg shadow-ai-900/10' 
+                                            : 'border-stone-800 bg-stone-950/30 hover:border-stone-700'
+                                    }`}
+                                >
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-full bg-stone-900 text-stone-400">
+                                        <div className={`p-2 rounded-full ${isSelected ? 'bg-ai-500 text-black' : 'bg-stone-900 text-stone-400'}`}>
                                             <Icon size={16} />
                                         </div>
                                         <div>
-                                            <div className="text-sm font-bold text-stone-200">{plan.name}</div>
+                                            <div className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-stone-200'}`}>{plan.name}</div>
                                             <div className="text-[10px] text-stone-500 uppercase">{plan.price}</div>
                                         </div>
                                     </div>
+                                    {isSelected && <Check size={16} className="text-ai-500" />}
                                 </div>
                             );
                         })}
                     </div>
 
                     <div className="space-y-3 pt-2">
-                        <button 
-                            onClick={handleManageSubscription}
-                            className="w-full bg-ai-600 hover:bg-ai-500 text-black font-bold py-4 rounded-lg flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(212,175,55,0.2)] transition-colors group"
-                        >
-                            {isLoadingPayment ? <Loader2 className="animate-spin" /> : <CreditCard size={18} />}
-                            <span>Gestionar Suscripción</span>
-                            <ExternalLink size={14} className="opacity-50 group-hover:translate-x-1 transition-transform" />
-                        </button>
+                        {selectedPlan !== SubscriptionTier.FREE && (
+                            <button 
+                                onClick={handleManageSubscription}
+                                className="w-full bg-ai-600 hover:bg-ai-500 text-black font-bold py-4 rounded-lg flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(212,175,55,0.2)] transition-colors group"
+                            >
+                                {isLoadingPayment ? <Loader2 className="animate-spin" /> : <CreditCard size={18} />}
+                                <span>Contratar {SUBSCRIPTION_PLANS.find(p => p.id === selectedPlan)?.name}</span>
+                                <ExternalLink size={14} className="opacity-50 group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        )}
+                        
                         <button 
                             onClick={handleContinueAsGuest}
-                            className="w-full py-3 text-xs font-bold uppercase tracking-widest text-stone-500 hover:text-white transition-colors border border-transparent hover:border-stone-800 rounded-lg"
+                            className={`w-full py-3 text-xs font-bold uppercase tracking-widest transition-colors border rounded-lg ${selectedPlan === SubscriptionTier.FREE ? 'bg-white text-black hover:bg-stone-200' : 'text-stone-500 hover:text-white border-transparent hover:border-stone-800'}`}
                         >
-                            Continuar como Invitado
+                            {selectedPlan === SubscriptionTier.FREE ? "Entrar como Invitado" : "O continuar Gratis"}
                         </button>
                     </div>
                 </div>

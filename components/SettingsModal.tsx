@@ -20,6 +20,7 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
     setIsLoading(true);
     // Delegamos la gestión al servicio de Stripe
     await StripeService.openCustomerPortal(profile.email);
+    // Note: We might not reach here if redirection happens immediately
     setIsLoading(false);
   };
 

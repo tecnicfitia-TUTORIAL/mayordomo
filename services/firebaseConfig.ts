@@ -5,7 +5,8 @@ import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 
 // Fix: Cast import.meta to any to resolve TS error 'Property env does not exist on type ImportMeta'
-const env = (import.meta as any).env;
+// Safety check: ensure env object exists before accessing properties
+const env = (import.meta as any).env || {};
 
 // VALIDACIÓN DE ENTORNO (VERCEL / LOCAL)
 const apiKey = env.VITE_FIREBASE_API_KEY;

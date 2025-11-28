@@ -1,5 +1,6 @@
 
 import { SubscriptionTier } from '../types';
+import { STRIPE_URLS } from '../constants';
 
 /**
  * STRIPE SERVICE (Frontend)
@@ -9,7 +10,9 @@ import { SubscriptionTier } from '../types';
  */
 
 // ECHO [ENV]: Configure these in your .env or backend config
-const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || '/api'; 
+// Safety check: ensure env object exists before accessing properties
+const env = (import.meta as any).env || {};
+const API_BASE_URL = env.VITE_API_BASE_URL || '/api'; 
 
 let _publishableKey: string | null = null;
 
@@ -34,27 +37,30 @@ export const StripeService = {
    */
   openCustomerPortal: async (userEmail: string): Promise<void> => {
     try {
-      console.log(`[Stripe] Requesting Portal Session for: ${userEmail}`);
-
-      // 1. Call Backend to generate the secure link
-      // In a real app, this fetches from your Cloud Function:
-      // const response = await fetch(`${API_BASE_URL}/create-portal-session`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email: userEmail })
-      // });
-      // const { url } = await response.json();
+      console.log(`[Stripe] Redirecting to Portal for: ${userEmail}`);
       
-      // MOCK FOR MVP: Direct link to Stripe Test Portal (replace with your real Test Link)
-      const MOCK_PORTAL_URL = 'https://billing.stripe.com/p/login/test_portal'; 
-      
-      // 2. Redirect
-      window.location.href = MOCK_PORTAL_URL; // or use 'url' from backend
+      // Use fixed URL for MVP phase as per requirements
+      window.location.href = STRIPE_URLS.PORTAL;
 
     } catch (error) {
       console.error("[Stripe] Failed to open portal:", error);
       alert("No se pudo conectar con el sistema de facturación. Inténtelo más tarde.");
     }
+  },
+
+  /**
+   * Redirects to the Checkout page for a specific plan.
+   */
+  openCheckout: (tier: SubscriptionTier): void => {
+      // Default to Basic if not found, or handle error
+      const url = STRIPE_URLS[tier];
+      if (url) {
+          console.log(`[Stripe] Redirecting to Checkout for tier: ${tier}`);
+          window.location.href = url;
+      } else {
+          console.warn(`[Stripe] No checkout URL found for tier: ${tier}`);
+          alert("Enlace de pago no disponible para este plan.");
+      }
   },
 
   /**

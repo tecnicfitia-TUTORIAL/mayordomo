@@ -17,12 +17,12 @@ VITE_GOOGLE_API_KEY=AIzaSy...  # Tu clave actual de AI Studio
 ### 🔥 Firebase / Supabase (Base de Datos & Auth)
 *Necesario para: Login, Registro y Guardar datos.*
 ```bash
-VITE_FIREBASE_API_KEY="AIzaSyCVQGkZS6Q2BVy0QfzJxXu222xLDzFeHNw"
-VITE_FIREBASE_AUTH_DOMAIN="studio-9130063297-9636d.firebaseapp.com"
-VITE_FIREBASE_PROJECT_ID="studio-9130063297-9636d"
-VITE_FIREBASE_STORAGE_BUCKET="studio-9130063297-9636d.firebasestorage.app"
-VITE_FIREBASE_MESSAGING_SENDER_ID="1091783968160"
-VITE_FIREBASE_APP_ID="1:1091783968160:web:103abf6a88d501d23d10c5"
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=tu-proyecto.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=tu-proyecto
+VITE_FIREBASE_STORAGE_BUCKET=tu-proyecto.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
 ```
 
 ### 💳 Stripe (Pagos y Suscripciones)
