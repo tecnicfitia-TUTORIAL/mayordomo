@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { UserProfile, PillarId, CapabilityStatus, SubscriptionTier, PillarStatus, LifeStageConfig, PermissionItem, UserArchetype, Mission, DashboardConfig } from './types';
 import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS, VISUAL_PRESETS } from './constants';
@@ -23,6 +22,7 @@ import { DashboardBuilder } from './services/dashboardBuilder';
 import { BackgroundService } from './services/backgroundService';
 import { NotificationService, AppNotification } from './services/notificationService';
 import { EmailIngestionService, IncomingEmail } from './services/emailIngestionService';
+import { StripeService } from './services/stripeService';
 import { Settings, LogOut, MessageSquare, X, Eye, Shield, CreditCard, ChevronRight, Edit3, Check, MoveUp, MoveDown, EyeOff, CloudOff, LifeBuoy, Undo2, HelpCircle, Palette, RefreshCw, FileText } from 'lucide-react';
 
 const PROFILE_KEY = 'mayordomo_profile';
@@ -71,7 +71,7 @@ const App: React.FC = () => {
   const lastClickRef = useRef<number>(0);
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
 
-  // 0. OFFLINE DETECTION & THEME APPLICATION & BACKGROUND SERVICE
+  // 0. OFFLINE DETECTION & THEME APPLICATION & BACKGROUND SERVICE & CONFIG
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -79,7 +79,14 @@ const App: React.FC = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Initialize Services
     BackgroundService.init();
+    
+    // Initialize Stripe with Vercel Env Var
+    const stripeKey = (import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY;
+    if (stripeKey) {
+        StripeService.initStripe(stripeKey);
+    }
 
     const unsubscribe = NotificationService.onCriticalAlert((notification) => {
         setCriticalAlert(notification);

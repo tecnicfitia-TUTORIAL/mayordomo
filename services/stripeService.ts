@@ -9,9 +9,24 @@ import { SubscriptionTier } from '../types';
  */
 
 // ECHO [ENV]: Configure these in your .env or backend config
-const API_BASE_URL = process.env.VITE_API_BASE_URL || '/api'; 
+const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || '/api'; 
+
+let _publishableKey: string | null = null;
 
 export const StripeService = {
+
+  /**
+   * Inicializa el servicio de Stripe con la clave pública del entorno (Vercel/Local).
+   */
+  initStripe: (key: string) => {
+    if (!key) {
+      console.warn("[Stripe] No Publishable Key provided.");
+      return;
+    }
+    _publishableKey = key;
+    console.log("[Stripe] Service Initialized.");
+    // Aquí se inicializaría stripe-js con loadStripe(key) si estuviéramos procesando pagos directos
+  },
 
   /**
    * Opens the Stripe Customer Portal for the current user.

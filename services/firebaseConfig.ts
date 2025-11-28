@@ -1,3 +1,4 @@
+
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -5,6 +6,17 @@ import { getAnalytics } from "firebase/analytics";
 
 // Fix: Cast import.meta to any to resolve TS error 'Property env does not exist on type ImportMeta'
 const env = (import.meta as any).env;
+
+// VALIDACIÓN DE ENTORNO (VERCEL / LOCAL)
+const apiKey = env.VITE_FIREBASE_API_KEY;
+
+if (!apiKey) {
+  console.warn("⚠️ [SYSTEM ALERT] No se han detectado las claves de Firebase (VITE_FIREBASE_API_KEY).");
+  console.warn("   - Si estás en Local: Revisa tu archivo .env");
+  console.warn("   - Si estás en Vercel: Configura las Environment Variables en el Dashboard.");
+} else {
+  console.log("[System] Firebase Environment Variables detected.");
+}
 
 // ECHO [FIREBASE]: Reemplaza estos valores con los de tu consola de Firebase
 const firebaseConfig = {
@@ -26,9 +38,11 @@ const googleProvider = new GoogleAuthProvider();
 let analytics: any;
 if (typeof window !== 'undefined') {
   try {
-    analytics = getAnalytics(app);
+    if (apiKey) {
+      analytics = getAnalytics(app);
+    }
   } catch (e) {
-    console.warn("Firebase Analytics no pudo iniciarse (posiblemente bloqueador de anuncios)");
+    console.warn("Firebase Analytics no pudo iniciarse (posiblemente bloqueador de anuncios o falta de config)");
   }
 }
 
