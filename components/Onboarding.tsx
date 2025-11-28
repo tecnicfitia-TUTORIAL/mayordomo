@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { UserProfile, SubscriptionTier, UserArchetype, TechnicalPermission, PillarId } from '../types';
 import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel } from '../constants';
 import { ArrowRight, Check, Shield, Lock, Zap, ToggleLeft, ToggleRight, Fingerprint, CreditCard, User, Mail, Loader2, ExternalLink, Eye, EyeOff, Crown, Star, Gem, Database, Smartphone, Globe, Brain, ChevronLeft } from 'lucide-react';
@@ -10,6 +10,20 @@ interface Props {
   onComplete: (profile: UserProfile) => void;
   onOpenAdmin?: () => void;
 }
+
+// SIMULATED ASSETS (High Quality Abstract Tech Backgrounds)
+const DAILY_BACKGROUNDS = [
+    "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&q=80&w=2000", // Dark Hex
+    "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2000", // Global Network
+    "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2000", // Cyberpunk City
+    "https://images.unsplash.com/photo-1614728263952-84ea256f9679?auto=format&fit=crop&q=80&w=2000", // Abstract Mesh
+    "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=2000", // Circuitry
+    "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&q=80&w=2000", // AI Neurons
+    "https://images.unsplash.com/photo-1534224039826-c7a0eda0e6b3?auto=format&fit=crop&q=80&w=2000", // Particles
+    "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?auto=format&fit=crop&q=80&w=2000", // Gold Abstract
+    "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&q=80&w=2000", // Matrix Code
+    "https://images.unsplash.com/photo-1480694313141-fce5e697ee25?auto=format&fit=crop&q=80&w=2000"  // Dark Iceberg
+];
 
 export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   const [step, setStep] = useState(1); // 1: Auth, 2: Profile, 3: Plan, 4: Permissions
@@ -38,6 +52,17 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
 
   // Double Click Logic for Admin
   const lastClickRef = useRef<number>(0);
+
+  // --- DAILY SEED LOGIC FOR BACKGROUND SELECTION ---
+  const dailyImage = useMemo(() => {
+      const now = new Date();
+      // Generate a unique seed for the day: YYYYMMDD
+      const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+      
+      // Select image index based on date seed
+      const index = seed % DAILY_BACKGROUNDS.length;
+      return DAILY_BACKGROUNDS[index];
+  }, []);
 
   const handleLogoInteraction = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -155,31 +180,28 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   const functionalPermissions = TECHNICAL_PERMISSIONS.filter(p => p.category === 'FUNCTIONAL');
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 font-sans overflow-hidden bg-[#0c0a09]">
+    <div className="min-h-screen w-full relative flex items-center justify-center p-4 font-sans bg-[#0c0a09]">
       
-      {/* --- BACKGROUND LAYER --- */}
-      <div className="absolute inset-0 z-0">
-          {/* Deep Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-stone-950 via-[#050505] to-[#0b0f19]"></div>
+      {/* --- BACKGROUND LAYER (FIXED) --- */}
+      <div className="fixed inset-0 z-0 w-full h-full">
           
-          {/* Neural Grid Pattern (CSS Generated) */}
+          {/* Daily Abstract Image */}
           <div 
-            className="absolute inset-0 opacity-[0.03]" 
-            style={{ 
-                backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)',
-                backgroundSize: '40px 40px',
-                maskImage: 'radial-gradient(circle at 50% 50%, black 40%, transparent 100%)'
-            }}
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-1000 ease-in-out"
+            style={{ backgroundImage: `url(${dailyImage})` }}
           ></div>
+          
+          {/* LUXURY VEIL (Overlay) - Ensures text readability */}
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"></div>
 
           {/* Watermark Logo */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.02] pointer-events-none blur-sm scale-150">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] pointer-events-none scale-150 mix-blend-overlay">
               <Logo className="w-[600px] h-[600px]" />
           </div>
       </div>
 
       {/* --- CENTRAL CARD --- */}
-      <div className="relative z-10 w-full max-w-[480px] bg-stone-900/60 backdrop-blur-xl border border-stone-800/60 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden animate-scaleIn ring-1 ring-white/5">
+      <div className="relative z-10 w-full max-w-[450px] bg-stone-900/60 backdrop-blur-xl border border-stone-800/60 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden animate-scaleIn ring-1 ring-white/5 my-auto">
         
         {/* Progress Bar (Top) */}
         <div className="h-1 w-full bg-stone-800/50">
