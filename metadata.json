@@ -1,0 +1,7 @@
+{
+  "name": "Confort 65/35",
+  "description": "Un sistema de gestión de confort digital simbiótico. El asistente de IA gestiona el 65% de la carga operativa (tareas, logística, monitoreo) para que el usuario pueda enfocarse en el 35% vital (creatividad, trabajo profundo, vida).",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
