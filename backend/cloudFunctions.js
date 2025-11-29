@@ -1,4 +1,3 @@
-
 /**
  * BACKEND LOGIC (Node.js / Firebase Cloud Functions)
  * ==================================================
@@ -8,12 +7,15 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+
+// Inicializar Stripe con la clave secreta desde variables de entorno
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 admin.initializeApp();
 const db = admin.firestore();
 
 // MAP: Stripe Product IDs -> App Tiers
+// ACTUALIZAR CON LOS IDs REALES DE STRIPE DASHBOARD
 const TIER_MAPPING = {
   'prod_BasicId123': 'ASISTENTE',    // Basic
   'prod_ProId456':   'MAYORDOMO',    // Pro

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { UserProfile, SubscriptionTier } from '../types';
 import { SUBSCRIPTION_PLANS, STRIPE_URLS, getTierLevel } from '../constants';
@@ -18,6 +17,8 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
     const url = STRIPE_URLS[tier];
     if (url) {
       window.open(url, '_blank');
+    } else {
+        alert("Configuración de pagos no disponible en este entorno.");
     }
   };
 

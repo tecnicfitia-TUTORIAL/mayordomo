@@ -285,6 +285,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   name: string;
+  role?: 'ADMIN' | 'USER'; // NEW: RBAC Role
   age: number;
   gender: string;
   occupation: string;

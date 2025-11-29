@@ -1,4 +1,3 @@
-
 import { UserProfile, SixthSenseOpportunity, SubscriptionTier, Mission } from '../types';
 
 /**
@@ -72,6 +71,18 @@ export const SixthSenseService = {
             impactLabel: 'Bienestar',
             actionLabel: 'Ver Fotos'
         });
+        
+        // OPORTUNIDAD: SALUD / ESTRÉS (Requiere: Tier PRO+)
+        if ((tier === SubscriptionTier.PRO || tier === SubscriptionTier.VIP)) {
+            potentialOpportunities.push({
+                id: 'opp_stress_alert',
+                type: 'SAVING', // Categorized broadly
+                title: 'Pico de Estrés Previsto',
+                description: 'Su agenda de mañana está al 120% de capacidad. Recomiendo bloquear la tarde.',
+                impactLabel: 'Salud',
+                actionLabel: 'Bloquear Agenda'
+            });
+        }
 
         // --- 2. FILTRO DE DENSIDAD (Quotas) ---
         const maxItems = OPPORTUNITY_QUOTAS[tier];

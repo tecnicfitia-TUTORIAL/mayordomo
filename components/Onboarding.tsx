@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useMemo } from 'react';
 import { UserProfile, SubscriptionTier, UserArchetype, TechnicalPermission, PillarId } from '../types';
 import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel } from '../constants';
@@ -63,9 +64,6 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   // 4. Permissions Data
   const [grantedPermissions, setGrantedPermissions] = useState<Set<string>>(new Set(['sys_notifications', 'sys_storage']));
 
-  // Double Click Logic for Admin
-  const lastClickRef = useRef<number>(0);
-
   // --- DAILY SEED LOGIC FOR BACKGROUND SELECTION ---
   const dailyImage = useMemo(() => {
       const now = new Date();
@@ -77,27 +75,21 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
       return DAILY_BACKGROUNDS[index];
   }, []);
 
-  const handleLogoInteraction = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const now = Date.now();
-    const timeDiff = now - lastClickRef.current;
-    if (timeDiff > 0 && timeDiff < 500) {
-      if (onOpenAdmin) onOpenAdmin();
-    }
-    lastClickRef.current = now;
-  };
-
   const handleAuthAction = async () => {
     if (isLoginMode) {
       setIsAuthLoading(true);
       await new Promise(r => setTimeout(r, 1500)); // Simular carga "biométrica"
       const realTier = await SubscriptionService.getCurrentUserTier(`user_mock_${Date.now()}`);
       
+      // RBAC CHECK (SIMULATION FOR NOW, FIRESTORE READY)
+      // En un entorno real: const doc = await db.collection('users').doc(uid).get(); const role = doc.data().role;
+      const role = email.toLowerCase() === 'admin@mayordomo.app' ? 'ADMIN' : 'USER';
+      
       const mockExistingProfile: UserProfile = {
         uid: `user_returned_${Date.now()}`,
         email,
         name: name || "Usuario Registrado",
+        role: role, // Assign verified role
         age: 30,
         gender: "NB",
         occupation: "Usuario Existente",
@@ -157,6 +149,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
       uid: `user_${Date.now()}`,
       email,
       name,
+      role: 'USER', // New signups default to USER
       age: Number(age),
       gender,
       occupation,
@@ -284,10 +277,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
             
             {/* Header / Navigation */}
             <div className="flex justify-between items-start mb-8">
-                <div 
-                    onClick={handleLogoInteraction}
-                    className="cursor-pointer active:scale-95 transition-transform"
-                >
+                <div className="select-none">
                     <Logo className="w-12 h-12" />
                 </div>
                 {step > 1 && (

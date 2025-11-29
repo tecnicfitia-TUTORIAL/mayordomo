@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { UserProfile, PillarId, CapabilityStatus, SubscriptionTier, PillarStatus, LifeStageConfig, PermissionItem, UserArchetype, Mission, DashboardConfig } from './types';
 import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS, VISUAL_PRESETS } from './constants';
@@ -31,6 +33,7 @@ const SYSTEM_ADMIN_PROFILE: UserProfile = {
   uid: 'system_root',
   email: 'root@system.local',
   name: 'System Root',
+  role: 'ADMIN',
   age: 99,
   gender: 'AI',
   occupation: 'System Core',
@@ -68,7 +71,6 @@ const App: React.FC = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [originalAdminProfile, setOriginalAdminProfile] = useState<UserProfile | null>(null);
 
-  const lastClickRef = useRef<number>(0);
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
 
   // 0. OFFLINE DETECTION & THEME APPLICATION & BACKGROUND SERVICE & CONFIG
@@ -241,19 +243,6 @@ const App: React.FC = () => {
     setActiveMission(null);
     setShowPermissionsTree(false);
     setShowSupportDashboard(false);
-  };
-
-  const handleLogoInteraction = () => {
-    const now = Date.now();
-    const timeDiff = now - lastClickRef.current;
-    if (timeDiff > 0 && timeDiff < 300) {
-      setShowEvolution(true);
-    }
-    lastClickRef.current = now;
-  };
-
-  const handleForceOpenAdmin = () => {
-    setShowEvolution(true);
   };
 
   const handleManualRefresh = async () => {
@@ -516,7 +505,6 @@ const App: React.FC = () => {
       {!profile ? (
         <Onboarding 
           onComplete={handleOnboardingComplete} 
-          onOpenAdmin={handleForceOpenAdmin} 
         />
       ) : (
         <>
@@ -534,8 +522,8 @@ const App: React.FC = () => {
             )}
 
             <div className="p-6 border-b border-stone-800 flex items-center gap-3 select-none">
-              <div onClick={handleLogoInteraction} className="cursor-pointer active:scale-95 transition-transform" title="System Core">
-                <Logo className="w-10 h-10 hover:scale-105 transition-transform" />
+              <div className="select-none" title="System Core">
+                <Logo className="w-10 h-10" />
               </div>
               <div>
                 <h1 className="font-serif font-bold text-lg text-ai-500 leading-none">El Mayordomo</h1>
@@ -601,6 +589,15 @@ const App: React.FC = () => {
                   </button>
                   {isSettingsMenuOpen && (
                       <div className="absolute bottom-full left-0 mb-3 w-64 bg-stone-900 border border-stone-700 rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden animate-fadeIn">
+                          
+                          {/* ADMIN CONSOLE ENTRY - CONDITIONALLY RENDERED */}
+                          {profile.role === 'ADMIN' && (
+                              <button onClick={() => { setIsSettingsMenuOpen(false); setShowEvolution(true); }} className="flex items-center gap-3 p-3 bg-red-900/10 hover:bg-red-900/30 text-red-300 hover:text-red-200 text-left transition-colors border-b border-stone-800">
+                                  <Shield size={16} className="text-red-500" />
+                                  <div><div className="text-xs font-bold">Consola Admin</div><div className="text-[9px] text-red-400">Acceso Root</div></div>
+                              </button>
+                          )}
+
                           <button onClick={handleOpenPermissions} className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
                              <Shield size={16} className="text-ai-500" />
                              <div><div className="text-xs font-bold">Protocolos y Permisos</div><div className="text-[9px] text-stone-500">Configuración Técnica</div></div>
