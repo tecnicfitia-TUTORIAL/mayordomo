@@ -91,7 +91,6 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
         const uid = userCredential.user.uid;
         
         // 2. CRITICAL STEP: Fetch Profile from Firestore IMMEDIATELY
-        // This is mandatory to check for Role before UI transition
         const docRef = doc(db, 'users', uid);
         const docSnap = await getDoc(docRef);
 

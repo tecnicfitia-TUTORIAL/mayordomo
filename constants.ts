@@ -522,7 +522,7 @@ export const getTierLevel = (tier: string | SubscriptionTier): number => {
   // Try direct lookup
   if (TIER_LEVELS[tier]) return TIER_LEVELS[tier];
 
-  // Try uppercase lookup (insensible to case) and trim
+  // Robustness: Try uppercase lookup (insensible to case) and trim
   const normalizedKey = String(tier).trim().toUpperCase();
   if (TIER_LEVELS[normalizedKey]) return TIER_LEVELS[normalizedKey];
 
