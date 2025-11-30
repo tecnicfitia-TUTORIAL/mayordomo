@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { UserProfile, SubscriptionTier, UserArchetype, TechnicalPermission } from '../types';
 import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel, ADMIN_EMAILS } from '../constants';
@@ -90,7 +89,8 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const uid = userCredential.user.uid;
         
-        // 2. CRITICAL STEP: Fetch Profile from Firestore
+        // 2. CRITICAL STEP: Fetch Profile from Firestore IMMEDIATELY
+        // This is mandatory to check for Role before UI transition
         const docRef = doc(db, 'users', uid);
         const docSnap = await getDoc(docRef);
 
@@ -98,12 +98,12 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
             const rawData = docSnap.data();
             
             // 3. DECISION STEP: Check Role
-            // Explicit extraction of 'role' field from Firestore document
-            const roleStr = rawData.role; 
-            
             // Normalize role: Handle 'admin', 'Admin', 'ADMIN' -> 'ADMIN'
+            const roleStr = rawData.role; 
             const normalizedRole = (roleStr && String(roleStr).trim().toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
             
+            console.log(`[Auth] Document Read Success. ID: ${uid}, Role: ${normalizedRole}`);
+
             const userData: UserProfile = {
                 ...rawData,
                 uid: uid,
@@ -114,11 +114,9 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
                 setupCompleted: rawData.setupCompleted ?? true
             } as UserProfile;
 
-            console.log(`[Auth] User logged in. ID: ${uid}, Role: ${normalizedRole}`);
-
             setIsAuthLoading(false);
             
-            // 4. Pass control to App.tsx (which handles navigation based on Role)
+            // 4. Pass control to App.tsx (which handles smart routing based on Role)
             onComplete(userData);
         } else {
             setAuthError("Perfil no encontrado en base de datos. Contacte soporte.");

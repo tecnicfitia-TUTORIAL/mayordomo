@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { UserProfile, PillarId, CapabilityStatus, SubscriptionTier, PillarStatus, LifeStageConfig, PermissionItem, UserArchetype, Mission, DashboardConfig } from './types';
 import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS, VISUAL_PRESETS } from './constants';
@@ -188,7 +187,9 @@ const App: React.FC = () => {
             }
             setProfile(user);
             
-            // NO AUTO-REDIRECT HERE TO PREVENT LOOP, User must click support button if admin
+            // REDIRECCIÓN INTELIGENTE AL RECARGAR PÁGINA
+            // Si el usuario recarga y es admin, le mantenemos el acceso si estaba ahí, 
+            // o le llevamos si así lo desea. Por ahora, solo login inicial fuerza redirección.
 
             localStorage.setItem(PROFILE_KEY, JSON.stringify(user));
         }
@@ -258,12 +259,15 @@ const App: React.FC = () => {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(initializedProfile));
 
     // --- ENRUTAMIENTO INTELIGENTE (SMART LOGIN FLOW) ---
-    // NO forzamos redirección. El admin aterriza en dashboard normal pero ve herramientas extra.
-    setShowSupportDashboard(false);
-
+    // Si el rol es ADMIN, redirigimos directamente al Panel de Soporte.
     if (newProfile.role === 'ADMIN') {
-        console.log("[Auth] Admin detected. Admin tools enabled in Settings.");
-        setIngestionToast({ msg: 'Modo Administrador Activado', type: 'INFO' });
+        console.log("[Auth] Admin Login Detected. Redirecting to Support Console...");
+        setShowSupportDashboard(true); 
+        setIngestionToast({ msg: 'Bienvenido, Administrador. Sesión Iniciada.', type: 'INFO' });
+    } else {
+        // Usuario normal va al dashboard estándar
+        setShowSupportDashboard(false);
+        setIngestionToast({ msg: 'Sistemas sincronizados correctamente.', type: 'INFO' });
     }
   };
 
