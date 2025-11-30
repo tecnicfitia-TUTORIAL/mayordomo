@@ -501,7 +501,8 @@ export const TIER_LEVELS: Record<string, number> = {
   'MAYORDOMO': 3,
   'GOBERNANTE': 4,
 
-  // Explicit Legacy Keys (Fix for Critical Bug)
+  // Explicit Legacy Keys (Fix for Critical Bug from Firebase)
+  // Ensures compatibility with older DB records storing "TIER_X_NAME"
   'TIER_1_INVITADO': 1,
   'TIER_2_ASISTENTE': 2,
   'TIER_3_MAYORDOMO': 3,
@@ -521,8 +522,8 @@ export const getTierLevel = (tier: string | SubscriptionTier): number => {
   // Try direct lookup
   if (TIER_LEVELS[tier]) return TIER_LEVELS[tier];
 
-  // Try uppercase lookup (insensible to case)
-  const normalizedKey = tier.toString().toUpperCase();
+  // Try uppercase lookup (insensible to case) and trim
+  const normalizedKey = String(tier).trim().toUpperCase();
   if (TIER_LEVELS[normalizedKey]) return TIER_LEVELS[normalizedKey];
 
   // Default to lowest if unknown
