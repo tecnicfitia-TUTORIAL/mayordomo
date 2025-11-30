@@ -32,8 +32,8 @@ export const EvolutionPanel: React.FC<Props> = ({ profile, lifeStageConfig, onAd
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Detectar si estamos en modo FULL ADMIN (tengo todos los permisos técnicos)
-  // Defensive check for permissions array
-  const isFullAdmin = (profile.grantedPermissions || []).length === TECHNICAL_PERMISSIONS.length;
+  // Defensive check for permissions array (Handle undefined with Optional Chaining)
+  const isFullAdmin = (profile?.grantedPermissions || []).length === TECHNICAL_PERMISSIONS.length;
 
   const addLog = (text: string) => {
     setLogs(prev => [...prev.slice(-10), `> ${text}`]);

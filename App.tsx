@@ -342,8 +342,8 @@ const App: React.FC = () => {
 
     const relatedPerms = TECHNICAL_PERMISSIONS.filter(p => p.relatedPillar === pillarId && p.requiredForFullFeature);
     
-    // SAFETY FIX: Handle undefined permissions
-    const userPermissions = profile.grantedPermissions || [];
+    // SAFETY FIX: Handle undefined permissions using Optional Chaining and Default value
+    const userPermissions = profile?.grantedPermissions || [];
     const missingPerms = relatedPerms.filter(p => !userPermissions.includes(p.id));
     
     if (missingPerms.length > 0) {
@@ -409,7 +409,8 @@ const App: React.FC = () => {
 
   const evolutionConfig: LifeStageConfig | null = useMemo(() => {
     const activeProfile = isSimulating && originalAdminProfile ? originalAdminProfile : (profile || SYSTEM_ADMIN_PROFILE);
-    const safePermissions = activeProfile.grantedPermissions || [];
+    // DEFENSIVE CODING: Check permissions exist
+    const safePermissions = activeProfile?.grantedPermissions || [];
     
     return {
         stageName: activeProfile.archetype,
@@ -428,6 +429,7 @@ const App: React.FC = () => {
 
   const handleAddPermission = (moduleId: string, permission: PermissionItem) => {
     if (!profile) return;
+    // DEFENSIVE CODING: Initialize Set with empty array fallback
     const newSet = new Set(profile.grantedPermissions || []);
     newSet.add(permission.id);
     const updatedProfile = { ...profile, grantedPermissions: Array.from(newSet) };

@@ -47,7 +47,8 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
           return;
       }
 
-      const safePermissions = profile.grantedPermissions || [];
+      // DEFENSIVE CODING: Handle undefined permissions
+      const safePermissions = profile?.grantedPermissions || [];
       const isCurrentlyGranted = safePermissions.includes(perm.id);
 
       // CASO A: Si ya está activo y queremos desactivar -> No requiere MFA (Degradar seguridad es fácil)
@@ -67,7 +68,8 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
   };
 
   const executeToggle = (id: string) => {
-    const safePermissions = profile.grantedPermissions || [];
+    // DEFENSIVE CODING: Handle undefined permissions
+    const safePermissions = profile?.grantedPermissions || [];
     const newSet = new Set(safePermissions);
     if (newSet.has(id)) {
       newSet.delete(id);
@@ -178,7 +180,8 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
                    const def = PILLAR_DEFINITIONS[pillarId];
                    const perms = permissionsByPillar[pillarId] || [];
                    const isExpanded = expandedPillars.has(pillarId);
-                   const safePermissions = profile.grantedPermissions || [];
+                   // DEFENSIVE CODING: Handle undefined permissions
+                   const safePermissions = profile?.grantedPermissions || [];
                    const activeCount = perms.filter(p => safePermissions.includes(p.id)).length;
 
                    return (
@@ -210,6 +213,7 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
                          {isExpanded && (
                             <div className="p-4 pt-0 pl-12 space-y-3 animate-fadeIn border-t border-stone-800/50 mt-2">
                                {perms.map(perm => {
+                                  // DEFENSIVE CODING: Handle undefined permissions
                                   const isGranted = safePermissions.includes(perm.id);
                                   const isCritical = CRITICAL_PERMISSIONS_IDS.includes(perm.id);
                                   

@@ -53,7 +53,8 @@ const MOCK_DATA_VALUES: Record<string, { value: string; label: string; source: s
 export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfile }) => {
   const def = PILLAR_DEFINITIONS[pillarId];
   const features = PERMISSIONS_MATRIX.filter(f => f.pillarId === pillarId);
-  const safePermissions = userProfile.grantedPermissions || [];
+  // DEFENSIVE CODING: Handle undefined permissions
+  const safePermissions = userProfile?.grantedPermissions || [];
   
   // States for Modals
   const [showUpsell, setShowUpsell] = useState<{featureName: string, requiredTier: string} | null>(null);
