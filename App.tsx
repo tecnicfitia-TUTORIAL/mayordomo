@@ -639,21 +639,27 @@ const App: React.FC = () => {
               })}
             </div>
 
-            <div className="p-4 border-t border-stone-800 flex justify-between items-center bg-dark-950 relative">
-              <div className="relative" ref={settingsMenuRef}>
+            <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
+              {/* ADMIN SHORTCUT (VISIBLE ON SIDEBAR) */}
+              {profile.role === 'ADMIN' && (
+                  <button 
+                      onClick={() => setShowSupportDashboard(true)} 
+                      className="w-full mb-3 flex items-center justify-center gap-2 bg-red-900/10 hover:bg-red-900/30 text-red-500 border border-red-500/30 p-2 rounded-sm transition-colors text-xs font-bold uppercase tracking-widest"
+                  >
+                      <LifeBuoy size={16} /> Admin Console
+                  </button>
+              )}
+
+              <div className="flex justify-between items-center relative" ref={settingsMenuRef}>
                   <button onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)} className={`p-2 rounded-full transition-colors ${isSettingsMenuOpen ? 'bg-stone-800 text-white' : 'text-stone-500 hover:text-white hover:bg-stone-800'}`}>
                     <Settings size={20} />
                   </button>
                   {isSettingsMenuOpen && (
                       <div className="absolute bottom-full left-0 mb-3 w-64 bg-stone-900 border border-stone-700 rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden animate-fadeIn">
                           
-                          {/* ADMIN CONSOLE ENTRY - CONDITIONALLY RENDERED */}
+                          {/* ADMIN CONSOLE ENTRY - ALSO IN MENU AS BACKUP */}
                           {profile.role === 'ADMIN' && (
                             <>
-                              <button onClick={() => { setIsSettingsMenuOpen(false); setShowSupportDashboard(true); }} className="flex items-center gap-3 p-3 bg-red-900/10 hover:bg-red-900/30 text-red-300 hover:text-red-200 text-left transition-colors border-b border-stone-800">
-                                  <LifeBuoy size={16} className="text-red-500" />
-                                  <div><div className="text-xs font-bold">Panel de Soporte</div><div className="text-[9px] text-red-400">Gestión de Usuarios</div></div>
-                              </button>
                               <button onClick={() => { setIsSettingsMenuOpen(false); setShowEvolution(true); }} className="flex items-center gap-3 p-3 bg-red-900/10 hover:bg-red-900/30 text-red-300 hover:text-red-200 text-left transition-colors border-b border-stone-800">
                                   <Shield size={16} className="text-red-500" />
                                   <div><div className="text-xs font-bold">Consola de Evolución</div><div className="text-[9px] text-red-400">Simulación y Reglas</div></div>
@@ -694,13 +700,16 @@ const App: React.FC = () => {
                           )}
                       </div>
                   )}
+                  
+                  <div className="flex gap-2">
+                    <button onClick={() => !isOffline && setShowChat(!showChat)} disabled={isOffline} className={`p-2 rounded-full transition-colors ${showChat ? 'text-ai-400 bg-ai-900/20' : 'text-ai-500 hover:bg-stone-800 hover:text-ai-400 disabled:opacity-30 disabled:cursor-not-allowed'}`} title="Abrir Asistente">
+                      <MessageSquare size={20} />
+                    </button>
+                    <button onClick={handleLogout} className="p-2 hover:bg-stone-800 rounded-full text-stone-500 hover:text-red-400 transition-colors">
+                      <LogOut size={20} />
+                    </button>
+                  </div>
               </div>
-              <button onClick={() => !isOffline && setShowChat(!showChat)} disabled={isOffline} className={`p-2 rounded-full transition-colors ${showChat ? 'text-ai-400 bg-ai-900/20' : 'text-ai-500 hover:bg-stone-800 hover:text-ai-400 disabled:opacity-30 disabled:cursor-not-allowed'}`} title="Abrir Asistente">
-                <MessageSquare size={20} />
-              </button>
-              <button onClick={handleLogout} className="p-2 hover:bg-stone-800 rounded-full text-stone-500 hover:text-red-400 transition-colors">
-                <LogOut size={20} />
-              </button>
             </div>
           </aside>
 

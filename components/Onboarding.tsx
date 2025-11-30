@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { UserProfile, SubscriptionTier, UserArchetype, TechnicalPermission } from '../types';
-import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel, ADMIN_EMAILS } from '../constants';
+import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel } from '../constants';
 import { ArrowRight, Check, Shield, Lock, Zap, ToggleLeft, ToggleRight, Fingerprint, CreditCard, User, Mail, Loader2, ExternalLink, Eye, EyeOff, Crown, Star, Database, AlertCircle, Send, X, MailCheck } from 'lucide-react';
 import { Logo } from './Logo';
 import { StripeService } from '../services/stripeService';
@@ -179,9 +179,10 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
     // SAFETY: Use Selected Plan or fallback to FREE
     const finalTier = selectedPlan || SubscriptionTier.FREE;
 
-    // DETERMINE ROLE BASED ON EMAIL ALLOWLIST (For new signups)
-    const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
-    const role: 'ADMIN' | 'USER' = isAdmin ? 'ADMIN' : 'USER';
+    // STRICT SECURITY POLICY:
+    // All new signups via the UI are 'USER' by default.
+    // 'ADMIN' roles must be assigned manually in the Database.
+    const role: 'ADMIN' | 'USER' = 'USER';
 
     try {
         if (!auth) throw new Error("Firebase Auth no inicializado");
