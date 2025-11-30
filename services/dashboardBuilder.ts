@@ -14,8 +14,8 @@ export const DashboardBuilder = {
     const items: DashboardItem[] = [];
     const tier = profile.subscriptionTier;
 
-    // 0. SEXTO SENTIDO (NUEVO - EMERGENTE)
-    // Genera oportunidades latentes basadas en el cruce de datos
+    // 0. SEXTO SENTIDO (Capital Latente)
+    // Solo visible si hay oportunidades reales y el usuario tiene cierto nivel (o teaser para Free)
     const sixthSenseOpps = SixthSenseService.generateOpportunities(profile, mission);
     if (sixthSenseOpps.length > 0) {
         items.push({
@@ -23,12 +23,12 @@ export const DashboardBuilder = {
             type: 'SIXTH_SENSE',
             title: 'Sexto Sentido',
             description: 'Oportunidades latentes detectadas.',
-            priority: 200, // Absolute Top Priority
+            priority: 200, // Absolute Top Priority -> Ocupa ancho completo
             opportunities: sixthSenseOpps
         });
     }
 
-    // 1. CARDS DE DECISIÓN (Prioridad Máxima)
+    // 1. CARDS DE DECISIÓN (Prioridad Máxima - Ejecución)
     // Si hay una misión activa con items financieros pendientes de firma
     if (mission) {
        const pendingApprovals = mission.checklist.filter(i => i.requiresApproval && !i.approved && i.isReady);
@@ -40,15 +40,16 @@ export const DashboardBuilder = {
                title: 'Autorización Requerida',
                description: `${item.label}: ${item.cost} ${item.currency}`,
                pillarId: item.sourcePillar,
-               priority: 100, // Top priority
-               metadata: { cost: item.cost, currency: item.currency, actionLabel: 'Firmar' }
+               priority: 100,
+               metadata: { cost: item.cost, currency: item.currency, actionLabel: 'Firmar Orden' }
            });
        });
     }
 
     // 2. LÓGICA TIER 1 (INVITADO) -> Generar "Envidia/Deseo" (Nostalgia + Bloqueos)
     if (tier === SubscriptionTier.FREE) {
-        // Tarjeta Bloqueada (Upselling)
+        
+        // A. Tarjeta Bloqueada (Upselling - Deseo de Futuro)
         items.push({
             id: 'upsell_finance',
             type: 'DECISION',
@@ -56,7 +57,20 @@ export const DashboardBuilder = {
             description: 'Detectado excedente de 1.200€. Optimización disponible.',
             priority: 40,
             isLocked: true,
-            pillarId: PillarId.PATRIMONIO
+            pillarId: PillarId.PATRIMONIO,
+            metadata: { actionLabel: 'Desbloquear' }
+        });
+
+        // B. Tarjeta Nostalgia (Conexión Emocional)
+        items.push({
+            id: 'memory_01',
+            type: 'NOSTALGIA',
+            title: 'Hace 1 año',
+            description: 'Viaje a Lisboa. Revive el momento.',
+            priority: 50,
+            metadata: { 
+                image: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&q=80&w=800' 
+            }
         });
     }
 
@@ -70,8 +84,8 @@ export const DashboardBuilder = {
             items.push({
                 id: 'zen_mode',
                 type: 'ZEN',
-                title: 'Sin Novedades',
-                description: 'Todo está bajo control, Señor. Disfrute de su tiempo.',
+                title: 'Todo en Orden',
+                description: 'Sus sistemas están sincronizados, Señor. Disfrute de su tiempo.',
                 priority: 10
             });
         }
