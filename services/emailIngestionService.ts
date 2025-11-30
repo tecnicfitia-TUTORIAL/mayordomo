@@ -127,6 +127,7 @@ const checkSubscriptionAccess = (profile: UserProfile, type: DocType): { hasAcce
 
   const requiredLevel = getTierLevel(requiredTier);
 
+  // LOGIC REPAIR: Explicit numeric comparison
   return {
     hasAccess: userLevel >= requiredLevel,
     requiredTier

@@ -1,8 +1,7 @@
 
-
 import React, { useState } from 'react';
 import { PillarId, PillarStatus, UserProfile, SubscriptionTier, FeatureMatrixItem } from '../types';
-import { PERMISSIONS_MATRIX, PILLAR_DEFINITIONS, getTierLevel } from '../constants';
+import { PERMISSIONS_MATRIX, PILLAR_DEFINITIONS, getTierLevel, getNormalizedTierKey } from '../constants';
 import { Shield, Home, Coffee, Activity, Users, Lock, CheckCircle2, AlertTriangle, Database, Zap, EyeOff, Settings, Crown, ExternalLink, X } from 'lucide-react';
 import { UniversalDetailModal } from './UniversalDetailModal';
 
@@ -88,6 +87,10 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
       // Open Universal Modal (The modal internal logic handles the difference)
       setSelectedFeature(feature);
   };
+
+  // NORMALIZE USER TIER: Ensure we look up the matrix with a valid SubscriptionTier Enum
+  // This fixes the bug where "TIER_4_GOBERNANTE" string causes feature.tiers[key] to be undefined
+  const normalizedUserTier = getNormalizedTierKey(userProfile.subscriptionTier);
 
   return (
     <div className="h-full flex flex-col bg-[#0c0a09] overflow-y-auto custom-scrollbar relative animate-fadeIn">
@@ -176,8 +179,8 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
       {/* 2. BENTO GRID */}
       <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 auto-rows-[140px]">
          {features.map((feature) => {
-             // Logic
-             const tierConfig = feature.tiers[userProfile.subscriptionTier];
+             // Logic: Use Normalized Tier for Matrix Lookup
+             const tierConfig = feature.tiers[normalizedUserTier];
              const hasTierAccess = tierConfig.access && status.isActive;
              const requiredTierName = Object.entries(feature.tiers).find(([_, cfg]) => cfg.access)?.[0] || 'SUPERIOR';
              const requiredPermissionId = feature.requiredPermissionId;

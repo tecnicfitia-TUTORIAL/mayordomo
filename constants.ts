@@ -219,7 +219,6 @@ export const TECHNICAL_PERMISSIONS: TechnicalPermission[] = [
 // --- C. MATRIZ DE PERMISOS MAESTRA (25 FEATURES x 4 TIERS) ---
 
 export const PERMISSIONS_MATRIX: FeatureMatrixItem[] = [
-  // ... (Mantiene el contenido existente, solo cambios en helpers abajo) ...
   // === 1. CENTINELA (5 Features) ===
   {
     id: 'cent_expiry_alert', pillarId: PillarId.CENTINELA, name: 'Alertas Documentos', description: 'Caducidad DNI/Pasaporte.',
@@ -496,19 +495,19 @@ export const SUBSCRIPTION_PLANS = [
 
 // 1. Defined Numeric Levels for reliable comparison
 export const TIER_LEVELS: Record<string, number> = {
-  // Enum Keys (INVITADO, ASISTENTE, etc.)
-  [SubscriptionTier.FREE]: 1,
-  [SubscriptionTier.BASIC]: 2,
-  [SubscriptionTier.PRO]: 3,
-  [SubscriptionTier.VIP]: 4,
-  
-  // Explicit DB keys matching legacy or specific formats (Fix for Critical Bug)
+  // Enum Keys
+  'INVITADO': 1,
+  'ASISTENTE': 2,
+  'MAYORDOMO': 3,
+  'GOBERNANTE': 4,
+
+  // Explicit Legacy Keys (Fix for Critical Bug)
   'TIER_1_INVITADO': 1,
   'TIER_2_ASISTENTE': 2,
   'TIER_3_MAYORDOMO': 3,
   'TIER_4_GOBERNANTE': 4,
 
-  // Fallbacks for English keys or codes
+  // English Keys
   'FREE': 1,
   'BASIC': 2,
   'PRO': 3,
@@ -529,6 +528,15 @@ export const getTierLevel = (tier: string | SubscriptionTier): number => {
   // Default to lowest if unknown
   console.warn(`[getTierLevel] Unknown tier: ${tier}. Defaulting to 0.`);
   return 0;
+};
+
+// 3. Normalize Tier Key for Matrix Lookup
+export const getNormalizedTierKey = (tier: string | SubscriptionTier): SubscriptionTier => {
+    const level = getTierLevel(tier);
+    if (level >= 4) return SubscriptionTier.VIP;
+    if (level === 3) return SubscriptionTier.PRO;
+    if (level === 2) return SubscriptionTier.BASIC;
+    return SubscriptionTier.FREE;
 };
 
 export const determineArchetype = (age: number, occupation: string): UserArchetype => {

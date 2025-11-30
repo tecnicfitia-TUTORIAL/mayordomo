@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { UserProfile, PillarId, CapabilityStatus, SubscriptionTier, PillarStatus, LifeStageConfig, PermissionItem, UserArchetype, Mission, DashboardConfig } from './types';
 import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS, VISUAL_PRESETS } from './constants';
@@ -324,7 +325,8 @@ const App: React.FC = () => {
     if (!profile) return { id: pillarId, name: '', description: '', isActive: false, isDegraded: false, statusMessage: '', alerts: 0 };
 
     const def = PILLAR_DEFINITIONS[pillarId];
-    // CRITICAL: use robust tier check
+    
+    // CRITICAL: use robust tier check (Numeric comparison fixes string bugs)
     const userTierVal = getTierLevel(profile.subscriptionTier);
     const requiredTierVal = getTierLevel(def.minTier);
 
@@ -645,6 +647,7 @@ const App: React.FC = () => {
                       <div className="absolute bottom-full left-0 mb-3 w-64 bg-stone-900 border border-stone-700 rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden animate-fadeIn">
                           
                           {/* ADMIN CONSOLE ENTRY - CONDITIONALLY RENDERED */}
+                          {/* Check for ADMIN Role independently of Subscription Tier */}
                           {profile.role === 'ADMIN' && (
                               <button onClick={() => { setIsSettingsMenuOpen(false); setShowEvolution(true); }} className="flex items-center gap-3 p-3 bg-red-900/10 hover:bg-red-900/30 text-red-300 hover:text-red-200 text-left transition-colors border-b border-stone-800">
                                   <Shield size={16} className="text-red-500" />
