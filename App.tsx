@@ -188,10 +188,7 @@ const App: React.FC = () => {
             }
             setProfile(user);
             
-            // AUTO-REDIRECT IF ADMIN RELOADS PAGE
-            if (user.role === 'ADMIN') {
-                setShowSupportDashboard(true);
-            }
+            // NO AUTO-REDIRECT HERE TO PREVENT LOOP, User must click support button if admin
 
             localStorage.setItem(PROFILE_KEY, JSON.stringify(user));
         }
@@ -261,13 +258,12 @@ const App: React.FC = () => {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(initializedProfile));
 
     // --- ENRUTAMIENTO INTELIGENTE (SMART LOGIN FLOW) ---
+    // NO forzamos redirección. El admin aterriza en dashboard normal pero ve herramientas extra.
+    setShowSupportDashboard(false);
+
     if (newProfile.role === 'ADMIN') {
-        console.log("[Auth] Admin detected. Redirecting to Support Dashboard.");
-        setShowSupportDashboard(true);
-        // Toast opcional de bienvenida admin se podría lanzar aquí
-    } else {
-        // Usuario normal va al dashboard por defecto (showSupportDashboard = false)
-        setShowSupportDashboard(false);
+        console.log("[Auth] Admin detected. Admin tools enabled in Settings.");
+        setIngestionToast({ msg: 'Modo Administrador Activado', type: 'INFO' });
     }
   };
 
@@ -503,7 +499,7 @@ const App: React.FC = () => {
       )}
 
       {ingestionToast && (
-          <Toast message={ingestionToast.msg} type={ingestionToast.type === 'WARNING' ? 'WARNING' : 'ERROR'} onClose={() => setIngestionToast(null)} />
+          <Toast message={ingestionToast.msg} type={ingestionToast.type === 'WARNING' ? 'WARNING' : 'INFO'} onClose={() => setIngestionToast(null)} />
       )}
 
       {profile?.themeConfig?.type === 'CUSTOM' && (
@@ -647,12 +643,17 @@ const App: React.FC = () => {
                       <div className="absolute bottom-full left-0 mb-3 w-64 bg-stone-900 border border-stone-700 rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden animate-fadeIn">
                           
                           {/* ADMIN CONSOLE ENTRY - CONDITIONALLY RENDERED */}
-                          {/* Check for ADMIN Role independently of Subscription Tier */}
                           {profile.role === 'ADMIN' && (
+                            <>
+                              <button onClick={() => { setIsSettingsMenuOpen(false); setShowSupportDashboard(true); }} className="flex items-center gap-3 p-3 bg-red-900/10 hover:bg-red-900/30 text-red-300 hover:text-red-200 text-left transition-colors border-b border-stone-800">
+                                  <LifeBuoy size={16} className="text-red-500" />
+                                  <div><div className="text-xs font-bold">Panel de Soporte</div><div className="text-[9px] text-red-400">Gestión de Usuarios</div></div>
+                              </button>
                               <button onClick={() => { setIsSettingsMenuOpen(false); setShowEvolution(true); }} className="flex items-center gap-3 p-3 bg-red-900/10 hover:bg-red-900/30 text-red-300 hover:text-red-200 text-left transition-colors border-b border-stone-800">
                                   <Shield size={16} className="text-red-500" />
-                                  <div><div className="text-xs font-bold">Consola Admin</div><div className="text-[9px] text-red-400">Acceso Root</div></div>
+                                  <div><div className="text-xs font-bold">Consola de Evolución</div><div className="text-[9px] text-red-400">Simulación y Reglas</div></div>
                               </button>
+                            </>
                           )}
 
                           <button onClick={handleOpenPermissions} className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">

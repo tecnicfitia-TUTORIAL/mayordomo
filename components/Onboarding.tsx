@@ -98,9 +98,11 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
             const rawData = docSnap.data();
             
             // 3. DECISION STEP: Check Role
-            // This handles manual edits like 'admin' (lowercase) -> 'ADMIN' (uppercase)
-            const roleStr = rawData.role || 'USER';
-            const normalizedRole = (roleStr.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
+            // Explicit extraction of 'role' field from Firestore document
+            const roleStr = rawData.role; 
+            
+            // Normalize role: Handle 'admin', 'Admin', 'ADMIN' -> 'ADMIN'
+            const normalizedRole = (roleStr && String(roleStr).trim().toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
             
             const userData: UserProfile = {
                 ...rawData,
