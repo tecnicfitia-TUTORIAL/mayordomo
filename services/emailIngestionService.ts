@@ -46,7 +46,7 @@ export const EmailIngestionService = {
     const access = checkSubscriptionAccess(profile, relevance.detectedType);
 
     if (!access.hasAccess) {
-      console.log(`[EmailIngestion] 🔒 BLOCKED (Tier): User is ${profile.subscriptionTier}, needs ${access.requiredTier}`);
+      console.log(`[EmailIngestion] 🔒 BLOCKED (Tier): User is ${profile.subscriptionTier} (Level ${getTierLevel(profile.subscriptionTier)}), needs ${access.requiredTier} (Level ${getTierLevel(access.requiredTier || SubscriptionTier.FREE)})`);
       return { 
         status: 'BLOCKED_TIER', 
         reason: `Feature requires ${access.requiredTier}`, 
@@ -104,6 +104,7 @@ const analyzeRelevance = (email: IncomingEmail): RelevanceAnalysis => {
 };
 
 const checkSubscriptionAccess = (profile: UserProfile, type: DocType): { hasAccess: boolean; requiredTier?: SubscriptionTier } => {
+  // CRITICAL FIX: Use Robust Numeric Comparison
   const userLevel = getTierLevel(profile.subscriptionTier);
 
   // MAPA DE REQUISITOS (Hardcoded logic based on Permissions Matrix)
@@ -124,8 +125,10 @@ const checkSubscriptionAccess = (profile: UserProfile, type: DocType): { hasAcce
       break;
   }
 
+  const requiredLevel = getTierLevel(requiredTier);
+
   return {
-    hasAccess: userLevel >= getTierLevel(requiredTier),
+    hasAccess: userLevel >= requiredLevel,
     requiredTier
   };
 };

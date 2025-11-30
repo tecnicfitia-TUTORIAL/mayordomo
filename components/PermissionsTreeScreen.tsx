@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 import { UserProfile, PillarId, SubscriptionTier } from '../types';
 import { TECHNICAL_PERMISSIONS, PILLAR_DEFINITIONS, getTierLevel } from '../constants';
@@ -45,7 +47,8 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
           return;
       }
 
-      const isCurrentlyGranted = profile.grantedPermissions.includes(perm.id);
+      const safePermissions = profile.grantedPermissions || [];
+      const isCurrentlyGranted = safePermissions.includes(perm.id);
 
       // CASO A: Si ya está activo y queremos desactivar -> No requiere MFA (Degradar seguridad es fácil)
       if (isCurrentlyGranted) {
@@ -64,7 +67,8 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
   };
 
   const executeToggle = (id: string) => {
-    const newSet = new Set(profile.grantedPermissions);
+    const safePermissions = profile.grantedPermissions || [];
+    const newSet = new Set(safePermissions);
     if (newSet.has(id)) {
       newSet.delete(id);
     } else {
@@ -174,7 +178,8 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
                    const def = PILLAR_DEFINITIONS[pillarId];
                    const perms = permissionsByPillar[pillarId] || [];
                    const isExpanded = expandedPillars.has(pillarId);
-                   const activeCount = perms.filter(p => profile.grantedPermissions.includes(p.id)).length;
+                   const safePermissions = profile.grantedPermissions || [];
+                   const activeCount = perms.filter(p => safePermissions.includes(p.id)).length;
 
                    return (
                       <div key={pillarId} className={`border rounded-lg transition-all duration-300 ${isExpanded ? 'bg-stone-900 border-ai-500/30' : 'bg-stone-950 border-stone-800 hover:border-stone-700'}`}>
@@ -205,7 +210,7 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
                          {isExpanded && (
                             <div className="p-4 pt-0 pl-12 space-y-3 animate-fadeIn border-t border-stone-800/50 mt-2">
                                {perms.map(perm => {
-                                  const isGranted = profile.grantedPermissions.includes(perm.id);
+                                  const isGranted = safePermissions.includes(perm.id);
                                   const isCritical = CRITICAL_PERMISSIONS_IDS.includes(perm.id);
                                   
                                   // LOGIC: Check Tier Lock

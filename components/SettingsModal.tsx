@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { UserProfile, SubscriptionTier } from '../types';
 import { SUBSCRIPTION_PLANS, STRIPE_URLS, getTierLevel } from '../constants';
@@ -60,7 +61,7 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
                     const planLevel = getTierLevel(plan.id as SubscriptionTier);
                     const isCurrent = profile.subscriptionTier === plan.id;
                     const isUpgrade = planLevel > currentLevel;
-                    const isDowngrade = planLevel < currentLevel;
+                    // const isDowngrade = planLevel < currentLevel;
 
                     return (
                         <div 

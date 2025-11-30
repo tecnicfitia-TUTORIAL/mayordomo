@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { UserProfile, PillarId, CapabilityStatus, SubscriptionTier, PillarStatus, LifeStageConfig, PermissionItem, UserArchetype, Mission, DashboardConfig } from './types';
 import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS, VISUAL_PRESETS } from './constants';
@@ -15,6 +13,7 @@ import { PermissionsTreeScreen } from './components/PermissionsTreeScreen';
 import { SmartDashboard } from './components/SmartDashboard';
 import { SupportDashboard } from './components/SupportDashboard';
 import { SupportModal } from './components/SupportModal';
+import { LegalModal } from './components/LegalModal';
 import { Toast } from './components/Toast'; 
 import { Logo } from './components/Logo';
 import { SubscriptionService } from './services/subscriptionService';
@@ -52,6 +51,7 @@ const App: React.FC = () => {
   const [showPermissionsTree, setShowPermissionsTree] = useState(false);
   const [showSupportDashboard, setShowSupportDashboard] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
   const [showEvolution, setShowEvolution] = useState(false);
   const [showChat, setShowChat] = useState(false);
   
@@ -168,9 +168,13 @@ const App: React.FC = () => {
         const saved = localStorage.getItem(PROFILE_KEY);
         if (saved) {
             let user = JSON.parse(saved);
+            
+            // DEFENSIVE CODING: ENSURE CRITICAL ARRAYS EXIST
+            if (!user.grantedPermissions) user.grantedPermissions = [];
             if (!user.dashboardConfig) {
                 user.dashboardConfig = { pillarOrder: DEFAULT_PILLAR_ORDER, hiddenPillars: [] };
             }
+
             try {
                 if (navigator.onLine) {
                     const currentTier = await SubscriptionService.getCurrentUserTier(user.uid);
@@ -182,6 +186,12 @@ const App: React.FC = () => {
                 console.error("Failed to sync subscription:", e);
             }
             setProfile(user);
+            
+            // AUTO-REDIRECT IF ADMIN RELOADS PAGE
+            if (user.role === 'ADMIN') {
+                setShowSupportDashboard(true);
+            }
+
             localStorage.setItem(PROFILE_KEY, JSON.stringify(user));
         }
     };
@@ -222,15 +232,42 @@ const App: React.FC = () => {
     build();
   }, [profile]);
 
+  // 4. ROUTE GUARD (PROTECCIÓN DE RUTA)
+  useEffect(() => {
+    // Si el usuario intenta ver el dashboard de soporte pero NO es admin, lo echamos.
+    if (showSupportDashboard && profile && profile.role !== 'ADMIN') {
+        console.warn("[Security] Unauthorized access to Support Dashboard blocked.");
+        setShowSupportDashboard(false);
+        setCriticalAlert({
+            id: 'auth_guard',
+            title: 'Acceso Denegado',
+            body: 'No tiene privilegios de administrador para ver esta pantalla.',
+            priority: 'CRITICAL',
+            timestamp: new Date()
+        });
+    }
+  }, [showSupportDashboard, profile]);
+
   const handleOnboardingComplete = (newProfile: UserProfile) => {
     const initializedProfile: UserProfile = {
         ...newProfile,
+        grantedPermissions: newProfile.grantedPermissions || [], // Ensure array
         dashboardConfig: { pillarOrder: DEFAULT_PILLAR_ORDER, hiddenPillars: [] },
         themePreference: 'DARK', // Initialize with DARK mode
         themeConfig: { type: 'PRESET', value: 'ONYX' }
     };
     setProfile(initializedProfile);
     localStorage.setItem(PROFILE_KEY, JSON.stringify(initializedProfile));
+
+    // --- ENRUTAMIENTO INTELIGENTE (SMART LOGIN FLOW) ---
+    if (newProfile.role === 'ADMIN') {
+        console.log("[Auth] Admin detected. Redirecting to Support Dashboard.");
+        setShowSupportDashboard(true);
+        // Toast opcional de bienvenida admin se podría lanzar aquí
+    } else {
+        // Usuario normal va al dashboard por defecto (showSupportDashboard = false)
+        setShowSupportDashboard(false);
+    }
   };
 
   const handleLogout = () => {
@@ -287,6 +324,7 @@ const App: React.FC = () => {
     if (!profile) return { id: pillarId, name: '', description: '', isActive: false, isDegraded: false, statusMessage: '', alerts: 0 };
 
     const def = PILLAR_DEFINITIONS[pillarId];
+    // CRITICAL: use robust tier check
     const userTierVal = getTierLevel(profile.subscriptionTier);
     const requiredTierVal = getTierLevel(def.minTier);
 
@@ -303,7 +341,10 @@ const App: React.FC = () => {
     }
 
     const relatedPerms = TECHNICAL_PERMISSIONS.filter(p => p.relatedPillar === pillarId && p.requiredForFullFeature);
-    const missingPerms = relatedPerms.filter(p => !profile.grantedPermissions.includes(p.id));
+    
+    // SAFETY FIX: Handle undefined permissions
+    const userPermissions = profile.grantedPermissions || [];
+    const missingPerms = relatedPerms.filter(p => !userPermissions.includes(p.id));
     
     if (missingPerms.length > 0) {
       return {
@@ -368,6 +409,8 @@ const App: React.FC = () => {
 
   const evolutionConfig: LifeStageConfig | null = useMemo(() => {
     const activeProfile = isSimulating && originalAdminProfile ? originalAdminProfile : (profile || SYSTEM_ADMIN_PROFILE);
+    const safePermissions = activeProfile.grantedPermissions || [];
+    
     return {
         stageName: activeProfile.archetype,
         description: `Configuración activa para nivel ${activeProfile.subscriptionTier}`,
@@ -376,7 +419,7 @@ const App: React.FC = () => {
             title: PILLAR_DEFINITIONS[pillarId].name,
             permissions: TECHNICAL_PERMISSIONS.filter(p => p.relatedPillar === pillarId).map(p => ({
                 ...p,
-                defaultEnabled: activeProfile.grantedPermissions.includes(p.id),
+                defaultEnabled: safePermissions.includes(p.id),
                 minTier: SubscriptionTier.FREE
             }))
         }))
@@ -385,7 +428,7 @@ const App: React.FC = () => {
 
   const handleAddPermission = (moduleId: string, permission: PermissionItem) => {
     if (!profile) return;
-    const newSet = new Set(profile.grantedPermissions);
+    const newSet = new Set(profile.grantedPermissions || []);
     newSet.add(permission.id);
     const updatedProfile = { ...profile, grantedPermissions: Array.from(newSet) };
     setProfile(updatedProfile);
@@ -401,7 +444,12 @@ const App: React.FC = () => {
   const handleOpenAppearance = () => { setIsSettingsMenuOpen(false); setShowAppearanceModal(true); };
   const handleOpenSupport = () => { setIsSettingsMenuOpen(false); setShowSupportDashboard(true); }
   const handleOpenHelp = () => { setIsSettingsMenuOpen(false); setShowSupportModal(true); }
-  const handleOpenLegal = () => { setIsSettingsMenuOpen(false); setShowSubscriptionModal(true); }
+  
+  // FIXED: Open Legal Modal correctly instead of Subscription Modal
+  const handleOpenLegal = () => { 
+    setIsSettingsMenuOpen(false); 
+    setLegalType('NOTICE'); // Default to Legal Notice
+  }
 
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
@@ -490,6 +538,10 @@ const App: React.FC = () => {
         onClose={() => setShowAppearanceModal(false)}
         onUpdate={(p) => { setProfile(p); localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }}
       />}
+
+      {legalType && (
+          <LegalModal type={legalType} onClose={() => setLegalType(null)} />
+      )}
 
       {showEvolution && evolutionConfig && (
           <EvolutionPanel 

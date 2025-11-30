@@ -1,15 +1,14 @@
 
-
-import React, { useState, useRef, useMemo } from 'react';
-import { UserProfile, SubscriptionTier, UserArchetype, TechnicalPermission, PillarId } from '../types';
-import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel } from '../constants';
-import { ArrowRight, Check, Shield, Lock, Zap, ToggleLeft, ToggleRight, Fingerprint, CreditCard, User, Mail, Loader2, ExternalLink, Eye, EyeOff, Crown, Star, Gem, Database, Smartphone, Globe, Brain, ChevronLeft, X, Send } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { UserProfile, SubscriptionTier, UserArchetype, TechnicalPermission } from '../types';
+import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel, ADMIN_EMAILS } from '../constants';
+import { ArrowRight, Check, Shield, Lock, Zap, ToggleLeft, ToggleRight, Fingerprint, CreditCard, User, Mail, Loader2, ExternalLink, Eye, EyeOff, Crown, Star, Database, AlertCircle, Send, X, MailCheck } from 'lucide-react';
 import { Logo } from './Logo';
-import { SubscriptionService } from '../services/subscriptionService';
 import { StripeService } from '../services/stripeService';
 import { LegalModal } from './LegalModal';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../services/firebaseConfig';
+import { sendPasswordResetEmail, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../services/firebaseConfig';
 
 interface Props {
   onComplete: (profile: UserProfile) => void;
@@ -34,6 +33,8 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   const [step, setStep] = useState(1); // 1: Auth, 2: Profile, 3: Plan, 4: Permissions
   const [isLoadingPayment, setIsLoadingPayment] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [verificationSent, setVerificationSent] = useState(false);
   
   // Auth State
   const [isLoginMode, setIsLoginMode] = useState(true); // Default to Login for cleaner look
@@ -76,32 +77,70 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   }, []);
 
   const handleAuthAction = async () => {
+    setAuthError(null);
+    
     if (isLoginMode) {
+      // --- LOGIN FLOW ---
       setIsAuthLoading(true);
-      await new Promise(r => setTimeout(r, 1500)); // Simular carga "biométrica"
-      const realTier = await SubscriptionService.getCurrentUserTier(`user_mock_${Date.now()}`);
       
-      // RBAC CHECK (SIMULATION FOR NOW, FIRESTORE READY)
-      // En un entorno real: const doc = await db.collection('users').doc(uid).get(); const role = doc.data().role;
-      const role = email.toLowerCase() === 'admin@mayordomo.app' ? 'ADMIN' : 'USER';
-      
-      const mockExistingProfile: UserProfile = {
-        uid: `user_returned_${Date.now()}`,
-        email,
-        name: name || "Usuario Registrado",
-        role: role, // Assign verified role
-        age: 30,
-        gender: "NB",
-        occupation: "Usuario Existente",
-        archetype: UserArchetype.ESENCIALISTA,
-        subscriptionTier: realTier,
-        grantedPermissions: ['sys_notifications'],
-        setupCompleted: true
-      };
-      
-      setIsAuthLoading(false);
-      onComplete(mockExistingProfile);
+      try {
+        if (!auth) throw new Error("Firebase Auth no inicializado");
+
+        // 1. Authenticate with Firebase Auth
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const uid = userCredential.user.uid;
+        
+        // 2. CRITICAL STEP: Fetch Profile from Firestore
+        const docRef = doc(db, 'users', uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const rawData = docSnap.data();
+            
+            // 3. DECISION STEP: Check Role
+            // This handles manual edits like 'admin' (lowercase) -> 'ADMIN' (uppercase)
+            const roleStr = rawData.role || 'USER';
+            const normalizedRole = (roleStr.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
+            
+            const userData: UserProfile = {
+                ...rawData,
+                uid: uid,
+                role: normalizedRole as 'ADMIN' | 'USER',
+                // Fallbacks for older data structures
+                subscriptionTier: rawData.subscriptionTier || SubscriptionTier.FREE,
+                grantedPermissions: rawData.grantedPermissions || [],
+                setupCompleted: rawData.setupCompleted ?? true
+            } as UserProfile;
+
+            console.log(`[Auth] User logged in. ID: ${uid}, Role: ${normalizedRole}`);
+
+            setIsAuthLoading(false);
+            
+            // 4. Pass control to App.tsx (which handles navigation based on Role)
+            onComplete(userData);
+        } else {
+            setAuthError("Perfil no encontrado en base de datos. Contacte soporte.");
+            setIsAuthLoading(false);
+        }
+
+      } catch (error: any) {
+        console.error("Login Error:", error);
+        let msg = "Error de autenticación.";
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            msg = "Credenciales incorrectas.";
+        } else if (error.code === 'auth/too-many-requests') {
+            msg = "Demasiados intentos. Inténtelo más tarde.";
+        }
+        setAuthError(msg);
+        setIsAuthLoading(false);
+      }
+
     } else {
+      // --- SIGNUP FLOW (Step 1 Validation) ---
+      if (!email.includes('@') || password.length < 6) {
+          setAuthError("Email inválido o contraseña muy corta (min 6).");
+          return;
+      }
       setStep(prev => prev + 1);
     }
   };
@@ -111,13 +150,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
 
   const handleManageSubscription = () => {
     setIsLoadingPayment(true);
-    
-    // Redirect to specific checkout based on selected plan
     StripeService.openCheckout(selectedPlan);
-
-    // Mock flow: We assume the user navigates away and comes back.
-    // The payment is processed by Stripe and Webhook updates DB.
-    // Local app must WAIT for that update or start as FREE.
     setTimeout(() => {
         setIsLoadingPayment(false);
         handleNext();
@@ -137,34 +170,73 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
     setGrantedPermissions(newSet);
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    setAuthError(null);
+    setIsAuthLoading(true);
+
     const archetype = determineArchetype(Number(age), occupation);
     
-    // SECURITY RULE: ZERO TRUST
-    // Regardless of 'selectedPlan' (user intent), we initialize as FREE.
-    // The upgrade to PREMIUM/VIP only happens if the Backend (via Webhook) confirms the payment.
-    const initialTier = SubscriptionTier.FREE;
+    // SAFETY: Use Selected Plan or fallback to FREE
+    const finalTier = selectedPlan || SubscriptionTier.FREE;
 
-    const profile: UserProfile = {
-      uid: `user_${Date.now()}`,
-      email,
-      name,
-      role: 'USER', // New signups default to USER
-      age: Number(age),
-      gender,
-      occupation,
-      archetype,
-      subscriptionTier: initialTier, // FORCE FREE STATE
-      grantedPermissions: Array.from(grantedPermissions),
-      setupCompleted: true
-    };
+    // DETERMINE ROLE BASED ON EMAIL ALLOWLIST (For new signups)
+    const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+    const role: 'ADMIN' | 'USER' = isAdmin ? 'ADMIN' : 'USER';
 
-    // Mensaje de Transparencia
-    if (selectedPlan !== SubscriptionTier.FREE) {
-        alert("SOLICITUD DE SUSCRIPCIÓN RECIBIDA\n\nSu cuenta ha sido creada con nivel INVITADO. La activación de su plan se realizará automáticamente en cuanto la entidad bancaria confirme el pago.");
+    try {
+        if (!auth) throw new Error("Firebase Auth no inicializado");
+
+        // 1. Create User in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // 2. Send Email Verification
+        await sendEmailVerification(user);
+
+        // 3. Create Document in Firestore IMMEDIATELY
+        const userData = {
+            uid: user.uid,
+            email: email,
+            name: name || "Usuario",
+            role: role, 
+            subscriptionTier: finalTier,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            age: Number(age),
+            gender,
+            occupation,
+            archetype, 
+            setupCompleted: true,
+            grantedPermissions: Array.from(grantedPermissions),
+            stripeCustomerId: null // Will be populated by Backend/Stripe Webhook later
+        };
+
+        // Execute Write to Firestore
+        await setDoc(doc(db, 'users', user.uid), userData);
+
+        // Prepare local state object (using current date instead of serverTimestamp for UI)
+        const newProfile: UserProfile = {
+            ...userData,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        } as unknown as UserProfile;
+
+        // SHOW SUCCESS FEEDBACK & REDIRECT DELAY
+        setIsAuthLoading(false);
+        setVerificationSent(true);
+
+        setTimeout(() => {
+            onComplete(newProfile);
+        }, 2500); // 2.5s delay to read message
+
+    } catch (error: any) {
+        console.error("Signup Error:", error);
+        let msg = "Error al crear la cuenta.";
+        if (error.code === 'auth/email-already-in-use') msg = "Este email ya está registrado.";
+        if (error.code === 'auth/weak-password') msg = "La contraseña es muy débil.";
+        setAuthError(msg);
+        setIsAuthLoading(false);
     }
-
-    onComplete(profile);
   };
 
   // Password Recovery Logic
@@ -181,18 +253,8 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
       setIsResetting(true);
       setResetMessage(null);
 
-      // SAFETY CHECK: Ensure Auth is active and not a Mock
-      // 'auth.app' is a standard property of the real Firebase Auth instance.
-      // If it's missing (or if auth is flagged as mock), we fallback to simulation.
-      if (!auth || (auth as any)._isMock) {
-          console.warn("[Onboarding] Firebase Auth is offline or mocking. Simulating reset email.");
-          await new Promise(r => setTimeout(r, 1500)); // Simulate delay
-          setResetMessage({ text: '[Modo Demo] Email de recuperación simulado enviado.', type: 'SUCCESS' });
-          setIsResetting(false);
-          return;
-      }
-
       try {
+          if (!auth) throw new Error("Auth no inicializado");
           await sendPasswordResetEmail(auth, resetEmail);
           setResetMessage({ text: 'Email de recuperación enviado. Revise su bandeja de entrada.', type: 'SUCCESS' });
       } catch (error: any) {
@@ -200,7 +262,6 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
           let msg = 'Error al enviar el email.';
           if (error.code === 'auth/invalid-email') msg = 'El email no es válido.';
           if (error.code === 'auth/user-not-found') msg = 'No existe cuenta con este email.';
-          if (error.code === 'auth/invalid-api-key') msg = 'Error de configuración del sistema (API Key).';
           setResetMessage({ text: msg, type: 'ERROR' });
       } finally {
           setIsResetting(false);
@@ -253,7 +314,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
             style={{ backgroundImage: `url(${dailyImage})` }}
           ></div>
           
-          {/* LUXURY VEIL (Overlay) - Ensures text readability */}
+          {/* LUXURY VEIL (Overlay) */}
           <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"></div>
 
           {/* Watermark Logo */}
@@ -280,12 +341,20 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
                 <div className="select-none">
                     <Logo className="w-12 h-12" />
                 </div>
-                {step > 1 && (
+                {step > 1 && !verificationSent && (
                     <button onClick={handleBack} className="text-stone-500 hover:text-white transition-colors p-2">
-                        <ChevronLeft size={20} />
+                        <ArrowRight size={20} className="rotate-180" />
                     </button>
                 )}
             </div>
+
+            {/* ERROR DISPLAY */}
+            {authError && (
+                <div className="mb-6 p-3 bg-red-900/20 border border-red-500/30 rounded flex items-center gap-2 animate-fadeIn">
+                    <AlertCircle className="text-red-500 shrink-0" size={16} />
+                    <span className="text-xs text-red-300 font-bold">{authError}</span>
+                </div>
+            )}
 
             {/* STEP 1: AUTH */}
             {step === 1 && (
@@ -377,7 +446,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
 
                     <div className="text-center">
                         <button 
-                            onClick={() => setIsLoginMode(!isLoginMode)}
+                            onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(null); }}
                             className="text-[10px] uppercase tracking-widest font-bold text-stone-500 hover:text-ai-500 transition-colors"
                         >
                             {isLoginMode ? "Solicitar Acceso (Registro)" : "Ya tengo Credenciales"}
@@ -500,40 +569,63 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
                 </div>
             )}
 
-            {/* STEP 4: PERMISSIONS */}
+            {/* STEP 4: PERMISSIONS & CREATE */}
             {step === 4 && (
                 <div className="space-y-6 animate-fadeIn flex flex-col h-full">
-                    <div>
-                        <h1 className="text-2xl font-serif font-bold text-white mb-2">Protocolos</h1>
-                        <p className="text-sm text-stone-400">Active los permisos operativos.</p>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto custom-scrollbar -mr-4 pr-4 space-y-6 max-h-[350px]">
-                        <section>
-                            <h3 className="text-xs font-bold text-ai-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <Shield size={12} /> Núcleo
-                            </h3>
-                            <div className="bg-stone-950/50 border border-stone-800 rounded-lg overflow-hidden">
-                                {systemicPermissions.map(renderPermissionRow)}
+                    
+                    {verificationSent ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-scaleIn">
+                            <div className="p-6 bg-emerald-900/20 rounded-full border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                                <MailCheck size={48} className="text-emerald-500" />
                             </div>
-                        </section>
-
-                        <section>
-                            <h3 className="text-xs font-bold text-ai-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <Brain size={12} /> Inteligencia
-                            </h3>
-                            <div className="bg-stone-950/50 border border-stone-800 rounded-lg overflow-hidden">
-                                {functionalPermissions.map(renderPermissionRow)}
+                            <div>
+                                <h2 className="text-xl font-serif font-bold text-white mb-2">Cuenta creada con éxito</h2>
+                                <p className="text-sm text-stone-400 max-w-xs mx-auto leading-relaxed">
+                                    Por favor, revisa tu correo para verificar tu identidad.
+                                </p>
                             </div>
-                        </section>
-                    </div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-ai-500 uppercase tracking-widest animate-pulse">
+                                <Loader2 size={12} className="animate-spin" />
+                                Accediendo al sistema...
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div>
+                                <h1 className="text-2xl font-serif font-bold text-white mb-2">Protocolos</h1>
+                                <p className="text-sm text-stone-400">Active los permisos operativos.</p>
+                            </div>
 
-                    <button 
-                        onClick={handleFinish}
-                        className="w-full bg-white hover:bg-stone-200 text-black font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 mt-4 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-                    >
-                        <Fingerprint size={20} /> Iniciar Sistema
-                    </button>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar -mr-4 pr-4 space-y-6 max-h-[350px]">
+                                <section>
+                                    <h3 className="text-xs font-bold text-ai-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <Shield size={12} /> Núcleo
+                                    </h3>
+                                    <div className="bg-stone-950/50 border border-stone-800 rounded-lg overflow-hidden">
+                                        {systemicPermissions.map(renderPermissionRow)}
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-xs font-bold text-ai-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <Database size={12} /> Inteligencia
+                                    </h3>
+                                    <div className="bg-stone-950/50 border border-stone-800 rounded-lg overflow-hidden">
+                                        {functionalPermissions.map(renderPermissionRow)}
+                                    </div>
+                                </section>
+                            </div>
+
+                            <button 
+                                onClick={handleFinish}
+                                disabled={isAuthLoading}
+                                className="w-full bg-white hover:bg-stone-200 text-black font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 mt-4 shadow-[0_0_20px_rgba(255,255,255,0.15)] disabled:opacity-50"
+                            >
+                                {isAuthLoading ? <Loader2 className="animate-spin" size={20} /> : <Fingerprint size={20} />}
+                                {isAuthLoading ? 'Creando Ficha...' : 'Iniciar Sistema'}
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
 

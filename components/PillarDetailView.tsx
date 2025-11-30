@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { PillarId, PillarStatus, UserProfile, SubscriptionTier, FeatureMatrixItem } from '../types';
 import { PERMISSIONS_MATRIX, PILLAR_DEFINITIONS, getTierLevel } from '../constants';
@@ -52,6 +53,7 @@ const MOCK_DATA_VALUES: Record<string, { value: string; label: string; source: s
 export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfile }) => {
   const def = PILLAR_DEFINITIONS[pillarId];
   const features = PERMISSIONS_MATRIX.filter(f => f.pillarId === pillarId);
+  const safePermissions = userProfile.grantedPermissions || [];
   
   // States for Modals
   const [showUpsell, setShowUpsell] = useState<{featureName: string, requiredTier: string} | null>(null);
@@ -178,7 +180,7 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
              const hasTierAccess = tierConfig.access && status.isActive;
              const requiredTierName = Object.entries(feature.tiers).find(([_, cfg]) => cfg.access)?.[0] || 'SUPERIOR';
              const requiredPermissionId = feature.requiredPermissionId;
-             const hasTechnicalPermission = !requiredPermissionId || userProfile.grantedPermissions.includes(requiredPermissionId);
+             const hasTechnicalPermission = !requiredPermissionId || safePermissions.includes(requiredPermissionId);
              
              // Visual state logic
              const isVisible = hasTierAccess && hasTechnicalPermission;

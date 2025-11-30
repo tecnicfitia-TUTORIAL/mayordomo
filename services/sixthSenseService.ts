@@ -1,3 +1,4 @@
+
 import { UserProfile, SixthSenseOpportunity, SubscriptionTier, Mission } from '../types';
 
 /**

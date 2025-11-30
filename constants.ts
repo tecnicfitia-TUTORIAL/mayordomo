@@ -10,8 +10,6 @@ export const STRIPE_URLS = {
 };
 
 // --- UNIVERSAL CATEGORIES (New Contextual Engine) ---
-// Estas categorías guían a la IA para buscar datos equivalentes en cualquier jurisdicción.
-
 export const UNIVERSAL_CATEGORIES = {
   [PillarId.CENTINELA]: [
     { id: 'global_id', label: 'Identidad Global', keywords: ['Passport', 'Visa', 'Residency', 'DNI', 'Green Card'] },
@@ -27,8 +25,6 @@ export const UNIVERSAL_CATEGORIES = {
 };
 
 // --- VISUAL ATMOSPHERE PRESETS ---
-// Definición de los temas visuales del sistema
-
 export const VISUAL_PRESETS = [
   { 
     id: 'ONYX', 
@@ -223,7 +219,7 @@ export const TECHNICAL_PERMISSIONS: TechnicalPermission[] = [
 // --- C. MATRIZ DE PERMISOS MAESTRA (25 FEATURES x 4 TIERS) ---
 
 export const PERMISSIONS_MATRIX: FeatureMatrixItem[] = [
-  
+  // ... (Mantiene el contenido existente, solo cambios en helpers abajo) ...
   // === 1. CENTINELA (5 Features) ===
   {
     id: 'cent_expiry_alert', pillarId: PillarId.CENTINELA, name: 'Alertas Documentos', description: 'Caducidad DNI/Pasaporte.',
@@ -496,16 +492,43 @@ export const SUBSCRIPTION_PLANS = [
   }
 ];
 
-// --- HELPERS ---
+// --- HELPERS (ROBUST IMPLEMENTATION) ---
 
-export const getTierLevel = (tier: SubscriptionTier): number => {
-  switch (tier) {
-    case SubscriptionTier.FREE: return 1;
-    case SubscriptionTier.BASIC: return 2;
-    case SubscriptionTier.PRO: return 3;
-    case SubscriptionTier.VIP: return 4;
-    default: return 0;
-  }
+// 1. Defined Numeric Levels for reliable comparison
+export const TIER_LEVELS: Record<string, number> = {
+  // Enum Keys (INVITADO, ASISTENTE, etc.)
+  [SubscriptionTier.FREE]: 1,
+  [SubscriptionTier.BASIC]: 2,
+  [SubscriptionTier.PRO]: 3,
+  [SubscriptionTier.VIP]: 4,
+  
+  // Explicit DB keys matching legacy or specific formats (Fix for Critical Bug)
+  'TIER_1_INVITADO': 1,
+  'TIER_2_ASISTENTE': 2,
+  'TIER_3_MAYORDOMO': 3,
+  'TIER_4_GOBERNANTE': 4,
+
+  // Fallbacks for English keys or codes
+  'FREE': 1,
+  'BASIC': 2,
+  'PRO': 3,
+  'VIP': 4
+};
+
+// 2. Robust Tier Getter
+export const getTierLevel = (tier: string | SubscriptionTier): number => {
+  if (!tier) return 0;
+  
+  // Try direct lookup
+  if (TIER_LEVELS[tier]) return TIER_LEVELS[tier];
+
+  // Try uppercase lookup (insensible to case)
+  const normalizedKey = tier.toString().toUpperCase();
+  if (TIER_LEVELS[normalizedKey]) return TIER_LEVELS[normalizedKey];
+
+  // Default to lowest if unknown
+  console.warn(`[getTierLevel] Unknown tier: ${tier}. Defaulting to 0.`);
+  return 0;
 };
 
 export const determineArchetype = (age: number, occupation: string): UserArchetype => {

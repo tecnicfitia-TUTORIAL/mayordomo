@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { DashboardItem } from '../types';
-import { Lock, ArrowRight, Stamp, Coffee, Image as ImageIcon } from 'lucide-react';
+import { Lock, ArrowRight, Coffee, Image as ImageIcon } from 'lucide-react';
 import { SixthSenseWidget } from './SixthSenseWidget';
 
 interface Props {
