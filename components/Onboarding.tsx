@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { UserProfile, SubscriptionTier, UserArchetype, TechnicalPermission } from '../types';
 import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel, ADMIN_EMAILS } from '../constants';
