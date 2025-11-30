@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { UserProfile, PillarId, SubscriptionTier } from '../types';
 import { TECHNICAL_PERMISSIONS, PILLAR_DEFINITIONS, getTierLevel } from '../constants';
