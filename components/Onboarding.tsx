@@ -5,6 +5,7 @@ import { UserProfile, SubscriptionTier, UserArchetype, TechnicalPermission } fro
 import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel } from '../constants';
 import { ArrowRight, Check, Shield, Lock, Zap, ToggleLeft, ToggleRight, Fingerprint, CreditCard, User, Mail, Loader2, ExternalLink, Eye, EyeOff, Crown, Star, Database, AlertCircle, Send, X, MailCheck } from 'lucide-react';
 import { Logo } from './Logo';
+import { Toast } from './Toast';
 import { StripeService } from '../services/stripeService';
 import { LegalModal } from './LegalModal';
 import { PublicPricingModal, PublicGuideModal, PublicLegalModal } from './PublicModals';
@@ -49,6 +50,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState<{text: string, type: 'SUCCESS' | 'ERROR'} | null>(null);
+  const [toast, setToast] = useState<{message: string, type: 'ERROR' | 'WARNING'} | null>(null);
 
   // Legal State
   const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
@@ -235,10 +237,16 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
         }, 2500); // 2.5s delay to read message
 
     } catch (error: any) {
+        console.error("Signup Error FULL:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
         console.error("Signup Error:", error);
+
         let msg = "Error al crear la cuenta.";
         if (error.code === 'auth/email-already-in-use') msg = "Este email ya está registrado.";
         if (error.code === 'auth/weak-password') msg = "La contraseña es muy débil.";
+        
+        const detailedMsg = `${msg} [${error.code || 'Unknown'}: ${error.message}]`;
+        setToast({ message: detailedMsg, type: 'ERROR' });
+
         setAuthError(msg);
         setIsAuthLoading(false);
     }
@@ -311,6 +319,8 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   return (
     <div className="fixed inset-0 w-full h-full flex items-center justify-center p-4 font-sans bg-[#0c0a09]">
       
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {/* --- BACKGROUND LAYER (FIXED) --- */}
       <div className="fixed inset-0 z-0 w-full h-full">
           {/* Daily Abstract Image */}
