@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
 import { getAnalytics } from "firebase/analytics";
 
 // Fix: Cast import.meta to any to resolve TS error 'Property env does not exist on type ImportMeta'
@@ -14,6 +15,7 @@ const apiKey = env.VITE_FIREBASE_API_KEY;
 let app;
 let auth: any = null; // Use any to allow mock fallback
 let db: any = null;
+let functions: any = null;
 let googleProvider = new GoogleAuthProvider();
 let analytics: any = null;
 
@@ -33,6 +35,7 @@ if (!apiKey || apiKey === 'undefined' || apiKey === '') {
   // Create mock objects to prevent imports from crashing
   auth = { _isMock: true }; 
   db = { _isMock: true };
+  functions = { _isMock: true };
 
 } else {
   try {
@@ -41,6 +44,7 @@ if (!apiKey || apiKey === 'undefined' || apiKey === '') {
       
       auth = getAuth(app);
       db = getFirestore(app);
+      functions = getFunctions(app, "us-central1");
       
       console.log("[System] Firebase Environment Variables detected and initialized.");
 
@@ -59,7 +63,8 @@ if (!apiKey || apiKey === 'undefined' || apiKey === '') {
       // Fallback to mocks if initialization fails (e.g. invalid key format)
       auth = { _isMock: true };
       db = { _isMock: true };
+      functions = { _isMock: true };
   }
 }
 
-export { auth, db, googleProvider, analytics };
+export { auth, db, functions, googleProvider, analytics };

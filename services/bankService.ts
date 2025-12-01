@@ -1,12 +1,5 @@
-import axios from 'axios';
-
-const PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-project';
-const REGION = 'us-central1';
-const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-const BASE_URL = IS_LOCAL 
-    ? `http://127.0.0.1:5001/${PROJECT_ID}/${REGION}`
-    : `https://${REGION}-${PROJECT_ID}.cloudfunctions.net`;
+import { httpsCallable } from 'firebase/functions';
+import { functions } from './firebaseConfig';
 
 export interface BankTransaction {
     transaction_id: string;
@@ -28,8 +21,10 @@ export const BankService = {
      */
     createLinkToken: async (userId: string): Promise<string> => {
         try {
-            const response = await axios.post(`${BASE_URL}/createLinkToken`, { userId });
-            return response.data.link_token;
+            const createLinkTokenFn = httpsCallable(functions, 'createLinkToken');
+            const result = await createLinkTokenFn({ userId });
+            const data = result.data as any;
+            return data.link_token;
         } catch (error) {
             console.error("Error creating link token:", error);
             throw new Error("No se pudo iniciar la conexión bancaria.");
@@ -41,13 +36,14 @@ export const BankService = {
      */
     exchangePublicToken: async (publicToken: string, userId: string): Promise<void> => {
         try {
-            await axios.post(`${BASE_URL}/exchangePublicToken`, {
+            const exchangePublicTokenFn = httpsCallable(functions, 'exchangePublicToken');
+            await exchangePublicTokenFn({
                 publicToken,
                 userId
             });
         } catch (error: any) {
-            console.error("Error exchanging token FULL:", error.response?.data || error);
-            throw new Error(`Error vinculando la cuenta bancaria: ${JSON.stringify(error.response?.data || error.message)}`);
+            console.error("Error exchanging token FULL:", error);
+            throw new Error(`Error vinculando la cuenta bancaria: ${error.message}`);
         }
     },
 
@@ -56,13 +52,13 @@ export const BankService = {
      */
     getBankData: async (userId: string): Promise<BankData> => {
         try {
-            const response = await axios.get(`${BASE_URL}/getBankData`, {
-                params: { userId }
-            });
-            return response.data;
+            const getBankDataFn = httpsCallable(functions, 'getBankData');
+            const result = await getBankDataFn({ userId });
+            return result.data as BankData;
         } catch (error) {
             console.error("Error fetching bank data:", error);
             throw new Error("Error obteniendo datos bancarios.");
         }
     }
 };
+
