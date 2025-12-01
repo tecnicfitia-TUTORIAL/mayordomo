@@ -31,8 +31,9 @@ const getPlaidClient = () => {
  * 1. CREATE LINK TOKEN
  * Genera un token temporal para inicializar el widget de Plaid en el frontend.
  */
-exports.createLinkToken = onCall({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (request) => {
+exports.createLinkToken = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (request) => {
   try {
+    console.log("Entry createLinkToken", request.data);
     const { userId } = request.data;
     if (!userId) throw new HttpsError('invalid-argument', "Missing userId");
 
@@ -49,9 +50,10 @@ exports.createLinkToken = onCall({ cors: true, secrets: [plaidClientId, plaidSec
     const createTokenResponse = await plaidClient.linkTokenCreate(plaidRequest);
     return createTokenResponse.data;
   } catch (error) {
-    const errorDetail = error.response?.data || error.message;
-    console.error("Error creating link token:", errorDetail);
-    throw new HttpsError('internal', JSON.stringify(errorDetail));
+    console.error("Error creating link token:", error);
+    // Safe error handling
+    const msg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+    throw new HttpsError('internal', msg);
   }
 });
 
@@ -59,12 +61,18 @@ exports.createLinkToken = onCall({ cors: true, secrets: [plaidClientId, plaidSec
  * 2. EXCHANGE PUBLIC TOKEN
  * Intercambia el token público (frontend) por un access_token permanente y lo guarda.
  */
-exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (request) => {
+exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (request) => {
   try {
+    console.log("Entry exchangePublicToken", { 
+        userId: request.data?.userId, 
+        hasPublicToken: !!request.data?.publicToken 
+    });
+
     const { publicToken, userId } = request.data;
     
     // DEBUG: Check secrets existence (do not log values)
     if (!plaidClientId.value() || !plaidSecret.value()) {
+        console.error("Missing Secrets");
         throw new HttpsError('failed-precondition', "Missing Plaid Secrets in Environment");
     }
 
@@ -72,14 +80,17 @@ exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plai
 
     const plaidClient = getPlaidClient();
 
+    console.log("Calling Plaid itemPublicTokenExchange...");
     const response = await plaidClient.itemPublicTokenExchange({
       public_token: publicToken,
     });
+    console.log("Plaid Exchange Success. Item ID:", response.data.item_id);
 
     const accessToken = response.data.access_token;
     const itemId = response.data.item_id;
 
     // Guardar conexión en Firestore
+    console.log("Saving to Firestore...");
     await db.collection('users').doc(userId).collection('bank_connections').doc(itemId).set({
       accessToken,
       itemId,
@@ -87,12 +98,21 @@ exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plai
       provider: 'PLAID',
       status: 'ACTIVE'
     });
+    console.log("Firestore Save Success");
 
     return { success: true, itemId };
   } catch (error) {
-    const errorDetail = error.response?.data || error.message;
-    console.error("Error exchanging token:", errorDetail);
-    throw new HttpsError('internal', JSON.stringify(errorDetail));
+    console.error("Error exchanging token FULL OBJECT:", error);
+    
+    let errorMsg = "Unknown Error";
+    if (error.response && error.response.data) {
+        errorMsg = JSON.stringify(error.response.data);
+        console.error("Plaid API Error Data:", error.response.data);
+    } else if (error instanceof Error) {
+        errorMsg = error.message;
+    }
+
+    throw new HttpsError('internal', errorMsg);
   }
 });
 
@@ -100,7 +120,7 @@ exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plai
  * 3. GET BANK DATA (REFRESH BALANCE)
  * Usa los tokens guardados para obtener el saldo total y transacciones recientes.
  */
-exports.getBankData = onCall({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (request) => {
+exports.getBankData = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (request) => {
   try {
     // Aceptamos userId por body o query
     const userId = request.data.userId;
