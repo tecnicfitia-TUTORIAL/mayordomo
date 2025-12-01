@@ -1,11 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { UserProfile, SubscriptionTier, UserArchetype, TechnicalPermission } from '../types';
 import { SUBSCRIPTION_PLANS, TECHNICAL_PERMISSIONS, determineArchetype, getTierLevel } from '../constants';
 import { ArrowRight, Check, Shield, Lock, Zap, ToggleLeft, ToggleRight, Fingerprint, CreditCard, User, Mail, Loader2, ExternalLink, Eye, EyeOff, Crown, Star, Database, AlertCircle, Send, X, MailCheck } from 'lucide-react';
 import { Logo } from './Logo';
 import { StripeService } from '../services/stripeService';
 import { LegalModal } from './LegalModal';
+import { PublicPricingModal, PublicGuideModal, PublicLegalModal } from './PublicModals';
 import { sendPasswordResetEmail, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebaseConfig';
@@ -30,6 +32,8 @@ const DAILY_BACKGROUNDS = [
 ];
 
 export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1: Auth, 2: Profile, 3: Plan, 4: Permissions
   const [isLoadingPayment, setIsLoadingPayment] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
@@ -634,11 +638,23 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
       </div>
       
       {/* Footer Text */}
-      <div className="absolute bottom-4 text-center w-full z-10 opacity-30">
+      <div className="absolute bottom-4 text-center w-full z-10 opacity-30 pointer-events-none">
           <p className="text-[10px] font-mono text-stone-500 uppercase tracking-[0.2em]">Confort OS v1.0 // Secure Core</p>
       </div>
 
-      {/* Legal Modal Overlay */}
+      {/* Public Navigation Footer */}
+      <div className="absolute bottom-8 w-full z-20 flex justify-center gap-8 text-[10px] font-bold uppercase tracking-widest text-stone-500">
+          <button onClick={() => navigate('/precios')} className="hover:text-ai-500 transition-colors">Niveles de Servicio</button>
+          <button onClick={() => navigate('/ayuda')} className="hover:text-ai-500 transition-colors">Guía de Navegación</button>
+          <button onClick={() => navigate('/legal')} className="hover:text-ai-500 transition-colors">Información Legal</button>
+      </div>
+
+      {/* Public Modals (SEO Friendly Routes) */}
+      {location.pathname === '/precios' && <PublicPricingModal onClose={() => navigate('/')} />}
+      {location.pathname === '/ayuda' && <PublicGuideModal onClose={() => navigate('/')} />}
+      {location.pathname === '/legal' && <PublicLegalModal onClose={() => navigate('/')} />}
+
+      {/* Legal Modal Overlay (Internal) */}
       {legalType && <LegalModal type={legalType} onClose={() => setLegalType(null)} />}
 
       {/* Forgot Password Modal */}
