@@ -3,11 +3,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, LifeObligation, ObligationCategory, ObligationStatus } from "../types";
 
 const getAI = () => {
-  if (!process.env.API_KEY) {
+  const apiKey = import.meta.env.VITE_GOOGLE_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
     console.warn("API_KEY not found. Inference Engine will return empty results.");
     return null;
   }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  return new GoogleGenAI({ apiKey });
 };
 
 export const InferenceEngine = {
@@ -51,10 +52,10 @@ export const InferenceEngine = {
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         contents: prompt,
         config: {
-          maxOutputTokens: 1500, // Limit response size to prevent cut-off JSON
+          maxOutputTokens: 2000, // Increased limit
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.ARRAY,
