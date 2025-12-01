@@ -1,5 +1,10 @@
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallableFromURL } from 'firebase/functions';
 import { functions } from './firebaseConfig';
+
+// CLOUD RUN URL CONFIGURATION (Firebase Functions Gen 2)
+const PROJECT_HASH = 'qky5eul2mq'; // Hash from deployment logs
+const REGION = 'us-central1';
+const getFunctionUrl = (name: string) => `https://${name.toLowerCase()}-${PROJECT_HASH}-uc.a.run.app`;
 
 export interface BankTransaction {
     transaction_id: string;
@@ -21,7 +26,8 @@ export const BankService = {
      */
     createLinkToken: async (userId: string): Promise<string> => {
         try {
-            const createLinkTokenFn = httpsCallable(functions, 'createLinkToken');
+            const url = getFunctionUrl('createLinkToken');
+            const createLinkTokenFn = httpsCallableFromURL(functions, url);
             const result = await createLinkTokenFn({ userId });
             const data = result.data as any;
             return data.link_token;
@@ -36,7 +42,8 @@ export const BankService = {
      */
     exchangePublicToken: async (publicToken: string, userId: string): Promise<void> => {
         try {
-            const exchangePublicTokenFn = httpsCallable(functions, 'exchangePublicToken');
+            const url = getFunctionUrl('exchangePublicToken');
+            const exchangePublicTokenFn = httpsCallableFromURL(functions, url);
             await exchangePublicTokenFn({
                 publicToken,
                 userId
@@ -52,7 +59,8 @@ export const BankService = {
      */
     getBankData: async (userId: string): Promise<BankData> => {
         try {
-            const getBankDataFn = httpsCallable(functions, 'getBankData');
+            const url = getFunctionUrl('getBankData');
+            const getBankDataFn = httpsCallableFromURL(functions, url);
             const result = await getBankDataFn({ userId });
             return result.data as BankData;
         } catch (error) {
