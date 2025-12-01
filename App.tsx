@@ -605,6 +605,7 @@ const App: React.FC = () => {
                 </button>
               </div>
               <h2 className="text-xl font-serif text-stone-200">{profile.name}</h2>
+              <p className="text-xs text-stone-500 font-mono mt-1 truncate" title={profile.email}>{profile.email}</p>
               {isEditMode && <p className="text-[9px] text-ai-500 mt-1 uppercase tracking-wide">Modo Edición Activado</p>}
             </div>
 

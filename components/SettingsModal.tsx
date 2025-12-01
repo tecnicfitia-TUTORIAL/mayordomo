@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { UserProfile, SubscriptionTier } from '../types';
 import { SUBSCRIPTION_PLANS, STRIPE_URLS, getTierLevel } from '../constants';
-import { X, ExternalLink, Check, Shield, Zap, Star, Crown, ChevronRight } from 'lucide-react';
+import { X, ExternalLink, Check, Shield, Zap, Star, Crown, ChevronRight, User, Briefcase, MapPin, Save, Loader2 } from 'lucide-react';
 import { LegalModal } from './LegalModal';
 
 interface Props {
@@ -11,8 +11,23 @@ interface Props {
   onClose: () => void;
 }
 
-export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
-  const [legalType, setLegalType] = React.useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
+type SettingsTab = 'PLANS' | 'PROFILE';
+
+export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) => {
+  const [activeTab, setActiveTab] = useState<SettingsTab>('PLANS');
+  const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
+  
+  // PROFILE FORM STATE
+  const [formData, setFormData] = useState<Partial<UserProfile>>({
+      name: profile.name,
+      birthDate: profile.birthDate || '',
+      occupation: profile.occupation,
+      sector: profile.sector || '',
+      workModality: profile.workModality || 'ONSITE',
+      maritalStatus: profile.maritalStatus || 'SINGLE',
+      zipCode: profile.zipCode || ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
   
   const handleOpenCheckout = (tier: SubscriptionTier) => {
     const url = STRIPE_URLS[tier];
@@ -25,6 +40,19 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
 
   const handleOpenPortal = () => {
     window.open(STRIPE_URLS.PORTAL, '_blank');
+  };
+
+  const handleSaveProfile = async () => {
+      if (!onUpdate) return;
+      setIsSaving(true);
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      const updatedProfile = { ...profile, ...formData };
+      onUpdate(updatedProfile);
+      setIsSaving(false);
+      alert("Perfil actualizado correctamente");
   };
 
   const getTierIcon = (tierId: string) => {
@@ -46,17 +74,36 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
         {/* Header */}
         <div className="p-6 border-b border-stone-800 flex justify-between items-center bg-stone-950">
           <div>
-            <h2 className="text-2xl font-serif font-bold text-white mb-1">Niveles de Autonomía</h2>
-            <p className="text-xs text-stone-500 uppercase tracking-widest">Escala tu sistema de gestión 65/35</p>
+            <h2 className="text-2xl font-serif font-bold text-white mb-1">Configuración</h2>
+            <p className="text-xs text-stone-500 uppercase tracking-widest">Gestión de cuenta y suscripción</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-stone-800 rounded-full transition-colors group">
               <X className="text-stone-500 group-hover:text-white" />
           </button>
         </div>
 
-        {/* Comparison Grid */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        {/* Tabs */}
+        <div className="flex border-b border-stone-800 bg-stone-900/50 px-6">
+            <button 
+                onClick={() => setActiveTab('PLANS')}
+                className={`px-4 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors ${activeTab === 'PLANS' ? 'border-ai-500 text-white' : 'border-transparent text-stone-500 hover:text-stone-300'}`}
+            >
+                Niveles de Autonomía
+            </button>
+            <button 
+                onClick={() => setActiveTab('PROFILE')}
+                className={`px-4 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors ${activeTab === 'PROFILE' ? 'border-ai-500 text-white' : 'border-transparent text-stone-500 hover:text-stone-300'}`}
+            >
+                Mi Perfil
+            </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8 bg-stone-950/30">
+            
+            {/* TAB: PLANS */}
+            {activeTab === 'PLANS' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 {SUBSCRIPTION_PLANS.map((plan) => {
                     const planLevel = getTierLevel(plan.id as SubscriptionTier);
                     const isCurrent = profile.subscriptionTier === plan.id;
@@ -135,7 +182,150 @@ export const SettingsModal: React.FC<Props> = ({ profile, onClose }) => {
                         </div>
                     );
                 })}
-            </div>
+                </div>
+            )}
+
+            {/* TAB: PROFILE */}
+            {activeTab === 'PROFILE' && (
+                <div className="max-w-3xl mx-auto space-y-8 animate-fadeIn">
+                    
+                    {/* Section 1: Personal */}
+                    <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6">
+                        <div className="flex items-center gap-3 mb-6 border-b border-stone-800 pb-4">
+                            <div className="p-2 bg-stone-800 rounded-lg text-stone-400">
+                                <User size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-serif font-bold text-white">Datos Personales</h3>
+                                <p className="text-xs text-stone-500">Información básica para su identificación</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Nombre Completo</label>
+                                <input 
+                                    type="text" 
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                    className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200 focus:border-ai-500 focus:ring-1 focus:ring-ai-500 outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Fecha de Nacimiento</label>
+                                <input 
+                                    type="date" 
+                                    value={formData.birthDate}
+                                    onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
+                                    className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200 focus:border-ai-500 outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 2: Professional */}
+                    <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6">
+                        <div className="flex items-center gap-3 mb-6 border-b border-stone-800 pb-4">
+                            <div className="p-2 bg-stone-800 rounded-lg text-stone-400">
+                                <Briefcase size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-serif font-bold text-white">Perfil Profesional</h3>
+                                <p className="text-xs text-stone-500">Contexto laboral para optimizar su agenda</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Ocupación / Cargo</label>
+                                <input 
+                                    type="text" 
+                                    value={formData.occupation}
+                                    onChange={(e) => setFormData({...formData, occupation: e.target.value})}
+                                    className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200 focus:border-ai-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Sector</label>
+                                <input 
+                                    type="text" 
+                                    value={formData.sector}
+                                    onChange={(e) => setFormData({...formData, sector: e.target.value})}
+                                    placeholder="Ej: Tecnología, Finanzas..."
+                                    className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200 focus:border-ai-500 outline-none"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Modalidad de Trabajo</label>
+                                <div className="grid grid-cols-3 gap-4">
+                                    {['REMOTE', 'HYBRID', 'ONSITE'].map((mode) => (
+                                        <button
+                                            key={mode}
+                                            onClick={() => setFormData({...formData, workModality: mode as any})}
+                                            className={`p-3 rounded-lg border text-xs font-bold uppercase tracking-wider transition-all ${
+                                                formData.workModality === mode 
+                                                    ? 'bg-ai-900/20 border-ai-500 text-ai-500' 
+                                                    : 'bg-stone-950 border-stone-800 text-stone-500 hover:border-stone-700'
+                                            }`}
+                                        >
+                                            {mode === 'REMOTE' ? 'Remoto' : mode === 'HYBRID' ? 'Híbrido' : 'Presencial'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 3: Context */}
+                    <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6">
+                        <div className="flex items-center gap-3 mb-6 border-b border-stone-800 pb-4">
+                            <div className="p-2 bg-stone-800 rounded-lg text-stone-400">
+                                <MapPin size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-serif font-bold text-white">Contexto Vital</h3>
+                                <p className="text-xs text-stone-500">Ubicación y estado para trámites locales</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Estado Civil</label>
+                                <select 
+                                    value={formData.maritalStatus}
+                                    onChange={(e) => setFormData({...formData, maritalStatus: e.target.value as any})}
+                                    className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200 focus:border-ai-500 outline-none"
+                                >
+                                    <option value="SINGLE">Soltero/a</option>
+                                    <option value="PARTNER">Pareja de Hecho</option>
+                                    <option value="MARRIED">Casado/a</option>
+                                    <option value="DIVORCED">Divorciado/a</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Código Postal</label>
+                                <input 
+                                    type="text" 
+                                    value={formData.zipCode}
+                                    onChange={(e) => setFormData({...formData, zipCode: e.target.value})}
+                                    className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200 focus:border-ai-500 outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Save Button */}
+                    <div className="flex justify-end pt-4">
+                        <button 
+                            onClick={handleSaveProfile}
+                            disabled={isSaving}
+                            className="bg-ai-600 hover:bg-ai-500 text-black font-bold py-3 px-8 rounded-lg flex items-center gap-2 uppercase tracking-widest shadow-lg shadow-ai-500/20 transition-all active:scale-[0.98]"
+                        >
+                            {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                        </button>
+                    </div>
+
+                </div>
+            )}
+
         </div>
 
         {/* Footer Bar (Billing Portal) */}

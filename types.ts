@@ -287,8 +287,18 @@ export interface UserProfile {
   name: string;
   role?: 'ADMIN' | 'USER'; // NEW: RBAC Role
   age: number;
+  birthDate?: string; // ISO Date YYYY-MM-DD
   gender: string;
+  
+  // Professional
   occupation: string;
+  sector?: string;
+  workModality?: 'REMOTE' | 'HYBRID' | 'ONSITE';
+
+  // Context
+  maritalStatus?: 'SINGLE' | 'PARTNER' | 'MARRIED' | 'DIVORCED';
+  zipCode?: string;
+
   archetype: UserArchetype;
   subscriptionTier: SubscriptionTier;
   grantedPermissions: string[];
