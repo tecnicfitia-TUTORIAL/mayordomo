@@ -4,7 +4,7 @@ import { AlertTriangle, XCircle, Info } from 'lucide-react';
 
 interface ToastProps {
   message: string;
-  type: 'ERROR' | 'WARNING';
+  type: 'ERROR' | 'WARNING' | 'INFO';
   onClose: () => void;
 }
 
@@ -27,23 +27,43 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
     };
   }, [onClose]);
 
+  const getStyles = () => {
+    switch (type) {
+      case 'ERROR': return 'bg-red-950/90 border-red-500/50 text-red-200';
+      case 'WARNING': return 'bg-amber-950/90 border-amber-500/50 text-amber-200';
+      case 'INFO': return 'bg-sky-950/90 border-sky-500/50 text-sky-200';
+    }
+  };
+
+  const getIcon = () => {
+    switch (type) {
+      case 'ERROR': return <XCircle size={18} />;
+      case 'WARNING': return <AlertTriangle size={18} />;
+      case 'INFO': return <Info size={18} />;
+    }
+  };
+
+  const getTitle = () => {
+    switch (type) {
+      case 'ERROR': return 'Error de Sistema';
+      case 'WARNING': return 'Alerta de Núcleo';
+      case 'INFO': return 'Información';
+    }
+  };
+
   return (
     <div 
       className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-5 py-3 rounded-sm shadow-2xl border backdrop-blur-md transition-all duration-300 ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
-      } ${
-        type === 'ERROR' 
-          ? 'bg-red-950/90 border-red-500/50 text-red-200' 
-          : 'bg-amber-950/90 border-amber-500/50 text-amber-200'
-      }`}
+      } ${getStyles()}`}
     >
-      <div className={`p-1 rounded-full ${type === 'ERROR' ? 'bg-red-500/20' : 'bg-amber-500/20'}`}>
-        {type === 'ERROR' ? <XCircle size={18} /> : <AlertTriangle size={18} />}
+      <div className={`p-1 rounded-full ${type === 'ERROR' ? 'bg-red-500/20' : type === 'WARNING' ? 'bg-amber-500/20' : 'bg-sky-500/20'}`}>
+        {getIcon()}
       </div>
       
       <div>
         <h4 className="text-xs font-bold uppercase tracking-widest font-serif">
-            {type === 'ERROR' ? 'Error de Sistema' : 'Alerta de Núcleo'}
+            {getTitle()}
         </h4>
         <p className="text-sm font-serif italic leading-tight mt-0.5">{message}</p>
       </div>
