@@ -45,9 +45,9 @@ export const BankService = {
                 publicToken,
                 userId
             });
-        } catch (error) {
-            console.error("Error exchanging token:", error);
-            throw new Error("Error vinculando la cuenta bancaria.");
+        } catch (error: any) {
+            console.error("Error exchanging token FULL:", error.response?.data || error);
+            throw new Error(`Error vinculando la cuenta bancaria: ${JSON.stringify(error.response?.data || error.message)}`);
         }
     },
 
