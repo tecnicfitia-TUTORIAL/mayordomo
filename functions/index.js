@@ -4,9 +4,17 @@ const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require('firebase-admin');
 const stripe = require('stripe');
+const bankService = require('./bankService');
+const emailService = require('./emailService');
 
 admin.initializeApp();
 const db = admin.firestore();
+
+// Export Bank & Email Services
+exports.createBankLink = bankService.createBankLink;
+exports.getBankData = bankService.getBankData;
+exports.getGmailAuthUrl = emailService.getGmailAuthUrl;
+exports.scanGmail = emailService.scanGmail;
 
 // Secret Keys (Secure Environment)
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");

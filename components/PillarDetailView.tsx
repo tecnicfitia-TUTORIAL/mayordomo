@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PillarId, PillarStatus, UserProfile, SubscriptionTier, FeatureMatrixItem } from '../types';
 import { PERMISSIONS_MATRIX, PILLAR_DEFINITIONS, getTierLevel, getNormalizedTierKey } from '../constants';
-import { Shield, Home, Coffee, Activity, Users, Lock, CheckCircle2, AlertTriangle, Database, Zap, EyeOff, Settings, Crown, ExternalLink, X } from 'lucide-react';
+import { Shield, Home, Coffee, Activity, Users, Lock, CheckCircle2, AlertTriangle, Database, Zap, EyeOff, Settings, Crown, ExternalLink, X, Loader2 } from 'lucide-react';
 import { UniversalDetailModal } from './UniversalDetailModal';
+import { BankService } from '../services/bankService';
+import { EmailService } from '../services/emailService';
 
 interface Props {
   pillarId: PillarId;
@@ -58,6 +60,91 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
   // States for Modals
   const [showUpsell, setShowUpsell] = useState<{featureName: string, requiredTier: string} | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<FeatureMatrixItem | null>(null);
+  
+  // REAL DATA STATES
+  const [realData, setRealData] = useState<Record<string, any>>({});
+  const [isLoadingBank, setIsLoadingBank] = useState(false);
+  const [isLoadingEmail, setIsLoadingEmail] = useState(false);
+
+  // --- EFFECT: CHECK FOR BANK OR GMAIL CONNECTION ---
+  useEffect(() => {
+      const checkConnections = async () => {
+          const urlParams = new URLSearchParams(window.location.search);
+          
+          // 1. BANK CONNECTION
+          const isBankConnected = urlParams.get('bank_connected');
+          const storedReqId = localStorage.getItem('gocardless_req_id');
+
+          if (isBankConnected && storedReqId) {
+              setIsLoadingBank(true);
+              try {
+                  const data = await BankService.getBankData(storedReqId);
+                  setRealData(prev => ({
+                      ...prev,
+                      'pat_expenses': { 
+                          value: `${data.balance.toFixed(2)} ${data.currency}`, 
+                          label: 'Saldo Real', 
+                          source: 'GOCARDLESS' 
+                      }
+                  }));
+              } catch (e) {
+                  console.error("Failed to load bank data", e);
+              } finally {
+                  setIsLoadingBank(false);
+              }
+          }
+
+          // 2. GMAIL CONNECTION
+          const gmailCode = urlParams.get('code');
+          if (gmailCode) {
+              setIsLoadingEmail(true);
+              try {
+                  const invoices = await EmailService.scanInvoices(gmailCode);
+                  setRealData(prev => ({
+                      ...prev,
+                      'pat_subscriptions': { 
+                          value: `${invoices.length} Recibos`, 
+                          label: 'Últimos 30 días', 
+                          source: 'GMAIL API' 
+                      }
+                  }));
+              } catch (e) {
+                  console.error("Failed to scan gmail", e);
+              } finally {
+                  setIsLoadingEmail(false);
+              }
+          }
+
+          // Clean URL if we processed something
+          if (isBankConnected || gmailCode) {
+              window.history.replaceState({}, document.title, window.location.pathname);
+          }
+      };
+      checkConnections();
+  }, []);
+
+  const handleConnectBank = async () => {
+      setIsLoadingBank(true);
+      try {
+          const { link, requisitionId } = await BankService.connectBank();
+          localStorage.setItem('gocardless_req_id', requisitionId);
+          window.location.href = link;
+      } catch (e) {
+          alert("Error conectando con el banco. Intente más tarde.");
+          setIsLoadingBank(false);
+      }
+  };
+
+  const handleConnectGmail = async () => {
+      setIsLoadingEmail(true);
+      try {
+          const url = await EmailService.getAuthUrl();
+          window.location.href = url;
+      } catch (e) {
+          alert("Error conectando con Gmail.");
+          setIsLoadingEmail(false);
+      }
+  };
 
   const getPillarIcon = () => {
     switch(pillarId) {
@@ -194,12 +281,22 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
              
              // Visual state logic
              const isVisible = hasTierAccess && hasTechnicalPermission;
-             const mockData = MOCK_DATA_VALUES[feature.id] || { value: '---', label: feature.name, source: 'SYSTEM' };
+             
+             // DATA RESOLUTION: Real Data > Mock Data
+             const data = realData[feature.id] || MOCK_DATA_VALUES[feature.id] || { value: '---', label: feature.name, source: 'SYSTEM' };
+
+             // SPECIAL RENDER: Connect Buttons
+             const showBankConnect = feature.id === 'pat_expenses' && !realData['pat_expenses'] && isVisible;
+             const showEmailConnect = feature.id === 'pat_subscriptions' && !realData['pat_subscriptions'] && isVisible;
 
              return (
                  <div 
                     key={feature.id} 
-                    onClick={() => handleCardClick(feature, hasTierAccess, hasTechnicalPermission, requiredTierName)}
+                    onClick={() => {
+                        if (showBankConnect) return; // Don't open modal if connecting
+                        if (showEmailConnect) return;
+                        handleCardClick(feature, hasTierAccess, hasTechnicalPermission, requiredTierName);
+                    }}
                     className={`relative rounded-sm border transition-all duration-300 group overflow-hidden cursor-pointer ${
                         isVisible
                             ? 'bg-stone-900/40 border-ai-500/20 hover:border-ai-500/50 hover:bg-stone-900/60 active:scale-[0.98]' 
@@ -235,6 +332,37 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
                         </div>
                     )}
 
+                    {/* STATE 3: CONNECT ACTIONS (Bank/Email) */}
+                    {showBankConnect && (
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-stone-900/80 p-4">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); handleConnectBank(); }}
+                                disabled={isLoadingBank}
+                                className="flex flex-col items-center gap-2 group/btn"
+                            >
+                                {isLoadingBank ? <Loader2 className="animate-spin text-ai-500" /> : <ExternalLink className="text-ai-500 group-hover/btn:scale-110 transition-transform" />}
+                                <span className="text-xs font-bold text-ai-500 uppercase tracking-widest border-b border-transparent group-hover/btn:border-ai-500 transition-all">
+                                    {isLoadingBank ? 'Conectando...' : 'Conectar Banco'}
+                                </span>
+                            </button>
+                        </div>
+                    )}
+
+                    {showEmailConnect && (
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-stone-900/80 p-4">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); handleConnectGmail(); }}
+                                disabled={isLoadingEmail}
+                                className="flex flex-col items-center gap-2 group/btn"
+                            >
+                                {isLoadingEmail ? <Loader2 className="animate-spin text-ai-500" /> : <ExternalLink className="text-ai-500 group-hover/btn:scale-110 transition-transform" />}
+                                <span className="text-xs font-bold text-ai-500 uppercase tracking-widest border-b border-transparent group-hover/btn:border-ai-500 transition-all">
+                                    {isLoadingEmail ? 'Escaneando...' : 'Conectar Gmail'}
+                                </span>
+                            </button>
+                        </div>
+                    )}
+
                     {/* CONTENT */}
                     <div className={`p-5 h-full flex flex-col justify-between ${!isVisible ? 'opacity-10 blur-[3px]' : ''}`}>
                         <div className="flex justify-between items-start">
@@ -243,18 +371,18 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
                              </div>
                              <div className="flex items-center gap-1 text-[9px] font-mono text-stone-600 border border-stone-800 px-1.5 py-0.5 rounded-sm uppercase">
                                  <Database size={8} />
-                                 {mockData.source}
+                                 {data.source}
                              </div>
                         </div>
                         <div>
                             <div className="text-2xl font-serif font-bold text-stone-200 group-hover:text-white transition-colors truncate">
-                                {mockData.value}
+                                {data.value}
                             </div>
                             <div className="text-xs text-stone-500 font-bold uppercase tracking-wider mt-1 truncate">
-                                {mockData.label}
+                                {data.label}
                             </div>
                         </div>
-                        {isVisible && (
+                        {isVisible && !showBankConnect && !showEmailConnect && (
                             <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <ExternalLink size={12} className="text-ai-500" />
                             </div>
