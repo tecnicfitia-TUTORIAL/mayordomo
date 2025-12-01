@@ -49,8 +49,9 @@ exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaid
     const createTokenResponse = await plaidClient.linkTokenCreate(request);
     res.json(createTokenResponse.data);
   } catch (error) {
-    console.error("Error creating link token:", error.response?.data || error.message);
-    res.status(500).json({ error: error.message });
+    const errorDetail = error.response?.data || error.message;
+    console.error("Error creating link token:", errorDetail);
+    res.status(500).json({ error: errorDetail, stage: 'createLinkToken' });
   }
 });
 
@@ -61,6 +62,12 @@ exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaid
 exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (req, res) => {
   try {
     const { publicToken, userId } = req.body;
+    
+    // DEBUG: Check secrets existence (do not log values)
+    if (!plaidClientId.value() || !plaidSecret.value()) {
+        throw new Error("Missing Plaid Secrets in Environment");
+    }
+
     if (!publicToken || !userId) return res.status(400).json({ error: "Missing publicToken or userId" });
 
     const plaidClient = getPlaidClient();
@@ -83,8 +90,9 @@ exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, p
 
     res.json({ success: true, itemId });
   } catch (error) {
-    console.error("Error exchanging token:", error.response?.data || error.message);
-    res.status(500).json({ error: error.message });
+    const errorDetail = error.response?.data || error.message;
+    console.error("Error exchanging token:", errorDetail);
+    res.status(500).json({ error: errorDetail, stage: 'exchangePublicToken' });
   }
 });
 

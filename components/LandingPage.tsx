@@ -135,7 +135,7 @@ export const LandingPage: React.FC = () => {
                           <div className="text-2xl font-serif text-ai-500 mt-2">{plan.price}</div>
                       </div>
                       <ul className="space-y-3 mb-8 flex-1">
-                          {plan.features.slice(0, 4).map((feature, i) => (
+                          {plan.capabilities && plan.capabilities.slice(0, 4).map((feature, i) => (
                               <li key={i} className="flex items-start gap-2 text-xs text-stone-400">
                                   <Check size={14} className="text-ai-500 shrink-0 mt-0.5" />
                                   <span>{feature}</span>
