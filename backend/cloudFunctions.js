@@ -38,8 +38,8 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     // Verify signature to ensure request comes from Stripe
     event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
   } catch (err) {
-    console.error(`Webhook Error: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+  console.error(`Webhook Error: ${err.message}`); // Esto se queda en el servidor (Seguro)
+  return res.status(400).send('Webhook Error: Invalid Payload'); // Mensaje genérico al cliente (Seguro)
   }
 
   // Handle the event
