@@ -7,7 +7,10 @@ const stripe = require('stripe');
 const bankService = require('./bankService');
 const emailService = require('./emailService');
 
-admin.initializeApp();
+// Inicializar solo si no hay ninguna app ya corriendo
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 const db = admin.firestore();
 
 // Export Bank & Email Services
