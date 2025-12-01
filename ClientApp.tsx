@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserProfile, PillarId, CapabilityStatus, SubscriptionTier, PillarStatus, LifeStageConfig, PermissionItem, UserArchetype, Mission, DashboardConfig } from './types';
 import { PILLAR_DEFINITIONS, TECHNICAL_PERMISSIONS, getTierLevel, ADMIN_EMAILS, VISUAL_PRESETS } from './constants';
 import { Onboarding } from './components/Onboarding';
@@ -55,6 +56,7 @@ const TABS = [
 ];
 
 const ClientApp: React.FC = () => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showAppearanceModal, setShowAppearanceModal] = useState(false);
@@ -291,6 +293,7 @@ const ClientApp: React.FC = () => {
     setActiveMission(null);
     setShowPermissionsTree(false);
     setShowSupportDashboard(false);
+    navigate('/'); // Redirect to Landing Page
   };
 
   const handleManualRefresh = async () => {
