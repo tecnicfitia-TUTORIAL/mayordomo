@@ -8,11 +8,11 @@ Un sistema operativo personal ("Mayordomo Digital") que gestiona el 65% de la ca
 ### Frontend (Actual)
 *   **Core:** React 18 + TypeScript + Vite.
 *   **Estilo:** Tailwind CSS (Tema: Lujo Clásico / Oro & Carbón).
-*   **Estado:** LocalStorage (Persistencia local actual) -> Migrando a Firebase/Supabase.
+*   **Estado:** LocalStorage (Persistencia local actual) -> Migrando a Firebase.
 *   **IA:** Google Gemini 2.5 Flash (vía SDK `@google/genai`).
 
 ### Backend (Objetivo)
-*   **Plataforma:** Firebase (Google Cloud) o Supabase.
+*   **Plataforma:** Firebase (Google Cloud).
 *   **Base de Datos:** Firestore (NoSQL) o PostgreSQL.
 *   **Auth:** Firebase Auth (Google, Apple, Email).
 *   **Pagos:** Stripe (Suscripciones: Basic, Premium, Elite).

@@ -11,7 +11,7 @@ interface Expense {
 }
 
 export const ExpensesPanel: React.FC = () => {
-  // In a real app, this would come from Firestore/Supabase
+  // In a real app, this would come from Firestore
   const [expenses, setExpenses] = useState<Expense[]>([
     { id: '1', amount: 45.50, category: 'Comida', description: 'Cena de trabajo', date: new Date().toISOString().split('T')[0] },
     { id: '2', amount: 120.00, category: 'Transporte', description: 'Abono mensual', date: '2025-11-20' },

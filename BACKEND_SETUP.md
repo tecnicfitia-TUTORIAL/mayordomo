@@ -8,15 +8,15 @@ Esta guía detalla los pasos para transformar el prototipo actual (Frontend Reac
 
 *   **Frontend:** React + Vite + Tailwind (Código Actual)
 *   **Móvil:** Capacitor (Wrapper Nativo)
-*   **Backend/DB:** Supabase (PostgreSQL + Auth)
+*   **Backend/DB:** firebase (PostgreSQL + Auth)
 *   **Pagos:** Stripe
 *   **IA:** Google Gemini (vía Edge Functions para ocultar API Key)
 
 ---
 
-## 2. Configuración de Base de Datos (Supabase)
+## 2. Configuración de Base de Datos (firebase)
 
-1.  Crea un proyecto en [supabase.com](https://supabase.com).
+1.  Crea un proyecto en [firebase.com](https://firebase.com).
 2.  Ve al **SQL Editor** y ejecuta este script para crear la estructura:
 
 ```sql
@@ -113,10 +113,10 @@ Para crear la aplicación instalable en móviles:
 No proceses pagos en el frontend. Usa Stripe Checkout.
 
 1.  Crea un producto en Stripe para cada Plan (Basic, Premium, Elite).
-2.  Crea una **Edge Function** en Supabase llamada `create-checkout-session`:
+2.  Crea una **Edge Function** en firebase llamada `create-checkout-session`:
 
 ```javascript
-// Ejemplo conceptual para Supabase Edge Function
+// Ejemplo conceptual para firebase Edge Function
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import Stripe from "https://esm.sh/stripe?target=deno"
 
@@ -147,11 +147,11 @@ serve(async (req) => {
 
 Actualmente, la `API_KEY` se inyecta en el navegador. Para producción:
 
-1.  Mueve la lógica de `geminiService.ts` a una Supabase Edge Function llamada `chat-completion`.
+1.  Mueve la lógica de `geminiService.ts` a una firebase Edge Function llamada `chat-completion`.
 2.  En el Frontend, cambia la llamada directa a Google por:
     ```javascript
-    const response = await supabase.functions.invoke('chat-completion', {
+    const response = await firebase.functions.invoke('chat-completion', {
       body: { message, history, context }
     })
     ```
-3.  Guarda la `API_KEY` en los "Secretos" de Supabase, nunca en el código.
+3.  Guarda la `API_KEY` en los "Secretos" de firebase, nunca en el código.
