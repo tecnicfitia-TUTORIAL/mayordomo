@@ -182,7 +182,13 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
              // Logic: Use Normalized Tier for Matrix Lookup
              const tierConfig = feature.tiers[normalizedUserTier];
              const hasTierAccess = tierConfig.access && status.isActive;
-             const requiredTierName = Object.entries(feature.tiers).find(([_, cfg]) => cfg.access)?.[0] || 'SUPERIOR';
+             
+             // FIX: Calculate the minimum required tier correctly based on business logic
+             let requiredTierName = 'SUPERIOR';
+             if (feature.tiers[SubscriptionTier.BASIC].access) requiredTierName = 'ASISTENTE';
+             else if (feature.tiers[SubscriptionTier.PRO].access) requiredTierName = 'MAYORDOMO';
+             else if (feature.tiers[SubscriptionTier.VIP].access) requiredTierName = 'GOBERNANTE';
+
              const requiredPermissionId = feature.requiredPermissionId;
              const hasTechnicalPermission = !requiredPermissionId || safePermissions.includes(requiredPermissionId);
              
