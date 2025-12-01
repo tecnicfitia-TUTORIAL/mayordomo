@@ -1,5 +1,6 @@
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 const { onRequest } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const admin = require('firebase-admin');
 
 // Inicializar Firestore si no está inicializado
@@ -8,31 +9,34 @@ if (admin.apps.length === 0) {
 }
 const db = admin.firestore();
 
-// CREDENCIALES (Sandbox por defecto)
-const PLAID_CLIENT_ID = process.env.PLAID_CLIENT_ID || "692d8d0659bcdb001e85887f";
-const PLAID_SECRET = process.env.PLAID_SECRET || "bf07836a8650fd4a59167c5bbaffd3";
-const PLAID_ENV = process.env.PLAID_ENV || 'sandbox';
+// SECRETS
+const plaidClientId = defineSecret('PLAID_CLIENT_ID');
+const plaidSecret = defineSecret('PLAID_SECRET');
 
-const configuration = new Configuration({
-  basePath: PlaidEnvironments[PLAID_ENV],
-  baseOptions: {
-    headers: {
-      'PLAID-CLIENT-ID': PLAID_CLIENT_ID,
-      'PLAID-SECRET': PLAID_SECRET,
+// Helper para inicializar cliente con secretos
+const getPlaidClient = () => {
+  const configuration = new Configuration({
+    basePath: PlaidEnvironments.sandbox, // Forzamos Sandbox para desarrollo
+    baseOptions: {
+      headers: {
+        'PLAID-CLIENT-ID': plaidClientId.value(),
+        'PLAID-SECRET': plaidSecret.value(),
+      },
     },
-  },
-});
-
-const plaidClient = new PlaidApi(configuration);
+  });
+  return new PlaidApi(configuration);
+};
 
 /**
  * 1. CREATE LINK TOKEN
  * Genera un token temporal para inicializar el widget de Plaid en el frontend.
  */
-exports.createLinkToken = onRequest({ cors: true }, async (req, res) => {
+exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (req, res) => {
   try {
     const { userId } = req.body;
     if (!userId) return res.status(400).json({ error: "Missing userId" });
+
+    const plaidClient = getPlaidClient();
 
     const request = {
       user: { client_user_id: userId },
@@ -54,10 +58,12 @@ exports.createLinkToken = onRequest({ cors: true }, async (req, res) => {
  * 2. EXCHANGE PUBLIC TOKEN
  * Intercambia el token público (frontend) por un access_token permanente y lo guarda.
  */
-exports.exchangePublicToken = onRequest({ cors: true }, async (req, res) => {
+exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (req, res) => {
   try {
     const { publicToken, userId } = req.body;
     if (!publicToken || !userId) return res.status(400).json({ error: "Missing publicToken or userId" });
+
+    const plaidClient = getPlaidClient();
 
     const response = await plaidClient.itemPublicTokenExchange({
       public_token: publicToken,
@@ -86,12 +92,14 @@ exports.exchangePublicToken = onRequest({ cors: true }, async (req, res) => {
  * 3. GET BANK DATA (REFRESH BALANCE)
  * Usa los tokens guardados para obtener el saldo total y transacciones recientes.
  */
-exports.getBankData = onRequest({ cors: true }, async (req, res) => {
+exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (req, res) => {
   try {
     // Aceptamos userId por body o query
     const userId = req.body.userId || req.query.userId;
     
     if (!userId) return res.status(400).json({ error: "Missing userId" });
+
+    const plaidClient = getPlaidClient();
 
     // Obtener conexiones del usuario
     const snapshot = await db.collection('users').doc(userId).collection('bank_connections').get();
@@ -119,22 +127,6 @@ exports.getBankData = onRequest({ cors: true }, async (req, res) => {
                 totalBalance += acc.balances.current;
             }
         });
-
-        // Obtener transacciones (últimos 30 días) - Simplificado
-        // En producción usar transactionsSync para eficiencia
-        /*
-        const now = new Date();
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(now.getDate() - 30);
-        
-        const transactionsResponse = await plaidClient.transactionsGet({
-            access_token: accessToken,
-            start_date: thirtyDaysAgo.toISOString().split('T')[0],
-            end_date: now.toISOString().split('T')[0],
-            options: { count: 5 }
-        });
-        allTransactions.push(...transactionsResponse.data.transactions);
-        */
        
       } catch (err) {
         console.error(`Error fetching data for connection ${doc.id}:`, err.message);
