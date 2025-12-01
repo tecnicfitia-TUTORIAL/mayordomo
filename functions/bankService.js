@@ -31,7 +31,7 @@ const getPlaidClient = () => {
  * 1. CREATE LINK TOKEN
  * Genera un token temporal para inicializar el widget de Plaid en el frontend.
  */
-exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (req, res) => {
+exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (req, res) => {
   try {
     const { userId } = req.body;
     if (!userId) return res.status(400).json({ error: "Missing userId" });
@@ -59,7 +59,7 @@ exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaid
  * 2. EXCHANGE PUBLIC TOKEN
  * Intercambia el token público (frontend) por un access_token permanente y lo guarda.
  */
-exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (req, res) => {
+exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (req, res) => {
   try {
     const { publicToken, userId } = req.body;
     
@@ -100,7 +100,7 @@ exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, p
  * 3. GET BANK DATA (REFRESH BALANCE)
  * Usa los tokens guardados para obtener el saldo total y transacciones recientes.
  */
-exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret] }, async (req, res) => {
+exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (req, res) => {
   try {
     // Aceptamos userId por body o query
     const userId = req.body.userId || req.query.userId;
