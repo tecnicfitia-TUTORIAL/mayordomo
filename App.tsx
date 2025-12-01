@@ -25,7 +25,7 @@ import { BackgroundService } from './services/backgroundService';
 import { NotificationService, AppNotification } from './services/notificationService';
 import { EmailIngestionService, IncomingEmail } from './services/emailIngestionService';
 import { StripeService } from './services/stripeService';
-import { Settings, LogOut, MessageSquare, X, Eye, Shield, CreditCard, ChevronRight, Edit3, Check, MoveUp, MoveDown, EyeOff, CloudOff, LifeBuoy, Undo2, HelpCircle, Palette, RefreshCw, FileText } from 'lucide-react';
+import { Settings, LogOut, MessageSquare, X, Eye, Shield, CreditCard, ChevronRight, Edit3, Check, MoveUp, MoveDown, EyeOff, CloudOff, LifeBuoy, Undo2, HelpCircle, Palette, RefreshCw, FileText, LayoutDashboard, ShieldCheck, Home, Plane, Heart, Users } from 'lucide-react';
 
 const PROFILE_KEY = 'mayordomo_profile';
 
@@ -44,6 +44,15 @@ const SYSTEM_ADMIN_PROFILE: UserProfile = {
 };
 
 const DEFAULT_PILLAR_ORDER = Object.values(PillarId);
+
+const TABS = [
+  { id: 'RESUMEN', label: 'Resumen', icon: LayoutDashboard },
+  { id: PillarId.CENTINELA, label: 'Centinela', icon: ShieldCheck },
+  { id: PillarId.PATRIMONIO, label: 'Hogar', icon: Home },
+  { id: PillarId.CONCIERGE, label: 'Concierge', icon: Plane },
+  { id: PillarId.VITAL, label: 'Coach', icon: Heart },
+  { id: PillarId.NUCLEO, label: 'Familia', icon: Users }
+];
 
 const App: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -66,7 +75,7 @@ const App: React.FC = () => {
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
 
-  const [selectedPillarId, setSelectedPillarId] = useState<PillarId | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('RESUMEN');
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
   
   const [isSimulating, setIsSimulating] = useState(false);
@@ -278,7 +287,7 @@ const App: React.FC = () => {
     setIsSimulating(false);
     setOriginalAdminProfile(null);
     setShowChat(false);
-    setSelectedPillarId(null);
+    setActiveTab('RESUMEN');
     setActiveMission(null);
     setShowPermissionsTree(false);
     setShowSupportDashboard(false);
@@ -600,43 +609,10 @@ const App: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-              {pillars.map((pillar, index) => {
-                const isSelected = selectedPillarId === pillar.id;
-                const isHidden = profile.dashboardConfig?.hiddenPillars.includes(pillar.id);
-                if (!isEditMode && isHidden) return null;
-                
-                return (
-                  <div 
-                    key={pillar.id}
-                    onClick={() => !isEditMode && setSelectedPillarId(pillar.id)}
-                    draggable={isEditMode}
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragEnter={(e) => handleDragEnter(e, index)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={(e) => e.preventDefault()}
-                    className={`cursor-pointer transition-all duration-300 transform ${isSelected && !isEditMode ? 'scale-[1.02]' : 'hover:scale-[1.01]'} ${isEditMode ? 'cursor-grab active:cursor-grabbing border border-dashed border-stone-700 p-1' : ''} ${isHidden && isEditMode ? 'opacity-50 grayscale' : ''}`}
-                  >
-                    <div className={`relative rounded-sm ${isSelected && !isEditMode ? 'ring-1 ring-ai-500 shadow-[0_0_15px_rgba(212,175,55,0.1)]' : ''}`}>
-                         <PillarCard 
-                           id={pillar.id}
-                           name={pillar.name}
-                           description={pillar.description}
-                           isActive={pillar.isActive}
-                           isDegraded={pillar.isDegraded}
-                           statusMessage={pillar.statusMessage}
-                           isLocked={!pillar.isActive}
-                         />
-                         {isEditMode && (
-                             <div className="absolute top-2 right-2 flex flex-col gap-1 bg-dark-950/80 p-1 rounded-sm border border-stone-700 backdrop-blur-sm z-20">
-                                 <button onClick={(e) => { e.stopPropagation(); handleMovePillar(index, 'UP'); }} disabled={index === 0} className="text-stone-400 hover:text-white disabled:index === 0 ? 'opacity-30' : ''"><MoveUp size={12} /></button>
-                                 <button onClick={(e) => { e.stopPropagation(); handleTogglePillarVisibility(pillar.id); }} className="text-ai-500 hover:text-white">{isHidden ? <EyeOff size={12} /> : <Eye size={12} />}</button>
-                                 <button onClick={(e) => { e.stopPropagation(); handleMovePillar(index, 'DOWN'); }} disabled={index === pillars.length - 1} className="text-stone-400 hover:text-white disabled:index === pillars.length - 1 ? 'opacity-30' : ''"><MoveDown size={12} /></button>
-                             </div>
-                         )}
-                    </div>
-                  </div>
-                );
-              })}
+              {/* SIDEBAR PILLAR LIST REMOVED IN FAVOR OF TABS */}
+              <div className="text-xs text-stone-500 p-2 text-center opacity-50">
+                  Navegación Principal Superior
+              </div>
             </div>
 
             <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
@@ -740,20 +716,76 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {selectedPillarId ? (
-                <PillarDetailView pillarId={selectedPillarId} userProfile={profile} status={pillars.find(p => p.id === selectedPillarId)!} />
-            ) : (
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 relative z-10 pt-16 md:pt-8">
-                   {activeMission && <MissionBriefingCard mission={activeMission} />}
-                   <SmartDashboard items={dashboardItems} />
-                   {!activeMission && dashboardItems.length === 0 && (
-                     <div className="flex-1 flex items-center justify-center opacity-10 select-none pointer-events-none flex-col gap-4 mt-20">
-                        <Logo className="w-64 h-64 grayscale" />
-                        <p className="font-serif italic text-2xl tracking-widest text-stone-500/50">Sistemas en Espera</p>
-                     </div>
-                   )}
+            {/* --- TAB BAR NAVIGATION --- */}
+            <div className="relative z-30 px-8 pt-6 pb-2 border-b border-stone-800/50 bg-black/20 backdrop-blur-sm">
+                <div className="flex items-center gap-6 overflow-x-auto custom-scrollbar pb-2">
+                    {TABS.map(tab => {
+                        const isActive = activeTab === tab.id;
+                        const Icon = tab.icon;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center gap-2 pb-2 border-b-2 transition-all whitespace-nowrap ${
+                                    isActive 
+                                        ? 'border-ai-500 text-ai-500' 
+                                        : 'border-transparent text-stone-500 hover:text-stone-300 hover:border-stone-700'
+                                }`}
+                            >
+                                <Icon size={16} />
+                                <span className="text-xs font-bold uppercase tracking-widest">{tab.label}</span>
+                            </button>
+                        );
+                    })}
                 </div>
-            )}
+            </div>
+
+            {/* --- MAIN CONTENT AREA --- */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-8 relative z-10">
+                
+                {/* TAB: RESUMEN */}
+                {activeTab === 'RESUMEN' && (
+                    <div className="space-y-8 animate-fadeIn">
+                        {activeMission && <MissionBriefingCard mission={activeMission} />}
+                        
+                        {/* Filtered Smart Dashboard for Summary: High Priority Only */}
+                        <SmartDashboard items={dashboardItems.filter(item => 
+                            item.type === 'SIXTH_SENSE' || 
+                            item.priority >= 80 || 
+                            item.type === 'ZEN'
+                        )} />
+
+                        {/* Empty State for Summary */}
+                        {!activeMission && dashboardItems.filter(i => i.priority >= 80).length === 0 && (
+                             <div className="flex flex-col items-center justify-center opacity-20 select-none pointer-events-none gap-4 py-12">
+                                <Logo className="w-32 h-32 grayscale" />
+                                <p className="font-serif italic text-xl tracking-widest text-stone-500">Todo en Orden</p>
+                             </div>
+                        )}
+                    </div>
+                )}
+
+                {/* TABS: PILLARS */}
+                {activeTab !== 'RESUMEN' && (
+                    <div className="animate-fadeIn">
+                        {(() => {
+                            const pillarStatus = pillars.find(p => p.id === activeTab);
+                            if (!pillarStatus) return null;
+
+                            // Check if we should show Detail View or just filtered items
+                            // For now, let's use PillarDetailView as it provides the "Deep Dive" experience
+                            return (
+                                <PillarDetailView 
+                                    pillarId={activeTab as PillarId} 
+                                    userProfile={profile} 
+                                    status={pillarStatus} 
+                                />
+                            );
+                        })()}
+                    </div>
+                )}
+
+            </div>
           </main>
         </>
       )}
