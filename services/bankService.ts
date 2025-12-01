@@ -23,17 +23,31 @@ export const BankService = {
     
     /**
      * 1. Obtiene un Link Token del backend para inicializar Plaid Link
+     * UPDATED: Uses direct HTTP fetch to bypass Callable SDK issues
      */
     createLinkToken: async (userId: string): Promise<string> => {
         try {
             const url = getFunctionUrl('createLinkToken');
-            const createLinkTokenFn = httpsCallableFromURL(functions, url);
-            const result = await createLinkTokenFn({ userId });
-            const data = result.data as any;
+            console.log("Fetching Link Token from:", url);
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ userId })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP Error ${response.status}: ${errText}`);
+            }
+
+            const data = await response.json();
             return data.link_token;
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error creating link token:", error);
-            throw new Error("No se pudo iniciar la conexión bancaria.");
+            throw new Error(`No se pudo iniciar la conexión bancaria: ${error.message}`);
         }
     },
 

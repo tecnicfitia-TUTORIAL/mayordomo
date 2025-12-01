@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { BankService } from '../services/bankService';
-import { Loader2, Landmark } from 'lucide-react';
+import { Loader2, Landmark, AlertCircle } from 'lucide-react';
 
 interface Props {
   userId: string;
@@ -11,30 +11,47 @@ interface Props {
 export const PlaidConnectButton: React.FC<Props> = ({ userId, onSuccess }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const createToken = async () => {
       try {
+        setError(null);
         const t = await BankService.createLinkToken(userId);
         setToken(t);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to create link token", e);
+        setError(e.message || "Error de conexión");
       } finally {
         setLoading(false);
       }
     };
-    createToken();
+    if (userId) createToken();
   }, [userId]);
 
   const { open, ready } = usePlaidLink({
     token,
     onSuccess: async (public_token) => {
       setLoading(true);
-      await BankService.exchangePublicToken(public_token, userId);
-      setLoading(false);
-      onSuccess();
+      try {
+        await BankService.exchangePublicToken(public_token, userId);
+        onSuccess();
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
     },
   });
+
+  if (error) {
+      return (
+          <div className="w-full bg-red-900/20 border border-red-500/30 p-3 rounded-lg flex items-center gap-2 text-xs text-red-400">
+              <AlertCircle size={16} />
+              <span>{error}</span>
+          </div>
+      );
+  }
 
   return (
     <button 

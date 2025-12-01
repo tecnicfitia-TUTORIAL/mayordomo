@@ -1,5 +1,5 @@
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require('firebase-admin');
 
@@ -30,12 +30,26 @@ const getPlaidClient = () => {
 /**
  * 1. CREATE LINK TOKEN
  * Genera un token temporal para inicializar el widget de Plaid en el frontend.
+ * CONVERTED TO onRequest FOR DEBUGGING & STABILITY
  */
-exports.createLinkToken = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (request) => {
+exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (req, res) => {
   try {
-    console.log("Entry createLinkToken", request.data);
-    const { userId } = request.data;
-    if (!userId) throw new HttpsError('invalid-argument', "Missing userId");
+    // CORS Headers (Explicit)
+    res.set('Access-Control-Allow-Origin', '*');
+    if (req.method === 'OPTIONS') {
+      res.set('Access-Control-Allow-Methods', 'POST');
+      res.set('Access-Control-Allow-Headers', 'Content-Type');
+      res.status(204).send('');
+      return;
+    }
+
+    console.log("Entry createLinkToken (HTTP)", req.body);
+    const { userId } = req.body;
+    
+    if (!userId) {
+        res.status(400).json({ error: "Missing userId" });
+        return;
+    }
 
     const plaidClient = getPlaidClient();
 
@@ -44,16 +58,16 @@ exports.createLinkToken = onCall({ cors: true, secrets: [plaidClientId, plaidSec
       client_name: 'Mayordomo App',
       products: ['auth', 'transactions'],
       language: 'es',
-      country_codes: ['ES', 'US', 'GB'], // Soporte multi-país
+      country_codes: ['ES', 'US', 'GB'],
     };
 
     const createTokenResponse = await plaidClient.linkTokenCreate(plaidRequest);
-    return createTokenResponse.data;
+    res.json(createTokenResponse.data);
+
   } catch (error) {
     console.error("Error creating link token:", error);
-    // Safe error handling
     const msg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
-    throw new HttpsError('internal', msg);
+    res.status(500).json({ error: msg });
   }
 });
 
