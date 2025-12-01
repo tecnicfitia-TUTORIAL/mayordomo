@@ -132,7 +132,8 @@ export const LandingPage: React.FC = () => {
                   <div key={plan.id} className="bg-stone-900/40 border border-stone-800 rounded-2xl p-6 hover:border-ai-500/30 transition-colors flex flex-col">
                       <div className="mb-4">
                           <h3 className="text-lg font-bold text-white">{plan.name}</h3>
-                          <div className="text-2xl font-serif text-ai-500 mt-2">{plan.price}</div>
+                          {/* Price hidden on Landing Page as requested */}
+                          <div className="text-xs text-stone-500 mt-2 font-serif italic">{plan.description}</div>
                       </div>
                       <ul className="space-y-3 mb-8 flex-1">
                           {plan.capabilities && plan.capabilities.slice(0, 4).map((feature, i) => (
