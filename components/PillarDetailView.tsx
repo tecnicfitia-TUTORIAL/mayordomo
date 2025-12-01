@@ -66,40 +66,36 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
   const [isLoadingBank, setIsLoadingBank] = useState(false);
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
 
-  // --- EFFECT: CHECK FOR BANK OR GMAIL CONNECTION ---
+  // --- EFFECT: FETCH REAL DATA ---
   useEffect(() => {
-      const checkConnections = async () => {
-          const urlParams = new URLSearchParams(window.location.search);
-          
-          // 1. BANK CONNECTION
-          const isBankConnected = urlParams.get('bank_connected');
-          const storedReqId = localStorage.getItem('gocardless_req_id');
-
-          if (isBankConnected && storedReqId) {
-              setIsLoadingBank(true);
-              try {
-                  const data = await BankService.getBankData(storedReqId);
-                  setRealData(prev => ({
+      const fetchData = async () => {
+          // 1. BANK DATA (Plaid)
+          setIsLoadingBank(true);
+          try {
+              const data = await BankService.getBankData(userProfile.uid);
+              if (data && typeof data.balance === 'number') {
+                   setRealData(prev => ({
                       ...prev,
                       'pat_expenses': { 
                           value: `${data.balance.toFixed(2)} ${data.currency}`, 
                           label: 'Saldo Real', 
-                          source: 'GOCARDLESS' 
+                          source: 'PLAID' 
                       }
                   }));
-              } catch (e) {
-                  console.error("Failed to load bank data", e);
-              } finally {
-                  setIsLoadingBank(false);
               }
+          } catch (e) {
+              console.log("No bank connection or error fetching data", e);
+          } finally {
+              setIsLoadingBank(false);
           }
 
-          // 2. GMAIL CONNECTION
+          // 2. GMAIL CONNECTION (Pending Implementation)
+          const urlParams = new URLSearchParams(window.location.search);
           const gmailCode = urlParams.get('code');
           if (gmailCode) {
               setIsLoadingEmail(true);
               try {
-                  const invoices = await EmailService.scanInvoices(gmailCode);
+                  const invoices = await EmailService.scanInvoices(gmailCode, userProfile.uid);
                   setRealData(prev => ({
                       ...prev,
                       'pat_subscriptions': { 
@@ -108,32 +104,19 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
                           source: 'GMAIL API' 
                       }
                   }));
+                  window.history.replaceState({}, document.title, window.location.pathname);
               } catch (e) {
                   console.error("Failed to scan gmail", e);
               } finally {
                   setIsLoadingEmail(false);
               }
           }
-
-          // Clean URL if we processed something
-          if (isBankConnected || gmailCode) {
-              window.history.replaceState({}, document.title, window.location.pathname);
-          }
       };
-      checkConnections();
-  }, []);
-
-  const handleConnectBank = async () => {
-      setIsLoadingBank(true);
-      try {
-          const { link, requisitionId } = await BankService.connectBank();
-          localStorage.setItem('gocardless_req_id', requisitionId);
-          window.location.href = link;
-      } catch (e) {
-          alert("Error conectando con el banco. Intente más tarde.");
-          setIsLoadingBank(false);
+      
+      if (userProfile.uid) {
+        fetchData();
       }
-  };
+  }, [userProfile.uid]);
 
   const handleConnectGmail = async () => {
       setIsLoadingEmail(true);
@@ -218,6 +201,7 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
             feature={selectedFeature}
             currentTier={userProfile.subscriptionTier}
             mockData={MOCK_DATA_VALUES[selectedFeature.id] || { value: '---', label: selectedFeature.name, source: 'SYSTEM' }}
+            userId={userProfile.uid}
             onClose={() => setSelectedFeature(null)}
           />
       )}
@@ -336,13 +320,12 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
                     {showBankConnect && (
                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-stone-900/80 p-4">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); handleConnectBank(); }}
-                                disabled={isLoadingBank}
+                                onClick={(e) => { e.stopPropagation(); setSelectedFeature(feature); }}
                                 className="flex flex-col items-center gap-2 group/btn"
                             >
-                                {isLoadingBank ? <Loader2 className="animate-spin text-ai-500" /> : <ExternalLink className="text-ai-500 group-hover/btn:scale-110 transition-transform" />}
+                                <ExternalLink className="text-ai-500 group-hover/btn:scale-110 transition-transform" />
                                 <span className="text-xs font-bold text-ai-500 uppercase tracking-widest border-b border-transparent group-hover/btn:border-ai-500 transition-all">
-                                    {isLoadingBank ? 'Conectando...' : 'Conectar Banco'}
+                                    Conectar Banco
                                 </span>
                             </button>
                         </div>

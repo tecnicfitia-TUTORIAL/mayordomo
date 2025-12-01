@@ -1,9 +1,12 @@
 const { google } = require('googleapis');
+const admin = require('firebase-admin');
 const { onRequest } = require("firebase-functions/v2/https");
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = 'http://localhost:5173/auth/google/callback'; // Ajustar según entorno
+// CONFIGURATION
+// In production, use functions.config().gmail.client_id
+const CLIENT_ID = process.env.GMAIL_CLIENT_ID || 'mock-client-id';
+const CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || 'mock-client-secret';
+const REDIRECT_URI = process.env.GMAIL_REDIRECT_URI || 'http://localhost:5173';
 
 const oauth2Client = new google.auth.OAuth2(
   CLIENT_ID,
@@ -11,80 +14,103 @@ const oauth2Client = new google.auth.OAuth2(
   REDIRECT_URI
 );
 
+/**
+ * Generates the OAuth2 URL for Gmail consent
+ */
 exports.getGmailAuthUrl = onRequest({ cors: true }, (req, res) => {
-    const scopes = [
-        'https://www.googleapis.com/auth/gmail.readonly'
-    ];
-
-    const url = oauth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: scopes
-    });
-
-    res.json({ url });
+    try {
+        const scopes = ['https://www.googleapis.com/auth/gmail.readonly'];
+        const url = oauth2Client.generateAuthUrl({
+            access_type: 'offline',
+            scope: scopes,
+            prompt: 'consent' // Force refresh token
+        });
+        res.json({ url });
+    } catch (error) {
+        console.error("Error generating auth URL:", error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
+/**
+ * Exchanges code for token and scans for invoices
+ */
 exports.scanGmail = onRequest({ cors: true }, async (req, res) => {
-    try {
-        const { code } = req.body; // Auth Code del frontend
+    const { code, userId } = req.body;
 
-        if (!code) {
-            return res.status(400).json({ error: "Falta auth code" });
+    if (!userId) {
+        return res.status(400).json({ error: 'Missing userId' });
+    }
+
+    try {
+        let tokens;
+        const tokenRef = admin.firestore().collection('users').doc(userId).collection('tokens').doc('gmail');
+
+        // A. NEW CONNECTION: Exchange Code
+        if (code) {
+            const { tokens: newTokens } = await oauth2Client.getToken(code);
+            tokens = newTokens;
+            await tokenRef.set(tokens);
+        } 
+        // B. EXISTING CONNECTION: Load from DB
+        else {
+            const doc = await tokenRef.get();
+            if (!doc.exists) {
+                return res.status(401).json({ error: 'No Gmail connection found' });
+            }
+            tokens = doc.data();
         }
 
-        // 1. Canjear código por tokens
-        const { tokens } = await oauth2Client.getToken(code);
         oauth2Client.setCredentials(tokens);
 
+        // C. SCAN LOGIC
         const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-
-        // 2. Buscar correos de facturas
-        // Query: "subject:(factura OR receipt OR order OR confirmación) has:attachment"
+        
+        // Search for keywords in last 30 days
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        const dateQuery = oneMonthAgo.toISOString().split('T')[0].replace(/-/g, '/');
+        
         const response = await gmail.users.messages.list({
             userId: 'me',
-            q: 'subject:(factura OR receipt OR recibo OR order OR pedido) has:attachment',
-            maxResults: 5
+            q: `subject:(factura OR invoice OR recibo OR bill) after:${dateQuery}`,
+            maxResults: 15
         });
 
         const messages = response.data.messages || [];
         const invoices = [];
 
-        // 3. Procesar cada correo
+        // Fetch details for each message
         for (const msg of messages) {
-            const details = await gmail.users.messages.get({
-                userId: 'me',
-                id: msg.id,
-                format: 'full'
-            });
-
+            const details = await gmail.users.messages.get({ userId: 'me', id: msg.id });
             const headers = details.data.payload.headers;
-            const subject = headers.find(h => h.name === 'Subject')?.value || 'Sin Asunto';
-            const from = headers.find(h => h.name === 'From')?.value || 'Desconocido';
+            
+            const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject';
+            const from = headers.find(h => h.name === 'From')?.value || 'Unknown Sender';
+            const date = headers.find(h => h.name === 'Date')?.value;
+            
+            // Simple Heuristic for Amount
             const snippet = details.data.snippet;
-
-            // Extracción Regex Simple
-            // Busca patrones de dinero: "12.50 €", "12,50€", "$12.50"
-            const amountRegex = /(\d+[.,]\d{2})\s?[€$]|[€$]\s?(\d+[.,]\d{2})/;
-            const amountMatch = snippet.match(amountRegex);
-            const amount = amountMatch ? (amountMatch[1] || amountMatch[2]) : '???';
-
-            // Simplificar remitente (ej: "Amazon <no-reply@amazon.com>" -> "Amazon")
-            const senderName = from.split('<')[0].trim().replace(/"/g, '');
+            // Regex for currency (EUR/USD)
+            const amountMatch = snippet.match(/(\d+[.,]\d{2})\s?(€|EUR|\$|USD)/i);
 
             invoices.push({
                 id: msg.id,
                 subject,
-                sender: senderName,
-                amount: amount,
-                date: new Date(parseInt(details.data.internalDate)).toISOString(),
-                snippet
+                from,
+                date,
+                amount: amountMatch ? amountMatch[0] : null,
+                snippet: snippet.substring(0, 100) + '...'
             });
         }
 
-        res.json({ invoices });
+        res.json({ 
+            count: invoices.length,
+            invoices 
+        });
 
     } catch (error) {
-        console.error("Error escaneando Gmail:", error);
+        console.error('Gmail Scan Error:', error);
         res.status(500).json({ error: error.message });
     }
 });

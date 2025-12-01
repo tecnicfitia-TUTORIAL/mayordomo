@@ -11,7 +11,8 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // Export Bank & Email Services
-exports.createBankLink = bankService.createBankLink;
+exports.createLinkToken = bankService.createLinkToken;
+exports.exchangePublicToken = bankService.exchangePublicToken;
 exports.getBankData = bankService.getBankData;
 exports.getGmailAuthUrl = emailService.getGmailAuthUrl;
 exports.scanGmail = emailService.scanGmail;

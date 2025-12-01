@@ -33,12 +33,13 @@ export const EmailService = {
     },
 
     /**
-     * Escanea el correo usando el código de autorización
+     * Escanea el correo usando el código de autorización o conexión existente
      */
-    scanInvoices: async (authCode: string): Promise<InvoiceEmail[]> => {
+    scanInvoices: async (authCode: string | null, userId: string): Promise<InvoiceEmail[]> => {
         try {
             const response = await axios.post(`${BASE_URL}/scanGmail`, {
-                code: authCode
+                code: authCode,
+                userId: userId
             });
             return response.data.invoices;
         } catch (error) {

@@ -1,8 +1,5 @@
 import axios from 'axios';
 
-// Ajustar URL base según entorno (Local Emulator vs Production)
-// En Codespaces/DevContainer, localhost:5001 puede necesitar port forwarding o usar la URL pública.
-// Para este ejemplo, asumimos que las funciones están desplegadas o emuladas.
 const PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-project';
 const REGION = 'us-central1';
 const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -12,10 +9,10 @@ const BASE_URL = IS_LOCAL
     : `https://${REGION}-${PROJECT_ID}.cloudfunctions.net`;
 
 export interface BankTransaction {
-    transactionId: string;
-    bookingDate: string;
-    transactionAmount: { amount: string; currency: string };
-    remittanceInformationUnstructured?: string;
+    transaction_id: string;
+    date: string;
+    amount: number;
+    name: string;
 }
 
 export interface BankData {
@@ -27,29 +24,40 @@ export interface BankData {
 export const BankService = {
     
     /**
-     * Inicia el flujo de conexión bancaria (GoCardless)
+     * 1. Obtiene un Link Token del backend para inicializar Plaid Link
      */
-    connectBank: async (): Promise<{ link: string; requisitionId: string }> => {
+    createLinkToken: async (userId: string): Promise<string> => {
         try {
-            // Llama a la Cloud Function
-            const response = await axios.post(`${BASE_URL}/createBankLink`, {
-                redirectUrl: window.location.origin + '/dashboard?bank_connected=true', // Redirige de vuelta a la app
-                institutionId: 'SANDBOXFINANCE_SFIN0000' // Sandbox Bank por defecto
-            });
-            return response.data;
+            const response = await axios.post(`${BASE_URL}/createLinkToken`, { userId });
+            return response.data.link_token;
         } catch (error) {
-            console.error("Error connecting bank:", error);
+            console.error("Error creating link token:", error);
             throw new Error("No se pudo iniciar la conexión bancaria.");
         }
     },
 
     /**
-     * Obtiene saldo y movimientos
+     * 2. Intercambia el Public Token por un Access Token permanente
      */
-    getBankData: async (requisitionId: string): Promise<BankData> => {
+    exchangePublicToken: async (publicToken: string, userId: string): Promise<void> => {
+        try {
+            await axios.post(`${BASE_URL}/exchangePublicToken`, {
+                publicToken,
+                userId
+            });
+        } catch (error) {
+            console.error("Error exchanging token:", error);
+            throw new Error("Error vinculando la cuenta bancaria.");
+        }
+    },
+
+    /**
+     * 3. Obtiene saldo y movimientos usando el token guardado en backend
+     */
+    getBankData: async (userId: string): Promise<BankData> => {
         try {
             const response = await axios.get(`${BASE_URL}/getBankData`, {
-                params: { requisitionId }
+                params: { userId }
             });
             return response.data;
         } catch (error) {

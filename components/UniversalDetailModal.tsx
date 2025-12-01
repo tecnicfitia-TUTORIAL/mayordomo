@@ -3,15 +3,17 @@ import React, { useState } from 'react';
 import { SubscriptionTier, FeatureMatrixItem } from '../types';
 import { getTierLevel } from '../constants';
 import { X, FileText, Download, Zap, CheckCircle2, Shield, AlertTriangle, ArrowRight, Stamp, Lock } from 'lucide-react';
+import { PlaidConnectButton } from './PlaidConnectButton';
 
 interface Props {
   feature: FeatureMatrixItem;
   currentTier: SubscriptionTier;
   mockData: { value: string; label: string; source: string };
+  userId: string; // Added userId
   onClose: () => void;
 }
 
-export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mockData, onClose }) => {
+export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mockData, userId, onClose }) => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [isDone, setIsDone] = useState(false);
 
@@ -29,6 +31,8 @@ export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mo
         setIsDone(true);
     }, 2000);
   };
+
+  const isBankFeature = feature.id === 'pat_expenses' || feature.id === 'func_open_banking';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fadeIn">
@@ -93,7 +97,9 @@ export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mo
 
         {/* Footer Actions (CONDITIONAL LOGIC) */}
         <div className="p-6 border-t border-stone-800 bg-stone-950 relative z-10">
-            {isExecutionMode ? (
+            {isBankFeature ? (
+                <PlaidConnectButton userId={userId} onSuccess={() => { setIsDone(true); alert("Banco Conectado"); }} />
+            ) : isExecutionMode ? (
                 // CASE 3: EXECUTION (Level 3/4)
                 <div className="flex flex-col gap-3">
                     {isDone ? (
@@ -128,7 +134,7 @@ export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mo
                 </div>
             )}
             
-            {!isExecutionMode && (
+            {!isExecutionMode && !isBankFeature && (
                 <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-stone-500">
                     <Lock size={10} />
                     <span>Modo Ejecución requiere Nivel Mayordomo</span>
@@ -140,3 +146,4 @@ export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mo
     </div>
   );
 };
+
