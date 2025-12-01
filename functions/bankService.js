@@ -99,49 +99,61 @@ exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecr
     
     if (!userId) return res.status(400).json({ error: "Missing userId" });
 
-    const plaidClient = getPlaidClient();
-
-    // Obtener conexiones del usuario
+    // 1. Verificación Previa: Chequear conexiones en Firestore
     const snapshot = await db.collection('users').doc(userId).collection('bank_connections').get();
     
     if (snapshot.empty) {
-      return res.json({ balance: 0, currency: 'EUR', transactions: [] });
+      return res.json({ connected: false, balance: 0, currency: 'EUR', transactions: [] });
     }
 
+    const plaidClient = getPlaidClient();
     let totalBalance = 0;
     let allTransactions = [];
+    let successCount = 0;
 
     // Iterar sobre conexiones
     for (const doc of snapshot.docs) {
       const { accessToken } = doc.data();
       
+      if (!accessToken) continue;
+
       try {
-        // Obtener saldo
+        // 2. Manejo de Errores de API
         const balanceResponse = await plaidClient.accountsBalanceGet({
           access_token: accessToken,
         });
         
-        // Sumar saldos de cuentas corrientes/ahorros (depository)
-        balanceResponse.data.accounts.forEach(acc => {
-            if (acc.type === 'depository' && acc.balances.current) {
-                totalBalance += acc.balances.current;
-            }
-        });
+        // Sumar saldos
+        if (balanceResponse.data.accounts) {
+            balanceResponse.data.accounts.forEach(acc => {
+                if (acc.type === 'depository' && acc.balances.current) {
+                    totalBalance += acc.balances.current;
+                }
+            });
+            successCount++;
+        }
        
       } catch (err) {
-        console.error(`Error fetching data for connection ${doc.id}:`, err.message);
-        // Continuar con otras conexiones si una falla
+        console.error(`Plaid API Error for connection ${doc.id}:`, err.response?.data || err.message);
+        // Si falla una conexión específica, no rompemos todo el flujo, pero registramos el error.
       }
     }
 
+    // Si fallaron todas las conexiones que existían (ej: token expirado)
+    if (successCount === 0 && !snapshot.empty) {
+         return res.json({ connected: false, error: "Token inválido o error de conexión", balance: 0 });
+    }
+
     res.json({ 
+        connected: true,
         balance: totalBalance, 
         currency: 'EUR', 
         transactions: allTransactions 
     });
 
   } catch (error) {
-    console.error("Error getting bank data:", error.message);
-    res.status(500).json({ error: error.message });
+    console.error("Critical Error in getBankData:", error.message);
+    // Devolvemos una respuesta segura en lugar de explotar
+    res.status(200).json({ connected: false, error: "Internal Server Error", balance: 0 });
   }
 });
