@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Confort 65/35 OS Frontend",
   "scripts": {
-    "start": "node server.js",
+    "dev": "vite --host",
+    "start": "vite preview --host",
     "build": "vite build",
     "preview": "vite preview"
   },
