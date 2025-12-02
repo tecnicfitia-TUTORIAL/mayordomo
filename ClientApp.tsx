@@ -796,7 +796,7 @@ const ClientApp: React.FC = () => {
       )}
       
       {/* Interactive Companion */}
-      <MayordomoCompanion />
+      {/* <MayordomoCompanion />  -- Removed from here to avoid duplication in App.tsx */}
     </div>
   );
 };
