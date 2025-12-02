@@ -3,14 +3,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, LifeObligation, ObligationCategory, ObligationStatus } from "../types";
 
 const getAI = () => {
-  // UPDATED: Use specific Gemini API Key to avoid permission conflicts
-  const apiKey = import.meta.env.VITE_GOOGLE_GEN_AI_KEY;
-  
-  if (!apiKey) {
-    console.error("CRITICAL: VITE_GOOGLE_GEN_AI_KEY is missing in environment variables.");
-    throw new Error("AI Service Configuration Error: Missing API Key");
+  // COPIADO DEL CHAT (geminiService.ts) - Configuración probada y funcional
+  if (!process.env.API_KEY) {
+    console.error("CRITICAL: API_KEY is missing (Chat Config).");
+    return null;
   }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 export const InferenceEngine = {
@@ -54,7 +52,7 @@ export const InferenceEngine = {
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash', // COPIADO DEL CHAT (geminiService.ts)
         contents: prompt,
         config: {
           maxOutputTokens: 2000, // Increased limit
