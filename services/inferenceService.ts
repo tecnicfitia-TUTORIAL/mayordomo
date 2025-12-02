@@ -37,7 +37,7 @@ export const InferenceEngine = {
         TAREA:
         Genera una lista CONCISA de las 3 a 5 obligaciones críticas (Burocracia, Identidad, Vivienda) para este perfil en ${jurisdiction}.
         No inventes textos largos. Sé directo.
-        IMPORTANTE: DEVUELVE SOLO EL JSON PURO. NO USES BLOQUES DE CÓDIGO MARKDOWN.
+        Responde ÚNICAMENTE con el objeto JSON crudo. No uses bloques de código markdown.
 
         FORMATO JSON REQUERIDO (Array de objetos):
         [
@@ -56,7 +56,7 @@ export const InferenceEngine = {
         model: 'gemini-2.5-flash', // COPIADO DEL CHAT (geminiService.ts)
         contents: prompt,
         config: {
-          maxOutputTokens: 2000, // Increased limit
+          maxOutputTokens: 4000, // Increased limit
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.ARRAY,
