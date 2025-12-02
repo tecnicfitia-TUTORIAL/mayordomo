@@ -25,12 +25,18 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
 
   try {
     const { history, currentMessage, pillars, profile, attachments } = req.body;
+    
+    // Defensive check
+    if (!currentMessage) {
+        return res.json({ text: "No he recibido ningún mensaje." });
+    }
+
     const ai = getAI();
 
     // Construct Pillar Context
-    const pillarContext = pillars.map(p => 
+    const pillarContext = pillars ? pillars.map(p => 
       `- ${p.name.toUpperCase()}: ${p.isActive ? (p.isDegraded ? 'MODO MANUAL (Faltan permisos)' : 'OPERATIVO') : 'INACTIVO (Nivel insuficiente)'} - Estado: ${p.statusMessage}`
-    ).join('\n');
+    ).join('\n') : "Información de pilares no disponible.";
 
     const systemInstruction = `
     Eres "El Mayordomo Digital".
@@ -39,9 +45,9 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
     Gestionar la vida del usuario basándote estrictamente en sus 5 Pilares y sus Permisos.
 
     PERFIL DEL SEÑOR:
-    - Nombre: ${profile?.name}
-    - Arquetipo: ${profile?.archetype}
-    - Rango: ${profile?.subscriptionTier}
+    - Nombre: ${profile?.name || 'Señor'}
+    - Arquetipo: ${profile?.archetype || 'Desconocido'}
+    - Rango: ${profile?.subscriptionTier || 'Invitado'}
 
     ESTADO DE LOS PILARES:
     ${pillarContext}
@@ -59,7 +65,7 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
     const chat = ai.chats.create({
       model: 'gemini-2.5-flash',
       config: { systemInstruction },
-      history: history.filter(h => h.parts[0].text !== ''),
+      history: Array.isArray(history) ? history.filter(h => h.parts && h.parts[0] && h.parts[0].text !== '') : [],
     });
 
     let messagePayload = currentMessage;
@@ -71,8 +77,9 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
     res.json({ text: result.text || "Disculpe, no he podido procesar esa orden." });
 
   } catch (error) {
-    console.error("Gemini Error:", error);
-    res.status(500).json({ error: "Lo siento, mis sistemas de comunicación están experimentando interferencias." });
+    console.error("Gemini Chat Error:", error);
+    // Graceful degradation: Return a polite error message instead of 500
+    res.json({ text: "Mis sistemas están experimentando una breve interrupción. Por favor, inténtelo de nuevo en unos instantes." });
   }
 });
 
@@ -90,11 +97,18 @@ exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], ma
 
   try {
     const { profile } = req.body;
+    
+    // Defensive Check
+    if (!profile) {
+        console.warn("Inference called without profile.");
+        return res.json({ obligations: [] });
+    }
+
     const ai = getAI();
     
     const jurisdiction = profile.lifeContext?.currentJurisdiction?.name || "Global";
-    const occupation = profile.occupation;
-    const age = profile.age;
+    const occupation = profile.occupation || "Digital Citizen";
+    const age = profile.age || 30;
 
     const prompt = `
       ACTÚA COMO UN EXPERTO LEGAL, FISCAL Y ADMINISTRATIVO INTERNACIONAL.
@@ -157,7 +171,8 @@ exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], ma
 
   } catch (error) {
     console.error("Inference Engine Error:", error);
-    res.status(500).json({ error: error.message, obligations: [] });
+    // Graceful degradation: Return empty array instead of 500 to prevent app crash
+    res.json({ obligations: [], error: error.message });
   }
 });
 
@@ -175,13 +190,18 @@ exports.analyzeGapAndPropose = onRequest({ cors: true, secrets: [googleGenAiKey]
 
   try {
     const { event, profile, activeModules } = req.body;
+    
+    if (!event || !profile) {
+        return res.json({ proposalRequired: false });
+    }
+
     const ai = getAI();
     
     const microContext = JSON.stringify({
       age: profile.age,
       role: profile.occupation,
-      currentModules: activeModules.map(m => m.title),
-      currentPermissions: activeModules.flatMap(m => m.permissions.map(p => p.label))
+      currentModules: activeModules ? activeModules.map(m => m.title) : [],
+      currentPermissions: activeModules ? activeModules.flatMap(m => m.permissions.map(p => p.label)) : []
     });
 
     const macroContext = JSON.stringify(event);
@@ -249,6 +269,7 @@ exports.analyzeGapAndPropose = onRequest({ cors: true, secrets: [googleGenAiKey]
 
   } catch (error) {
     console.error("Evolution Engine Error:", error);
-    res.status(500).json({ error: error.message });
+    // Graceful degradation
+    res.json({ proposalRequired: false, error: error.message });
   }
 });

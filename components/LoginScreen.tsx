@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { getAuth, signInWithPopup, GoogleAuthProvider, OAuthProvider, fetchSignInMethodsForEmail } from 'firebase/auth';
-import { Fingerprint, Loader2, ShieldCheck } from 'lucide-react';
+import { getAuth, signInWithPopup, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, User } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { Fingerprint, Loader2, ShieldCheck, Mail, Lock } from 'lucide-react';
+import { db } from '../services/firebaseConfig';
+import { UserProfile, UserArchetype, SubscriptionTier, PillarId } from '../types';
+
+const PROFILE_KEY = 'mayordomo_profile';
+const DEFAULT_PILLAR_ORDER = Object.values(PillarId);
 
 interface LoginScreenProps {
   onLoginSuccess?: () => void;
@@ -10,6 +16,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const auth = getAuth();
 
@@ -23,13 +32,64 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   }, []);
 
+  const handleAuthSuccess = async (user: User) => {
+    try {
+      // 1. Check if user profile exists in Firestore
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+
+      let profile: UserProfile;
+
+      if (userSnap.exists()) {
+        // 2a. Load existing profile
+        profile = userSnap.data() as UserProfile;
+        console.log("[Auth] Existing profile loaded:", profile.uid);
+      } else {
+        // 2b. Create new default profile
+        console.log("[Auth] Creating new profile for:", user.uid);
+        
+        const newProfile: UserProfile = {
+          uid: user.uid,
+          email: user.email || '',
+          name: user.displayName || 'Usuario',
+          role: 'USER',
+          age: 30, // Default
+          gender: 'Not Specified',
+          occupation: 'Digital Citizen',
+          archetype: UserArchetype.ESENCIALISTA,
+          subscriptionTier: SubscriptionTier.FREE,
+          grantedPermissions: [],
+          setupCompleted: false,
+          dashboardConfig: {
+            pillarOrder: DEFAULT_PILLAR_ORDER,
+            hiddenPillars: []
+          },
+          themePreference: 'DARK'
+        };
+
+        await setDoc(userRef, newProfile);
+        profile = newProfile;
+      }
+
+      // 3. Save to LocalStorage for ClientApp
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+
+      // 4. Redirect
+      if (onLoginSuccess) onLoginSuccess();
+
+    } catch (err) {
+      console.error("[Auth] Profile Sync Error:", err);
+      setError("Error sincronizando perfil. Contacte con soporte.");
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      if (onLoginSuccess) onLoginSuccess();
+      const result = await signInWithPopup(auth, provider);
+      await handleAuthSuccess(result.user);
     } catch (err: any) {
       console.error("Google Login Error:", err);
       setError("No se pudo iniciar sesión con Google. Inténtelo de nuevo.");
@@ -45,11 +105,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       const provider = new OAuthProvider('apple.com');
       provider.addScope('email');
       provider.addScope('name');
-      await signInWithPopup(auth, provider);
-      if (onLoginSuccess) onLoginSuccess();
+      const result = await signInWithPopup(auth, provider);
+      await handleAuthSuccess(result.user);
     } catch (err: any) {
       console.error("Apple Login Error:", err);
       setError("No se pudo iniciar sesión con Apple. Inténtelo de nuevo.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError("Por favor, introduzca email y contraseña.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      await handleAuthSuccess(result.user);
+    } catch (err: any) {
+      console.error("Email Login Error:", err);
+      setError("Credenciales incorrectas o error de conexión.");
     } finally {
       setIsLoading(false);
     }
@@ -166,6 +246,55 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           </button>
 
           {/* Divider */}
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#292524]"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-[#121212] px-4 text-xs text-[#57534e] uppercase tracking-widest">
+                o continúa con email
+              </span>
+            </div>
+          </div>
+
+          {/* Email/Password Form */}
+          <form onSubmit={handleEmailLogin} className="space-y-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-[#57534e]" />
+              </div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Correo electrónico"
+                className="w-full bg-[#1c1917] border border-[#292524] text-[#e7e5e4] pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 transition-all placeholder-[#57534e]"
+                required
+              />
+            </div>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-[#57534e]" />
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Contraseña"
+                className="w-full bg-[#1c1917] border border-[#292524] text-[#e7e5e4] pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 transition-all placeholder-[#57534e]"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#D4AF37] hover:bg-[#b68e29] text-[#121212] font-bold py-3 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#D4AF37]/20"
+            >
+              {isLoading ? 'Verificando...' : 'Entrar con Credenciales'}
+            </button>
+          </form>
+
+          {/* Divider for Biometrics */}
           <div className="relative py-2">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-[#292524]"></div>
