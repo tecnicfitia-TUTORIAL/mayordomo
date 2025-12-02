@@ -33,6 +33,15 @@ const getPlaidClient = () => {
  * CONVERTED TO onRequest FOR DEBUGGING & STABILITY
  */
 exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
+  // MANUAL CORS FIX
+  res.set('Access-Control-Allow-Origin', '*');
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Methods', 'GET, POST');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.status(204).send('');
+    return;
+  }
+
   try {
     console.log("Entry createLinkToken (HTTP)", req.body);
     const { userId } = req.body;
