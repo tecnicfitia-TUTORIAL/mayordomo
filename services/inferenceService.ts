@@ -3,10 +3,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, LifeObligation, ObligationCategory, ObligationStatus } from "../types";
 
 const getAI = () => {
-  const apiKey = import.meta.env.VITE_GOOGLE_API_KEY || process.env.API_KEY;
+  // UPDATED: Use specific Gemini API Key to avoid permission conflicts
+  const apiKey = import.meta.env.VITE_GOOGLE_GEN_AI_KEY;
+  
   if (!apiKey) {
-    console.warn("API_KEY not found. Inference Engine will return empty results.");
-    return null;
+    console.error("CRITICAL: VITE_GOOGLE_GEN_AI_KEY is missing in environment variables.");
+    throw new Error("AI Service Configuration Error: Missing API Key");
   }
   return new GoogleGenAI({ apiKey });
 };
