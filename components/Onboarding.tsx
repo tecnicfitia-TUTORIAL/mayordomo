@@ -329,8 +329,8 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
             style={{ backgroundImage: `url(${dailyImage})` }}
           ></div>
           
-          {/* LUXURY VEIL (Overlay) */}
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"></div>
+          {/* LUXURY VEIL (Overlay) - Removed for brightness */}
+
 
           {/* Watermark Logo */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] pointer-events-none scale-150 mix-blend-overlay">
