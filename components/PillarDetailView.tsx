@@ -66,53 +66,53 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
   const [isLoadingBank, setIsLoadingBank] = useState(false);
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
 
-  // --- EFFECT: FETCH REAL DATA ---
-  useEffect(() => {
-      const fetchData = async () => {
-          // 1. BANK DATA (Plaid)
-          setIsLoadingBank(true);
-          try {
-              const data = await BankService.getBankData(userProfile.uid);
-              if (data && typeof data.balance === 'number') {
-                   setRealData(prev => ({
-                      ...prev,
-                      'pat_expenses': { 
-                          value: `${data.balance.toFixed(2)} ${data.currency}`, 
-                          label: 'Saldo Real', 
-                          source: 'PLAID' 
-                      }
-                  }));
-              }
-          } catch (e) {
-              console.log("No bank connection or error fetching data", e);
-          } finally {
-              setIsLoadingBank(false);
+  // --- FETCH REAL DATA ---
+  const fetchData = async () => {
+      // 1. BANK DATA (Plaid)
+      setIsLoadingBank(true);
+      try {
+          const data = await BankService.getBankData(userProfile.uid);
+          if (data && typeof data.balance === 'number') {
+               setRealData(prev => ({
+                  ...prev,
+                  'pat_expenses': { 
+                      value: `${data.balance.toFixed(2)} ${data.currency}`, 
+                      label: 'Saldo Real', 
+                      source: 'PLAID' 
+                  }
+              }));
           }
+      } catch (e) {
+          console.log("No bank connection or error fetching data", e);
+      } finally {
+          setIsLoadingBank(false);
+      }
 
-          // 2. GMAIL CONNECTION (Pending Implementation)
-          const urlParams = new URLSearchParams(window.location.search);
-          const gmailCode = urlParams.get('code');
-          if (gmailCode) {
-              setIsLoadingEmail(true);
-              try {
-                  const invoices = await EmailService.scanInvoices(gmailCode, userProfile.uid);
-                  setRealData(prev => ({
-                      ...prev,
-                      'pat_subscriptions': { 
-                          value: `${invoices.length} Recibos`, 
-                          label: 'Últimos 30 días', 
-                          source: 'GMAIL API' 
-                      }
-                  }));
-                  window.history.replaceState({}, document.title, window.location.pathname);
-              } catch (e) {
-                  console.error("Failed to scan gmail", e);
-              } finally {
-                  setIsLoadingEmail(false);
-              }
+      // 2. GMAIL CONNECTION (Pending Implementation)
+      const urlParams = new URLSearchParams(window.location.search);
+      const gmailCode = urlParams.get('code');
+      if (gmailCode) {
+          setIsLoadingEmail(true);
+          try {
+              const invoices = await EmailService.scanInvoices(gmailCode, userProfile.uid);
+              setRealData(prev => ({
+                  ...prev,
+                  'pat_subscriptions': { 
+                      value: `${invoices.length} Recibos`, 
+                      label: 'Últimos 30 días', 
+                      source: 'GMAIL API' 
+                  }
+              }));
+              window.history.replaceState({}, document.title, window.location.pathname);
+          } catch (e) {
+              console.error("Failed to scan gmail", e);
+          } finally {
+              setIsLoadingEmail(false);
           }
-      };
-      
+      }
+  };
+
+  useEffect(() => {
       if (userProfile.uid) {
         fetchData();
       }
@@ -203,6 +203,7 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
             mockData={MOCK_DATA_VALUES[selectedFeature.id] || { value: '---', label: selectedFeature.name, source: 'SYSTEM' }}
             userId={userProfile.uid}
             onClose={() => setSelectedFeature(null)}
+            onSuccess={fetchData}
           />
       )}
 

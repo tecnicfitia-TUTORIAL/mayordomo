@@ -1,21 +1,23 @@
-
 import React, { useState } from 'react';
 import { SubscriptionTier, FeatureMatrixItem } from '../types';
 import { getTierLevel } from '../constants';
 import { X, FileText, Download, Zap, CheckCircle2, Shield, AlertTriangle, ArrowRight, Stamp, Lock } from 'lucide-react';
 import { PlaidConnectButton } from './PlaidConnectButton';
+import { Toast } from './Toast';
 
 interface Props {
   feature: FeatureMatrixItem;
   currentTier: SubscriptionTier;
   mockData: { value: string; label: string; source: string };
-  userId: string; // Added userId
+  userId: string;
   onClose: () => void;
+  onSuccess?: () => void; // Callback para refrescar estado padre
 }
 
-export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mockData, userId, onClose }) => {
+export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mockData, userId, onClose, onSuccess }) => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [toast, setToast] = useState<{message: string, type: 'INFO' | 'WARNING' | 'ERROR'} | null>(null);
 
   // LOGIC: DETERMINE MODE
   // Level 1 & 2 (Free/Basic) -> READ_ONLY
@@ -29,13 +31,40 @@ export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mo
     setTimeout(() => {
         setIsExecuting(false);
         setIsDone(true);
+        setToast({ message: 'Operación Ejecutada Correctamente', type: 'INFO' });
+        if (onSuccess) onSuccess();
     }, 2000);
+  };
+
+  const handleBankSuccess = () => {
+      setIsDone(true);
+      setToast({ message: 'Conexión Bancaria Establecida Correctamente', type: 'INFO' });
+      
+      // CRITICAL: Refresh Parent State
+      if (onSuccess) {
+          console.log("[UniversalModal] Triggering Parent Refresh...");
+          onSuccess();
+      }
+
+      // Auto-close after delay
+      setTimeout(() => {
+          onClose();
+      }, 2000);
   };
 
   const isBankFeature = feature.id === 'pat_expenses' || feature.id === 'func_open_banking';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fadeIn">
+      
+      {toast && (
+          <Toast 
+            message={toast.message} 
+            type={toast.type} 
+            onClose={() => setToast(null)} 
+          />
+      )}
+
       <div className="w-full max-w-lg bg-[#0c0a09] border border-stone-800 rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] relative">
         
         {/* Background Texture */}
@@ -98,7 +127,7 @@ export const UniversalDetailModal: React.FC<Props> = ({ feature, currentTier, mo
         {/* Footer Actions (CONDITIONAL LOGIC) */}
         <div className="p-6 border-t border-stone-800 bg-stone-950 relative z-10">
             {isBankFeature ? (
-                <PlaidConnectButton userId={userId} onSuccess={() => { setIsDone(true); alert("Banco Conectado"); }} />
+                <PlaidConnectButton userId={userId} onSuccess={handleBankSuccess} />
             ) : isExecutionMode ? (
                 // CASE 3: EXECUTION (Level 3/4)
                 <div className="flex flex-col gap-3">
