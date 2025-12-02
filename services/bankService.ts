@@ -1,4 +1,3 @@
-import { httpsCallableFromURL } from 'firebase/functions';
 import { functions } from './firebaseConfig';
 
 // CLOUD RUN URL CONFIGURATION (Firebase Functions Gen 2)
@@ -53,15 +52,27 @@ export const BankService = {
 
     /**
      * 2. Intercambia el Public Token por un Access Token permanente
+     * UPDATED: Converted to fetch for manual CORS handling
      */
     exchangePublicToken: async (publicToken: string, userId: string): Promise<void> => {
         try {
             const url = getFunctionUrl('exchangePublicToken');
-            const exchangePublicTokenFn = httpsCallableFromURL(functions, url);
-            await exchangePublicTokenFn({
-                publicToken,
-                userId
+            console.log("Exchanging Public Token at:", url);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ publicToken, userId })
             });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP Error ${response.status}: ${errText}`);
+            }
+
+            await response.json();
         } catch (error: any) {
             console.error("Error exchanging token FULL:", error);
             throw new Error(`Error vinculando la cuenta bancaria: ${error.message}`);
@@ -70,13 +81,28 @@ export const BankService = {
 
     /**
      * 3. Obtiene saldo y movimientos usando el token guardado en backend
+     * UPDATED: Converted to fetch for manual CORS handling
      */
     getBankData: async (userId: string): Promise<BankData> => {
         try {
             const url = getFunctionUrl('getBankData');
-            const getBankDataFn = httpsCallableFromURL(functions, url);
-            const result = await getBankDataFn({ userId });
-            return result.data as BankData;
+            console.log("Fetching Bank Data from:", url);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ userId })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP Error ${response.status}: ${errText}`);
+            }
+
+            const data = await response.json();
+            return data as BankData;
         } catch (error) {
             console.error("Error fetching bank data:", error);
             throw new Error("Error obteniendo datos bancarios.");

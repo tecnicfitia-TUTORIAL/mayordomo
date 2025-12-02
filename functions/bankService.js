@@ -1,5 +1,5 @@
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
-const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require('firebase-admin');
 
@@ -30,14 +30,12 @@ const getPlaidClient = () => {
 /**
  * 1. CREATE LINK TOKEN
  * Genera un token temporal para inicializar el widget de Plaid en el frontend.
- * CONVERTED TO onRequest FOR DEBUGGING & STABILITY
  */
 exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {
-    res.set('Access-Control-Allow-Methods', 'GET, POST');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
     res.status(204).send('');
     return;
   }
@@ -74,23 +72,25 @@ exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaid
 /**
  * 2. EXCHANGE PUBLIC TOKEN
  * Intercambia el token público (frontend) por un access_token permanente y lo guarda.
+ * CONVERTED TO onRequest FOR MANUAL CORS
  */
-exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public', maxInstances: 10 }, async (request) => {
+exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
+  // MANUAL CORS FIX
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
   try {
-    console.log("Entry exchangePublicToken", { 
-        userId: request.data?.userId, 
-        hasPublicToken: !!request.data?.publicToken 
-    });
+    console.log("Entry exchangePublicToken (HTTP)", req.body);
+    const { publicToken, userId } = req.body;
 
-    const { publicToken, userId } = request.data;
-    
-    // DEBUG: Check secrets existence (do not log values)
-    if (!plaidClientId.value() || !plaidSecret.value()) {
-        console.error("Missing Secrets");
-        throw new HttpsError('failed-precondition', "Missing Plaid Secrets in Environment");
+    if (!publicToken || !userId) {
+        res.status(400).json({ error: "Missing publicToken or userId" });
+        return;
     }
-
-    if (!publicToken || !userId) throw new HttpsError('invalid-argument', "Missing publicToken or userId");
 
     const plaidClient = getPlaidClient();
 
@@ -114,38 +114,43 @@ exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plai
     });
     console.log("Firestore Save Success");
 
-    return { success: true, itemId };
+    res.json({ success: true, itemId });
   } catch (error) {
     console.error("Error exchanging token FULL OBJECT:", error);
-    
-    let errorMsg = "Unknown Error";
-    if (error.response && error.response.data) {
-        errorMsg = JSON.stringify(error.response.data);
-        console.error("Plaid API Error Data:", error.response.data);
-    } else if (error instanceof Error) {
-        errorMsg = error.message;
-    }
-
-    throw new HttpsError('internal', errorMsg);
+    const msg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+    res.status(500).json({ error: msg });
   }
 });
 
 /**
  * 3. GET BANK DATA (REFRESH BALANCE)
  * Usa los tokens guardados para obtener el saldo total y transacciones recientes.
+ * CONVERTED TO onRequest FOR MANUAL CORS
  */
-exports.getBankData = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public', maxInstances: 10 }, async (request) => {
+exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
+  // MANUAL CORS FIX
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
   try {
-    // Aceptamos userId por body o query
-    const userId = request.data.userId;
+    // Aceptamos userId por body
+    const { userId } = req.body;
     
-    if (!userId) throw new HttpsError('invalid-argument', "Missing userId");
+    if (!userId) {
+        res.status(400).json({ error: "Missing userId" });
+        return;
+    }
 
     // 1. Verificación Previa: Chequear conexiones en Firestore
     const snapshot = await db.collection('users').doc(userId).collection('bank_connections').get();
     
     if (snapshot.empty) {
-      return { connected: false, balance: 0, currency: 'EUR', transactions: [] };
+      res.json({ connected: false, balance: 0, currency: 'EUR', transactions: [] });
+      return;
     }
 
     const plaidClient = getPlaidClient();
@@ -183,19 +188,19 @@ exports.getBankData = onCall({ cors: true, secrets: [plaidClientId, plaidSecret]
 
     // Si fallaron todas las conexiones que existían (ej: token expirado)
     if (successCount === 0 && !snapshot.empty) {
-         return { connected: false, error: "Token inválido o error de conexión", balance: 0 };
+         res.json({ connected: false, error: "Token inválido o error de conexión", balance: 0 });
+         return;
     }
 
-    return { 
+    res.json({ 
         connected: true,
         balance: totalBalance, 
         currency: 'EUR', 
         transactions: allTransactions 
-    };
+    });
 
   } catch (error) {
     console.error("Critical Error in getBankData:", error.message);
-    // Devolvemos una respuesta segura en lugar de explotar
-    return { connected: false, error: "Internal Server Error", balance: 0 };
+    res.status(500).json({ connected: false, error: "Internal Server Error", balance: 0 });
   }
 });
