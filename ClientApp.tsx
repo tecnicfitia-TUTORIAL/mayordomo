@@ -18,6 +18,7 @@ import { SupportModal } from './components/SupportModal';
 import { LegalModal } from './components/LegalModal';
 import { Toast } from './components/Toast'; 
 import { Logo } from './components/Logo';
+import { MayordomoCompanion } from './components/MayordomoCompanion';
 import { SubscriptionService } from './services/subscriptionService';
 import { PreparationService } from './services/preparationService';
 import { InferenceEngine } from './services/inferenceService';
@@ -793,6 +794,9 @@ const ClientApp: React.FC = () => {
           </main>
         </>
       )}
+      
+      {/* Interactive Companion */}
+      <MayordomoCompanion />
     </div>
   );
 };

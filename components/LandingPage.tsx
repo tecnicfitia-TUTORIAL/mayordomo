@@ -2,7 +2,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
-import { WanderingGoblin } from './WanderingGoblin';
 import { ArrowRight, Shield, Zap, Globe, Check, Star, Lock } from 'lucide-react';
 import { SUBSCRIPTION_PLANS } from '../constants';
 
@@ -41,9 +40,6 @@ export const LandingPage: React.FC = () => {
           ></div>
           <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-[#0c0a09]/90 to-[#0c0a09]"></div>
       </div>
-
-      {/* --- WANDERING GOBLIN (Background Animation) --- */}
-      <WanderingGoblin />
 
       {/* --- NAVBAR --- */}
       <nav className="relative z-50 px-6 py-6 flex items-center justify-between max-w-7xl mx-auto">
