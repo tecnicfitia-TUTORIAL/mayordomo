@@ -32,17 +32,8 @@ const getPlaidClient = () => {
  * Genera un token temporal para inicializar el widget de Plaid en el frontend.
  * CONVERTED TO onRequest FOR DEBUGGING & STABILITY
  */
-exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (req, res) => {
+exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
   try {
-    // CORS Headers (Explicit)
-    res.set('Access-Control-Allow-Origin', '*');
-    if (req.method === 'OPTIONS') {
-      res.set('Access-Control-Allow-Methods', 'POST');
-      res.set('Access-Control-Allow-Headers', 'Content-Type');
-      res.status(204).send('');
-      return;
-    }
-
     console.log("Entry createLinkToken (HTTP)", req.body);
     const { userId } = req.body;
     
@@ -75,7 +66,7 @@ exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaid
  * 2. EXCHANGE PUBLIC TOKEN
  * Intercambia el token público (frontend) por un access_token permanente y lo guarda.
  */
-exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (request) => {
+exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public', maxInstances: 10 }, async (request) => {
   try {
     console.log("Entry exchangePublicToken", { 
         userId: request.data?.userId, 
@@ -134,7 +125,7 @@ exports.exchangePublicToken = onCall({ cors: true, secrets: [plaidClientId, plai
  * 3. GET BANK DATA (REFRESH BALANCE)
  * Usa los tokens guardados para obtener el saldo total y transacciones recientes.
  */
-exports.getBankData = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public' }, async (request) => {
+exports.getBankData = onCall({ cors: true, secrets: [plaidClientId, plaidSecret], invoker: 'public', maxInstances: 10 }, async (request) => {
   try {
     // Aceptamos userId por body o query
     const userId = request.data.userId;

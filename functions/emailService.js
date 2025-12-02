@@ -17,7 +17,7 @@ const oauth2Client = new google.auth.OAuth2(
 /**
  * Generates the OAuth2 URL for Gmail consent
  */
-exports.getGmailAuthUrl = onRequest({ cors: true }, (req, res) => {
+exports.getGmailAuthUrl = onRequest({ cors: true, maxInstances: 10 }, (req, res) => {
     try {
         const scopes = ['https://www.googleapis.com/auth/gmail.readonly'];
         const url = oauth2Client.generateAuthUrl({
@@ -35,7 +35,7 @@ exports.getGmailAuthUrl = onRequest({ cors: true }, (req, res) => {
 /**
  * Exchanges code for token and scans for invoices
  */
-exports.scanGmail = onRequest({ cors: true }, async (req, res) => {
+exports.scanGmail = onRequest({ cors: true, maxInstances: 10 }, async (req, res) => {
     const { code, userId } = req.body;
 
     if (!userId) {

@@ -52,7 +52,7 @@ export const InferenceEngine = {
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash-001',
+        model: 'gemini-1.5-flash',
         contents: prompt,
         config: {
           maxOutputTokens: 2000, // Increased limit
