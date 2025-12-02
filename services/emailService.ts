@@ -24,7 +24,11 @@ export const EmailService = {
      */
     getAuthUrl: async (): Promise<string> => {
         try {
-            const response = await axios.get(`${BASE_URL}/getGmailAuthUrl`);
+            // Pass current origin as redirect URI to handle dynamic environments (localhost vs codespaces)
+            const redirectUri = window.location.origin;
+            const response = await axios.post(`${BASE_URL}/getGmailAuthUrl`, {
+                redirectUri
+            });
             return response.data.url;
         } catch (error) {
             console.error("Error getting auth url:", error);
@@ -37,9 +41,11 @@ export const EmailService = {
      */
     scanInvoices: async (authCode: string | null, userId: string): Promise<InvoiceEmail[]> => {
         try {
+            const redirectUri = window.location.origin;
             const response = await axios.post(`${BASE_URL}/scanGmail`, {
                 code: authCode,
-                userId: userId
+                userId: userId,
+                redirectUri // Required for code exchange
             });
             return response.data.invoices;
         } catch (error) {
