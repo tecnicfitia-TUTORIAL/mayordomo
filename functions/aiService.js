@@ -14,7 +14,7 @@ const getAI = () => {
 /**
  * 1. CHAT RESPONSE
  */
-exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey], maxInstances: 10, invoker: 'public' }, async (req, res) => {
+exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -79,7 +79,7 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
 /**
  * 2. INFER OBLIGATIONS
  */
-exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], maxInstances: 10, invoker: 'public' }, async (req, res) => {
+exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -164,7 +164,7 @@ exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], ma
 /**
  * 3. EVOLUTION (GAP ANALYSIS)
  */
-exports.analyzeGapAndPropose = onRequest({ cors: true, secrets: [googleGenAiKey], maxInstances: 10, invoker: 'public' }, async (req, res) => {
+exports.analyzeGapAndPropose = onRequest({ cors: true, secrets: [googleGenAiKey], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
