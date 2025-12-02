@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { PillarId, PillarStatus, UserProfile, SubscriptionTier, FeatureMatrixItem } from '../types';
 import { PERMISSIONS_MATRIX, PILLAR_DEFINITIONS, getTierLevel, getNormalizedTierKey } from '../constants';
-import { Shield, Home, Coffee, Activity, Users, Lock, CheckCircle2, AlertTriangle, Database, Zap, EyeOff, Settings, Crown, ExternalLink, X, Loader2 } from 'lucide-react';
+import { Shield, Home, Coffee, Activity, Users, Lock, CheckCircle2, AlertTriangle, Database, Zap, EyeOff, Settings, Crown, ExternalLink, X, Loader2, Trash2, Plus } from 'lucide-react';
 import { UniversalDetailModal } from './UniversalDetailModal';
 import { BankService } from '../services/bankService';
 import { EmailService } from '../services/emailService';
@@ -126,6 +126,23 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
       } catch (e) {
           alert("Error conectando con Gmail.");
           setIsLoadingEmail(false);
+      }
+  };
+
+  const handleDisconnectBank = async () => {
+      if (!confirm("¿Seguro que quieres desconectar tu banco?")) return;
+      setIsLoadingBank(true);
+      try {
+          await BankService.disconnectBank(userProfile.uid);
+          setRealData(prev => {
+              const newData = { ...prev };
+              delete newData['pat_expenses'];
+              return newData;
+          });
+      } catch (e) {
+          alert("Error al desconectar.");
+      } finally {
+          setIsLoadingBank(false);
       }
   };
 
@@ -272,6 +289,7 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
 
              // SPECIAL RENDER: Connect Buttons
              const showBankConnect = feature.id === 'pat_expenses' && !realData['pat_expenses'] && isVisible;
+             const isBankConnected = feature.id === 'pat_expenses' && !!realData['pat_expenses'] && isVisible;
              const showEmailConnect = feature.id === 'pat_subscriptions' && !realData['pat_subscriptions'] && isVisible;
 
              return (
@@ -349,27 +367,63 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
 
                     {/* CONTENT */}
                     <div className={`p-5 h-full flex flex-col justify-between ${!isVisible ? 'opacity-10 blur-[3px]' : ''}`}>
-                        <div className="flex justify-between items-start">
-                             <div className="p-1.5 rounded-sm bg-stone-800/50 text-stone-400">
-                                 <Zap size={14} />
-                             </div>
-                             <div className="flex items-center gap-1 text-[9px] font-mono text-stone-600 border border-stone-800 px-1.5 py-0.5 rounded-sm uppercase">
-                                 <Database size={8} />
-                                 {data.source}
-                             </div>
-                        </div>
-                        <div>
-                            <div className="text-2xl font-serif font-bold text-stone-200 group-hover:text-white transition-colors truncate">
-                                {data.value}
+                        {isBankConnected ? (
+                            // --- BANK MANAGEMENT PANEL ---
+                            <div className="flex flex-col h-full justify-between">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-sm bg-emerald-900/20 text-emerald-500 border border-emerald-500/20">
+                                            <CheckCircle2 size={14} />
+                                        </div>
+                                        <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Conectado</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[9px] font-mono text-stone-600 border border-stone-800 px-1.5 py-0.5 rounded-sm uppercase">
+                                        <Database size={8} />
+                                        PLAID
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-3 mt-4">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setSelectedFeature(feature); }}
+                                        className="flex items-center gap-2 px-3 py-2 bg-stone-800 hover:bg-stone-700 rounded text-[10px] font-bold uppercase tracking-wider text-stone-300 hover:text-white transition-colors border border-stone-700"
+                                    >
+                                        <Plus size={12} /> Vincular
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleDisconnectBank(); }}
+                                        className="flex items-center gap-2 px-3 py-2 bg-red-900/10 hover:bg-red-900/20 rounded text-[10px] font-bold uppercase tracking-wider text-red-500 hover:text-red-400 transition-colors border border-red-900/20"
+                                    >
+                                        <Trash2 size={12} /> Desconectar
+                                    </button>
+                                </div>
                             </div>
-                            <div className="text-xs text-stone-500 font-bold uppercase tracking-wider mt-1 truncate">
-                                {data.label}
-                            </div>
-                        </div>
-                        {isVisible && !showBankConnect && !showEmailConnect && (
-                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <ExternalLink size={12} className="text-ai-500" />
-                            </div>
+                        ) : (
+                            // --- STANDARD CARD ---
+                            <>
+                                <div className="flex justify-between items-start">
+                                    <div className="p-1.5 rounded-sm bg-stone-800/50 text-stone-400">
+                                        <Zap size={14} />
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[9px] font-mono text-stone-600 border border-stone-800 px-1.5 py-0.5 rounded-sm uppercase">
+                                        <Database size={8} />
+                                        {data.source}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-2xl font-serif font-bold text-stone-200 group-hover:text-white transition-colors truncate">
+                                        {data.value}
+                                    </div>
+                                    <div className="text-xs text-stone-500 font-bold uppercase tracking-wider mt-1 truncate">
+                                        {data.label}
+                                    </div>
+                                </div>
+                                {isVisible && !showBankConnect && !showEmailConnect && (
+                                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <ExternalLink size={12} className="text-ai-500" />
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                  </div>

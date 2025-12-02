@@ -204,3 +204,65 @@ exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecr
     res.status(500).json({ connected: false, error: "Internal Server Error", balance: 0 });
   }
 });
+
+/**
+ * 4. DISCONNECT BANK
+ * Elimina los tokens de acceso de la base de datos y (opcionalmente) de Plaid.
+ */
+exports.disconnectBank = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
+  // MANUAL CORS FIX
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        res.status(400).json({ error: "Missing userId" });
+        return;
+    }
+
+    console.log(`Disconnecting banks for user: ${userId}`);
+
+    // 1. Obtener conexiones
+    const snapshot = await db.collection('users').doc(userId).collection('bank_connections').get();
+    
+    if (snapshot.empty) {
+        res.json({ success: true, message: "No connections to remove" });
+        return;
+    }
+
+    const plaidClient = getPlaidClient();
+    const batch = db.batch();
+
+    // 2. Eliminar de Plaid y Firestore
+    for (const doc of snapshot.docs) {
+        const { accessToken } = doc.data();
+        
+        // Intentar eliminar de Plaid (Best Effort)
+        if (accessToken) {
+            try {
+                await plaidClient.itemRemove({ access_token: accessToken });
+            } catch (err) {
+                console.warn(`Failed to remove item from Plaid: ${err.message}`);
+            }
+        }
+
+        // Eliminar de Firestore
+        batch.delete(doc.ref);
+    }
+
+    await batch.commit();
+    console.log("All connections removed from Firestore");
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error("Error disconnecting bank:", error);
+    res.status(500).json({ error: error.message });
+  }
+});

@@ -17,6 +17,7 @@ const db = admin.firestore();
 exports.createLinkToken = bankService.createLinkToken;
 exports.exchangePublicToken = bankService.exchangePublicToken;
 exports.getBankData = bankService.getBankData;
+exports.disconnectBank = bankService.disconnectBank;
 exports.getGmailAuthUrl = emailService.getGmailAuthUrl;
 exports.scanGmail = emailService.scanGmail;
 

@@ -107,6 +107,34 @@ export const BankService = {
             console.error("Error fetching bank data:", error);
             throw new Error("Error obteniendo datos bancarios.");
         }
+    },
+
+    /**
+     * 4. Desconecta todas las cuentas bancarias del usuario
+     */
+    disconnectBank: async (userId: string): Promise<void> => {
+        try {
+            const url = getFunctionUrl('disconnectBank');
+            console.log("Disconnecting Bank at:", url);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ userId })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP Error ${response.status}: ${errText}`);
+            }
+
+            await response.json();
+        } catch (error: any) {
+            console.error("Error disconnecting bank:", error);
+            throw new Error(`Error desconectando el banco: ${error.message}`);
+        }
     }
 };
 
