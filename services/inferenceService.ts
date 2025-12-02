@@ -37,6 +37,7 @@ export const InferenceEngine = {
         TAREA:
         Genera una lista CONCISA de las 3 a 5 obligaciones críticas (Burocracia, Identidad, Vivienda) para este perfil en ${jurisdiction}.
         No inventes textos largos. Sé directo.
+        IMPORTANTE: DEVUELVE SOLO EL JSON PURO. NO USES BLOQUES DE CÓDIGO MARKDOWN.
 
         FORMATO JSON REQUERIDO (Array de objetos):
         [

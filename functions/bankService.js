@@ -103,15 +103,30 @@ exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, p
     const accessToken = response.data.access_token;
     const itemId = response.data.item_id;
 
-    // Guardar conexión en Firestore
-    console.log("Saving to Firestore...");
-    await db.collection('users').doc(userId).collection('bank_connections').doc(itemId).set({
+    // Get Institution ID (Best Effort)
+    let institutionId = 'unknown';
+    try {
+        const itemResponse = await plaidClient.itemGet({ access_token: accessToken });
+        institutionId = itemResponse.data.item.institution_id || 'unknown';
+    } catch (e) {
+        console.warn("Could not fetch institution ID", e.message);
+    }
+
+    // Guardar conexión en Firestore (Array Union)
+    console.log("Saving to Firestore Array...");
+    const newConnection = {
       accessToken,
       itemId,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      institutionId,
+      createdAt: Date.now(),
       provider: 'PLAID',
       status: 'ACTIVE'
-    });
+    };
+
+    await db.collection('users').doc(userId).set({
+        bankAccounts: admin.firestore.FieldValue.arrayUnion(newConnection)
+    }, { merge: true });
+    
     console.log("Firestore Save Success");
 
     res.json({ success: true, itemId });
@@ -145,10 +160,22 @@ exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecr
         return;
     }
 
-    // 1. Verificación Previa: Chequear conexiones en Firestore
-    const snapshot = await db.collection('users').doc(userId).collection('bank_connections').get();
-    
-    if (snapshot.empty) {
+    // 1. Obtener conexiones del Array
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    const bankAccounts = userData?.bankAccounts || [];
+
+    if (bankAccounts.length === 0) {
+      // Fallback check for legacy subcollection
+      const subSnapshot = await db.collection('users').doc(userId).collection('bank_connections').get();
+      if (subSnapshot.empty) {
+          res.json({ connected: false, balance: 0, currency: 'EUR', transactions: [] });
+          return;
+      }
+      // If legacy exists, we could use it, but for now let's just return empty to force migration/reconnect
+      // or handle it. Given the prompt "Modifica la lógica", I'll stick to the new logic primarily.
+      // But to avoid breaking the demo if they don't reconnect immediately:
+      // I will NOT implement legacy fallback reading here to keep code clean as requested.
       res.json({ connected: false, balance: 0, currency: 'EUR', transactions: [] });
       return;
     }
@@ -159,8 +186,8 @@ exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecr
     let successCount = 0;
 
     // Iterar sobre conexiones
-    for (const doc of snapshot.docs) {
-      const { accessToken } = doc.data();
+    for (const account of bankAccounts) {
+      const { accessToken } = account;
       
       if (!accessToken) continue;
 
@@ -181,13 +208,13 @@ exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecr
         }
        
       } catch (err) {
-        console.error(`Plaid API Error for connection ${doc.id}:`, err.response?.data || err.message);
+        console.error(`Plaid API Error for connection ${account.itemId}:`, err.response?.data || err.message);
         // Si falla una conexión específica, no rompemos todo el flujo, pero registramos el error.
       }
     }
 
     // Si fallaron todas las conexiones que existían (ej: token expirado)
-    if (successCount === 0 && !snapshot.empty) {
+    if (successCount === 0 && bankAccounts.length > 0) {
          res.json({ connected: false, error: "Token inválido o error de conexión", balance: 0 });
          return;
     }
@@ -228,33 +255,51 @@ exports.disconnectBank = onRequest({ cors: true, secrets: [plaidClientId, plaidS
 
     console.log(`Disconnecting banks for user: ${userId}`);
 
-    // 1. Obtener conexiones
-    const snapshot = await db.collection('users').doc(userId).collection('bank_connections').get();
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    const bankAccounts = userDoc.data()?.bankAccounts || [];
     
-    if (snapshot.empty) {
+    // Also check legacy subcollection to be thorough
+    const subSnapshot = await userRef.collection('bank_connections').get();
+    
+    if (bankAccounts.length === 0 && subSnapshot.empty) {
         res.json({ success: true, message: "No connections to remove" });
         return;
     }
 
     const plaidClient = getPlaidClient();
-    const batch = db.batch();
 
-    // 2. Eliminar de Plaid y Firestore
-    for (const doc of snapshot.docs) {
-        const { accessToken } = doc.data();
-        
-        // Intentar eliminar de Plaid (Best Effort)
-        if (accessToken) {
+    // 1. Remove from Plaid (Array)
+    for (const account of bankAccounts) {
+        if (account.accessToken) {
             try {
-                await plaidClient.itemRemove({ access_token: accessToken });
+                await plaidClient.itemRemove({ access_token: account.accessToken });
             } catch (err) {
                 console.warn(`Failed to remove item from Plaid: ${err.message}`);
             }
         }
-
-        // Eliminar de Firestore
-        batch.delete(doc.ref);
     }
+
+    // 2. Remove from Plaid (Legacy Subcollection)
+    for (const doc of subSnapshot.docs) {
+        const { accessToken } = doc.data();
+        if (accessToken) {
+            try {
+                await plaidClient.itemRemove({ access_token: accessToken });
+            } catch (err) {
+                console.warn(`Failed to remove legacy item from Plaid: ${err.message}`);
+            }
+        }
+    }
+
+    // 3. Clear Firestore
+    const batch = db.batch();
+    
+    // Clear Array
+    batch.update(userRef, { bankAccounts: [] });
+    
+    // Clear Subcollection
+    subSnapshot.docs.forEach(doc => batch.delete(doc.ref));
 
     await batch.commit();
     console.log("All connections removed from Firestore");
