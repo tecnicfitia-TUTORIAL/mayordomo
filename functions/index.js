@@ -6,6 +6,7 @@ const admin = require('firebase-admin');
 const stripe = require('stripe');
 const bankService = require('./bankService');
 const emailService = require('./emailService');
+const aiService = require('./aiService');
 
 // Inicializar solo si no hay ninguna app ya corriendo
 if (admin.apps.length === 0) {
@@ -20,6 +21,11 @@ exports.getBankData = bankService.getBankData;
 exports.disconnectBank = bankService.disconnectBank;
 exports.getGmailAuthUrl = emailService.getGmailAuthUrl;
 exports.scanGmail = emailService.scanGmail;
+
+// Export AI Services
+exports.generateChatResponse = aiService.generateChatResponse;
+exports.inferObligations = aiService.inferObligations;
+exports.analyzeGapAndPropose = aiService.analyzeGapAndPropose;
 
 // Secret Keys (Secure Environment)
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");

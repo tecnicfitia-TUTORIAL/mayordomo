@@ -22,9 +22,6 @@ if (isCloudRun) {
 export default defineConfig({
   plugins: [react()],
   cacheDir: cacheLocation,
-  define: {
-    'process.env.API_KEY': JSON.stringify(process.env.VITE_GOOGLE_API_KEY || process.env.API_KEY)
-  },
   build: {
     outDir: buildOutput, 
     emptyOutDir: true,

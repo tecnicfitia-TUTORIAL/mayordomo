@@ -1,6 +1,14 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import axios from 'axios';
 import { MacroContextEvent, PermissionProposal, UserProfile, PermissionModule, SubscriptionTier } from "../types";
+
+const PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-project';
+const REGION = 'us-central1';
+const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+const BASE_URL = IS_LOCAL 
+    ? `http://127.0.0.1:5001/${PROJECT_ID}/${REGION}`
+    : `https://${REGION}-${PROJECT_ID}.cloudfunctions.net`;
 
 // Mock "Internet" Data Stream - Expanded to 15 items for daily variety
 const MOCK_MACRO_EVENTS: MacroContextEvent[] = [
@@ -126,16 +134,6 @@ const MOCK_MACRO_EVENTS: MacroContextEvent[] = [
   }
 ];
 
-const getAI = () => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY not found in environment");
-  }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
-};
-
-// Helper for simple backoff
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 // 1. Scan Macro Context (Simulated)
 export const scanMacroContext = async (): Promise<MacroContextEvent> => {
   // In a real app, this would search Google. Here we pick a random mock event.
@@ -155,141 +153,13 @@ export const analyzeGapAndPropose = async (
   activeModules: PermissionModule[]
 ): Promise<PermissionProposal | null> => {
   try {
-    const ai = getAI();
-    
-    // Context for the AI
-    const microContext = JSON.stringify({
-      age: profile.age,
-      role: profile.occupation,
-      currentModules: activeModules.map(m => m.title),
-      currentPermissions: activeModules.flatMap(m => m.permissions.map(p => p.label))
+    const response = await axios.post(`${BASE_URL}/analyzeGapAndPropose`, {
+      event,
+      profile,
+      activeModules
     });
 
-    const macroContext = JSON.stringify(event);
-
-    const prompt = `
-      ACTÚA COMO EL MOTOR DE EVOLUCIÓN DE 'CONFORT'.
-      
-      INPUTS:
-      1. MICRO-CONTEXTO (Usuario): ${microContext}
-      2. MACRO-CONTEXTO (Evento de Internet): ${macroContext}
-
-      MANDATO:
-      Analiza si el evento del Macro-Contexto representa un RIESGO o una OPORTUNIDAD que los permisos actuales del usuario NO cubren.
-      Si existe una brecha, GENERA una propuesta de NUEVO PERMISO (Nivel 5).
-
-      Si el usuario ya está protegido o el evento no es relevante para su perfil (Edad/Ocupación), devuelve NULL.
-      
-      REGLAS:
-      - Si el riesgo es "CRITICAL", la propuesta debe ser muy persuasiva.
-      - El "targetModuleId" debe coincidir con uno de los módulos existentes o sugerir uno muy obvio.
-
-      FORMATO JSON ESPERADO (si hay propuesta):
-      {
-        "proposalRequired": true,
-        "title": "Definición del Permiso (Nombre corto)",
-        "targetModuleId": "ID del módulo (ej. finanzas_crecimiento)",
-        "justification": "Justificación clara del riesgo mitigado o la oportunidad ganada.",
-        "permissionLabel": "Texto del interruptor (ej. 'Activar Monitoreo de...')",
-        "permissionId": "unique_id_suggestion"
-      }
-
-      FORMATO JSON ESPERADO (si NO hay propuesta):
-      {
-        "proposalRequired": false
-      }
-    `;
-
-    let response;
-    let attempts = 0;
-    const maxAttempts = 4; 
-
-    while (attempts < maxAttempts) {
-        try {
-            response = await ai.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: prompt,
-              config: {
-                maxOutputTokens: 1000, // SAFETY: Prevent infinite loops
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        proposalRequired: { type: Type.BOOLEAN },
-                        title: { type: Type.STRING },
-                        targetModuleId: { type: Type.STRING },
-                        justification: { type: Type.STRING },
-                        permissionLabel: { type: Type.STRING },
-                        permissionId: { type: Type.STRING }
-                    }
-                }
-              }
-            });
-            break; // Success, exit loop
-        } catch (e: any) {
-            attempts++;
-            
-            // Robust detection of Quota/RateLimit errors
-            let isQuotaError = false;
-            
-            // Check specifically for the XML object structure mentioned by user
-            if (e?.error?.code === 429 || e?.error?.status === 'RESOURCE_EXHAUSTED') isQuotaError = true;
-            // Check for status on error object directly
-            if (e?.status === 429 || e?.status === 503) isQuotaError = true;
-            
-            // Fallback: Check string message
-            const msg = (e?.message || JSON.stringify(e)).toLowerCase();
-            if (msg.includes('429') || msg.includes('resource_exhausted') || msg.includes('quota')) {
-                isQuotaError = true;
-            }
-
-            if (attempts < maxAttempts && isQuotaError) {
-                // Increased Exponential backoff: 10s, 20s, 40s... to span > 1 minute
-                // This allows the quota window to reset
-                const waitTime = 15000 * Math.pow(2, attempts - 1); 
-                console.warn(`Evolution Engine rate limited (Attempt ${attempts}). Retrying in ${waitTime/1000}s...`);
-                await delay(waitTime);
-                continue;
-            }
-            
-            if (isQuotaError) {
-               console.warn("Evolution Engine: Quota exhausted after retries. Pausing cycle.");
-               return null;
-            }
-            
-            // Non-quota error, log warning and abort
-            console.warn("Evolution Engine API Error (Non-Quota):", e);
-            return null;
-        }
-    }
-
-    if (response && response.text) {
-      // SAFETY: Clean Markdown before parsing
-      const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-      
-      try {
-          const result = JSON.parse(cleanText);
-          if (result.proposalRequired) {
-            return {
-              id: Math.random().toString(36).substring(7),
-              relatedMacroEventId: event.id,
-              title: result.title,
-              targetModuleId: result.targetModuleId,
-              reasoning: result.justification,
-              proposedPermission: {
-                id: result.permissionId || `new_${Date.now()}`,
-                label: result.permissionLabel,
-                defaultEnabled: false, // Always OFF by default, user must accept
-                minTier: SubscriptionTier.PRO // New evolutionary features default to Premium (mapped to PRO)
-              }
-            };
-          }
-      } catch (parseError) {
-          console.warn("Evolution Engine: JSON Parse Error - Response truncated or malformed.", parseError);
-          return null;
-      }
-    }
-    return null;
+    return response.data;
 
   } catch (error) {
     console.error("Evolution Engine Unexpected Error:", error);

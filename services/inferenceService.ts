@@ -1,15 +1,14 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
-import { UserProfile, LifeObligation, ObligationCategory, ObligationStatus } from "../types";
+import axios from 'axios';
+import { UserProfile, LifeObligation } from "../types";
 
-const getAI = () => {
-  // COPIADO DEL CHAT (geminiService.ts) - Configuración probada y funcional
-  if (!process.env.API_KEY) {
-    console.error("CRITICAL: API_KEY is missing (Chat Config).");
-    return null;
-  }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
-};
+const PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-project';
+const REGION = 'us-central1';
+const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+const BASE_URL = IS_LOCAL 
+    ? `http://127.0.0.1:5001/${PROJECT_ID}/${REGION}`
+    : `https://${REGION}-${PROJECT_ID}.cloudfunctions.net`;
 
 export const InferenceEngine = {
   
@@ -19,83 +18,8 @@ export const InferenceEngine = {
    */
   inferObligations: async (profile: UserProfile): Promise<LifeObligation[]> => {
     try {
-      const ai = getAI();
-      if (!ai) return [];
-      
-      const jurisdiction = profile.lifeContext?.currentJurisdiction?.name || "Global";
-      const occupation = profile.occupation;
-      const age = profile.age;
-
-      const prompt = `
-        ACTÚA COMO UN EXPERTO LEGAL, FISCAL Y ADMINISTRATIVO INTERNACIONAL.
-        
-        PERFIL DEL CLIENTE:
-        - Edad: ${age}
-        - Ocupación: ${occupation}
-        - Jurisdicción de Residencia: ${jurisdiction}
-
-        TAREA:
-        Genera una lista CONCISA de las 3 a 5 obligaciones críticas (Burocracia, Identidad, Vivienda) para este perfil en ${jurisdiction}.
-        No inventes textos largos. Sé directo.
-        Responde ÚNICAMENTE con el objeto JSON crudo. No uses bloques de código markdown.
-
-        FORMATO JSON REQUERIDO (Array de objetos):
-        [
-          {
-            "id": "string (slug único)",
-            "title": "string (max 30 chars)",
-            "category": "IDENTITY" | "TAX" | "HOUSING" | "LEGAL",
-            "jurisdiction": "${jurisdiction}",
-            "description": "string (max 100 chars)",
-            "status": "WARNING"
-          }
-        ]
-      `;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash', // COPIADO DEL CHAT (geminiService.ts)
-        contents: prompt,
-        config: {
-          maxOutputTokens: 4000, // Increased limit
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.STRING },
-                title: { type: Type.STRING },
-                category: { type: Type.STRING, enum: [
-                  'IDENTITY', 'TAX', 'HEALTH', 'ASSET', 'HOUSING', 'LEGAL'
-                ]},
-                jurisdiction: { type: Type.STRING },
-                description: { type: Type.STRING },
-                status: { type: Type.STRING, enum: ['MISSING', 'WARNING', 'OK'] }
-              }
-            }
-          }
-        }
-      });
-
-      if (response.text) {
-        // Clean potential Markdown code blocks
-        const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        try {
-            const data = JSON.parse(cleanText);
-            // Map to LifeObligation interface ensuring enums match
-            return data.map((item: any) => ({
-              ...item,
-              category: item.category as ObligationCategory,
-              status: item.status as ObligationStatus
-            }));
-        } catch (parseError) {
-            console.warn("Inference Engine: Failed to parse JSON response. Falling back to empty list.", parseError);
-            return [];
-        }
-      }
-
-      return [];
+      const response = await axios.post(`${BASE_URL}/inferObligations`, { profile });
+      return response.data;
 
     } catch (error) {
       console.error("Inference Engine Error:", error);
