@@ -11,6 +11,7 @@ interface Props {
   pillarId: PillarId;
   status: PillarStatus;
   userProfile: UserProfile;
+  onOpenPermissions?: (permissionId?: string) => void;
 }
 
 // Datos simulados para la demo visual
@@ -51,7 +52,7 @@ const MOCK_DATA_VALUES: Record<string, { value: string; label: string; source: s
   'nuc_home_maint': { value: 'Caldera Rev.', label: 'Mantenimiento', source: 'LOGS' },
 };
 
-export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfile }) => {
+export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfile, onOpenPermissions }) => {
   const def = PILLAR_DEFINITIONS[pillarId];
   const features = PERMISSIONS_MATRIX.filter(f => f.pillarId === pillarId);
   // DEFENSIVE CODING: Handle undefined permissions
@@ -165,8 +166,11 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
 
       // CASE 1.B: MISSING PERMISSION
       if (hasAccess && !hasPermission) {
-          // Just flash a toast or alert (Handled visually by the card, but action here for safety)
-          alert("Por favor, active el permiso técnico correspondiente en Ajustes para ver este dato.");
+          if (onOpenPermissions && feature.requiredPermissionId) {
+              onOpenPermissions(feature.requiredPermissionId);
+          } else {
+              alert("Por favor, active el permiso técnico correspondiente en Ajustes para ver este dato.");
+          }
           return;
       }
 

@@ -24,7 +24,8 @@ export const DashboardBuilder = {
             title: 'Sexto Sentido',
             description: 'Oportunidades latentes detectadas.',
             priority: 200, // Absolute Top Priority -> Ocupa ancho completo
-            opportunities: sixthSenseOpps
+            opportunities: sixthSenseOpps,
+            requiredPermission: 'sys_ai_inference' // Example: Needs AI permission
         });
     }
 
@@ -41,7 +42,8 @@ export const DashboardBuilder = {
                description: `${item.label}: ${item.cost} ${item.currency}`,
                pillarId: item.sourcePillar,
                priority: 100,
-               metadata: { cost: item.cost, currency: item.currency, actionLabel: 'Firmar Orden' }
+               metadata: { cost: item.cost, currency: item.currency, actionLabel: 'Firmar Orden' },
+               requiredPermission: 'sys_finance_write' // Needs write access to finance
            });
        });
     }
@@ -58,7 +60,8 @@ export const DashboardBuilder = {
             priority: 40,
             isLocked: true,
             pillarId: PillarId.PATRIMONIO,
-            metadata: { actionLabel: 'Desbloquear' }
+            metadata: { actionLabel: 'Desbloquear' },
+            requiredPermission: 'sys_finance_read' // Needs read access to see details
         });
 
         // B. Tarjeta Nostalgia (Conexión Emocional)
@@ -70,7 +73,8 @@ export const DashboardBuilder = {
             priority: 50,
             metadata: { 
                 image: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&q=80&w=800' 
-            }
+            },
+            requiredPermission: 'sys_storage' // Needs storage access
         });
     }
 

@@ -6,11 +6,19 @@ import { SixthSenseWidget } from './SixthSenseWidget';
 
 interface Props {
   items: DashboardItem[];
+  onOpenPermissions?: (permissionId: string) => void; // New prop for navigation
 }
 
-export const SmartDashboard: React.FC<Props> = ({ items }) => {
+export const SmartDashboard: React.FC<Props> = ({ items, onOpenPermissions }) => {
   
   if (items.length === 0) return null;
+
+  const handleCardClick = (item: DashboardItem) => {
+      // If item requires a permission and we have the handler, trigger it
+      if (item.requiredPermission && onOpenPermissions) {
+          onOpenPermissions(item.requiredPermission);
+      }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 auto-rows-[minmax(180px,auto)] gap-6 animate-fadeIn pb-20 grid-flow-dense">
@@ -41,7 +49,11 @@ export const SmartDashboard: React.FC<Props> = ({ items }) => {
            // --- CARD: NOSTALGIA (Grande - Visual) ---
            if (item.type === 'NOSTALGIA') {
                return (
-                   <div key={item.id} className="col-span-1 md:col-span-2 md:row-span-2 relative group overflow-hidden rounded-xl border border-stone-800 shadow-2xl transition-all hover:border-stone-600">
+                   <div 
+                        key={item.id} 
+                        onClick={() => handleCardClick(item)}
+                        className={`col-span-1 md:col-span-2 md:row-span-2 relative group overflow-hidden rounded-xl border border-stone-800 shadow-2xl transition-all hover:border-stone-600 ${item.requiredPermission ? 'cursor-pointer hover:ring-1 hover:ring-ai-500/50' : ''}`}
+                   >
                        <img 
                          src={item.metadata?.image} 
                          alt="Memory" 
@@ -59,6 +71,11 @@ export const SmartDashboard: React.FC<Props> = ({ items }) => {
                            <p className="text-sm text-stone-300 italic font-serif leading-relaxed border-l-2 border-ai-500 pl-3">
                                "{item.description}"
                            </p>
+                           {item.requiredPermission && (
+                               <div className="mt-3 flex items-center gap-2 text-[10px] text-ai-400 uppercase tracking-wider font-bold animate-pulse">
+                                   <Lock size={10} /> Requiere Permiso: {item.requiredPermission}
+                               </div>
+                           )}
                        </div>
                    </div>
                );
@@ -66,11 +83,14 @@ export const SmartDashboard: React.FC<Props> = ({ items }) => {
 
            // --- CARD: DECISION / ACTION (Standard Block) ---
            return (
-               <div key={item.id} className={`col-span-1 md:col-span-2 p-6 rounded-xl border relative overflow-hidden group transition-all duration-300 flex flex-col justify-between ${
+               <div 
+                    key={item.id} 
+                    onClick={() => handleCardClick(item)}
+                    className={`col-span-1 md:col-span-2 p-6 rounded-xl border relative overflow-hidden group transition-all duration-300 flex flex-col justify-between ${
                    item.isLocked 
-                     ? 'bg-stone-950 border-stone-800 opacity-70 hover:opacity-100' 
+                     ? 'bg-stone-950 border-stone-800 opacity-70 hover:opacity-100 cursor-pointer' 
                      : 'bg-stone-900/40 backdrop-blur-sm border-ai-500/20 hover:border-ai-500/50 hover:bg-stone-900/60 shadow-lg'
-               }`}>
+               } ${item.requiredPermission ? 'cursor-pointer' : ''}`}>
                    
                    {/* Locked Overlay */}
                    {item.isLocked && (
@@ -78,7 +98,9 @@ export const SmartDashboard: React.FC<Props> = ({ items }) => {
                            <div className="p-3 bg-stone-900/90 rounded-full border border-stone-700 mb-2 shadow-xl">
                                 <Lock className="text-stone-500" size={20} />
                            </div>
-                           <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Función Premium</span>
+                           <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                               {item.requiredPermission ? 'Permiso Requerido' : 'Función Premium'}
+                           </span>
                        </div>
                    )}
 
@@ -96,6 +118,12 @@ export const SmartDashboard: React.FC<Props> = ({ items }) => {
 
                        <h3 className="text-xl font-serif font-bold text-stone-200 mb-2 leading-tight group-hover:text-white transition-colors">{item.title}</h3>
                        <p className="text-sm text-stone-400 leading-relaxed mb-6 font-serif">{item.description}</p>
+                       
+                       {item.requiredPermission && !item.isLocked && (
+                           <p className="text-[10px] text-ai-500/70 uppercase tracking-widest mb-2 flex items-center gap-1">
+                               <Lock size={10} /> Permiso vinculado: {item.requiredPermission}
+                           </p>
+                       )}
                    </div>
 
                    {!item.isLocked && (

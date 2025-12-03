@@ -130,6 +130,7 @@ const ClientApp: React.FC = () => {
   const [originalAdminProfile, setOriginalAdminProfile] = useState<UserProfile | null>(null);
 
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
+  const [highlightPermissionId, setHighlightPermissionId] = useState<string | undefined>(undefined);
 
   // 0. OFFLINE DETECTION & THEME APPLICATION & BACKGROUND SERVICE & CONFIG
   useEffect(() => {
@@ -541,7 +542,15 @@ const ClientApp: React.FC = () => {
 
   const activeProfileForModal = profile || SYSTEM_ADMIN_PROFILE;
 
-  const handleOpenPermissions = () => { setIsSettingsMenuOpen(false); setShowPermissionsTree(true); };
+  const handleOpenPermissions = (permissionId?: string | any) => { 
+      setIsSettingsMenuOpen(false); 
+      if (typeof permissionId === 'string') {
+          setHighlightPermissionId(permissionId);
+      } else {
+          setHighlightPermissionId(undefined);
+      }
+      setShowPermissionsTree(true); 
+  };
   const handleOpenSubscription = () => { setIsSettingsMenuOpen(false); setShowSubscriptionModal(true); };
   const handleOpenAppearance = () => { setIsSettingsMenuOpen(false); setShowAppearanceModal(true); };
   const handleOpenSupport = () => { setIsSettingsMenuOpen(false); setShowSupportDashboard(true); }
@@ -619,6 +628,7 @@ const ClientApp: React.FC = () => {
               profile={profile}
               onUpdate={(p) => { setProfile(p); localStorage.setItem(PROFILE_KEY, JSON.stringify(sanitizeProfileForStorage(p))); }}
               onClose={() => setShowPermissionsTree(false)}
+              highlightPermissionId={highlightPermissionId}
           />
       )}
 
@@ -864,11 +874,14 @@ const ClientApp: React.FC = () => {
                         {activeMission && <MissionBriefingCard mission={activeMission} />}
                         
                         {/* Filtered Smart Dashboard for Summary: High Priority Only */}
-                        <SmartDashboard items={dashboardItems.filter(item => 
-                            item.type === 'SIXTH_SENSE' || 
-                            item.priority >= 80 || 
-                            item.type === 'ZEN'
-                        )} />
+                        <SmartDashboard 
+                            items={dashboardItems.filter(item => 
+                                item.type === 'SIXTH_SENSE' || 
+                                item.priority >= 80 || 
+                                item.type === 'ZEN'
+                            )} 
+                            onOpenPermissions={handleOpenPermissions}
+                        />
 
                         {/* Empty State for Summary */}
                         {!activeMission && dashboardItems.filter(i => i.priority >= 80).length === 0 && (
@@ -894,6 +907,7 @@ const ClientApp: React.FC = () => {
                                     pillarId={activeTab as PillarId} 
                                     userProfile={profile} 
                                     status={pillarStatus} 
+                                    onOpenPermissions={handleOpenPermissions}
                                 />
                             );
                         })()}

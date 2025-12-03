@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile, PillarId, SubscriptionTier } from '../types';
 import { TECHNICAL_PERMISSIONS, PILLAR_DEFINITIONS, getTierLevel } from '../constants';
 import { Shield, Zap, Lock, ChevronRight, CheckCircle2, ArrowLeft, Database, Brain, Crown } from 'lucide-react';
@@ -9,6 +9,7 @@ interface Props {
   profile: UserProfile;
   onUpdate: (profile: UserProfile) => void;
   onClose: () => void;
+  highlightPermissionId?: string;
 }
 
 // DEFINICIÓN DE PERMISOS CRÍTICOS (MFA GATE)
@@ -19,11 +20,34 @@ const CRITICAL_PERMISSIONS_IDS = [
     'func_health_kit'     // Datos de Salud
 ];
 
-export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onClose }) => {
+export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onClose, highlightPermissionId }) => {
   const [expandedPillars, setExpandedPillars] = useState<Set<PillarId>>(new Set([PillarId.CENTINELA]));
   
   // MFA STATE
   const [verifyingPermission, setVerifyingPermission] = useState<{id: string, label: string} | null>(null);
+
+  // EFFECT: Handle Highlight Request
+  useEffect(() => {
+    if (highlightPermissionId) {
+        const perm = TECHNICAL_PERMISSIONS.find(p => p.id === highlightPermissionId);
+        if (perm && perm.relatedPillar) {
+            // 1. Expand the pillar
+            setExpandedPillars(prev => {
+                const newSet = new Set(prev);
+                newSet.add(perm.relatedPillar as PillarId);
+                return newSet;
+            });
+
+            // 2. Scroll to element (after render)
+            setTimeout(() => {
+                const el = document.getElementById(`perm-${highlightPermissionId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 300);
+        }
+    }
+  }, [highlightPermissionId]);
 
   const togglePillar = (id: PillarId) => {
     const newSet = new Set(expandedPillars);
@@ -220,9 +244,19 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
                                   const userLevel = getTierLevel(profile.subscriptionTier);
                                   const reqLevel = getTierLevel(perm.minTier || SubscriptionTier.FREE);
                                   const isLockedByTier = userLevel < reqLevel;
+                                  
+                                  // HIGHLIGHT LOGIC
+                                  const isHighlighted = perm.id === highlightPermissionId;
 
                                   return (
-                                     <div key={perm.id} className={`flex items-center justify-between p-3 rounded-sm transition-colors group ${isLockedByTier ? 'opacity-50' : 'hover:bg-black/20'}`}>
+                                     <div 
+                                        key={perm.id} 
+                                        id={`perm-${perm.id}`}
+                                        className={`flex items-center justify-between p-3 rounded-sm transition-all duration-500 group 
+                                            ${isLockedByTier ? 'opacity-50' : 'hover:bg-black/20'}
+                                            ${isHighlighted ? 'bg-ai-900/20 border border-ai-500 shadow-[0_0_15px_rgba(217,70,239,0.15)]' : 'border border-transparent'}
+                                        `}
+                                     >
                                         <div className="flex items-center gap-3">
                                            <div className={`p-1.5 rounded-full ${isGranted ? 'bg-ai-900/20 text-ai-500' : 'bg-stone-800 text-stone-600'}`}>
                                               {isLockedByTier ? <Lock size={12} /> : <Zap size={12} />}

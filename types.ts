@@ -183,6 +183,9 @@ export interface DashboardItem {
   metadata?: any;
   priority: number; // 0-100 (Higher shows first)
   
+  // New: Permission Linking
+  requiredPermission?: string; // ID of the technical permission needed (e.g., 'sys_email_read')
+
   // Specific for Sixth Sense Wrapper
   opportunities?: SixthSenseOpportunity[];
 }
