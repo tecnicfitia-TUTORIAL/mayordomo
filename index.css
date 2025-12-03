@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* NIGHT MODE (Default) - Deep Charcoal & Gold */
+  --color-dark-950: 12 10 9;   
+  --color-dark-900: 28 25 23;  
+  --color-dark-800: 41 37 36;  
+
+  --color-stone-200: 231 229 228; 
+  --color-stone-300: 214 211 209;
+  --color-stone-400: 168 162 158; 
+  --color-stone-500: 120 113 108; 
+  --color-stone-700: 68 64 60;
+  --color-stone-800: 41 37 36;    
+}
+
+.light {
+  /* LIGHT MODE - Bone White & Bronze/Dark Grey */
+  --color-dark-950: 250 250 249; /* Stone 50 */
+  --color-dark-900: 245 245 244; /* Stone 100 */
+  --color-dark-800: 231 229 228; /* Stone 200 */
+
+  --color-stone-200: 28 25 23;    /* Stone 900 (Text Main) */
+  --color-stone-300: 68 64 60;    /* Stone 700 */
+  --color-stone-400: 87 83 78;    /* Stone 600 */
+  --color-stone-500: 120 113 108; /* Stone 500 */
+  --color-stone-700: 214 211 209; /* Stone 300 (Borders) */
+  --color-stone-800: 231 229 228; /* Stone 200 (Borders/Bg) */
+}
+
+body {
+  background-color: rgb(var(--color-dark-950));
+  color: rgb(var(--color-stone-200));
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: overlay;
+}
+
+/* Transitions for theme switching */
+div, button, aside, main {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(var(--color-dark-800), 0.5);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d4af37;
+  border-radius: 2px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #b68e29;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Playfair Display', serif;
+}

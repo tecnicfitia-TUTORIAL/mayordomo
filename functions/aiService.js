@@ -11,6 +11,29 @@ const getAI = () => {
   return new GoogleGenAI({ apiKey: googleGenAiKey.value() });
 };
 
+// Helper to attempt parsing truncated JSON arrays
+const tryParseTruncatedJson = (jsonString) => {
+  try {
+    return JSON.parse(jsonString);
+  } catch (e) {
+    // If it's an array that got cut off
+    if (jsonString.trim().startsWith('[')) {
+      // Find the last complete object closing brace
+      const lastObjectEnd = jsonString.lastIndexOf('}');
+      if (lastObjectEnd > 0) {
+        // Try closing the array after the last object
+        const salvaged = jsonString.substring(0, lastObjectEnd + 1) + ']';
+        try {
+          return JSON.parse(salvaged);
+        } catch (e2) {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+};
+
 /**
  * 1. CHAT RESPONSE
  */
@@ -133,9 +156,10 @@ exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], ma
       - Jurisdicción de Residencia: ${jurisdiction}
 
       TAREA:
-      Genera una lista CONCISA de las 3 a 5 obligaciones críticas (Burocracia, Identidad, Vivienda) para este perfil en ${jurisdiction}.
-      No inventes textos largos. Sé directo.
+      Genera una lista MUY CONCISA de las 3 a 5 obligaciones críticas (Burocracia, Identidad, Vivienda) para este perfil en ${jurisdiction}.
+      IMPORTANTE: Mantén las descripciones cortas (max 100 caracteres).
       Responde ÚNICAMENTE con el objeto JSON crudo. No uses bloques de código markdown.
+      NO incluyas explicaciones adicionales. SOLO el JSON.
 
       FORMATO JSON REQUERIDO (Array de objetos):
       [
@@ -189,7 +213,14 @@ exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], ma
     if (response && response.text) {
       try {
         const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const data = JSON.parse(cleanText);
+        
+        // Attempt to parse, including recovery for truncated JSON
+        let data = tryParseTruncatedJson(cleanText);
+
+        if (!data) {
+             // If recovery failed, try standard parse to let it throw the specific syntax error for logging
+             data = JSON.parse(cleanText);
+        }
         
         // Validate that we got an array
         if (Array.isArray(data)) {
@@ -201,7 +232,12 @@ exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], ma
         }
       } catch (parseError) {
         console.error("[inferObligations] JSON Parse Error:", parseError.message);
-        console.error("[inferObligations] Raw response:", response.text?.substring(0, 200));
+        console.error("[inferObligations] Response length:", response.text?.length);
+        console.error("[inferObligations] Raw response start:", response.text?.substring(0, 200));
+        // Log the end of the response to see where it cut off
+        if (response.text?.length > 200) {
+            console.error("[inferObligations] Raw response end:", response.text?.substring(response.text.length - 200));
+        }
         return res.status(200).json({ obligations: [] });
       }
     } else {
