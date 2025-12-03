@@ -9,7 +9,6 @@ import { Toast } from './Toast';
 import { StripeService } from '../services/stripeService';
 import { LegalModal } from './LegalModal';
 import { PublicPricingModal, PublicGuideModal, PublicLegalModal } from './PublicModals';
-import { sendPasswordResetEmail, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebaseConfig';
 
