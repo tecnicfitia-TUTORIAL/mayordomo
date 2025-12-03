@@ -32,6 +32,7 @@ import { DashboardBuilder } from './services/dashboardBuilder';
 import { BackgroundService } from './services/backgroundService';
 import { NotificationService, AppNotification } from './services/notificationService';
 import { EmailIngestionService, IncomingEmail } from './services/emailIngestionService';
+import { StripeService } from './services/stripeService';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminDashboard } from './components/AdminDashboard';
 
