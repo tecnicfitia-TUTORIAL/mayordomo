@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
+import { LoginScreen } from './LoginScreen';
 import { ArrowRight, Shield, Zap, Globe, Check, Star, Lock } from 'lucide-react';
 import { SUBSCRIPTION_PLANS } from '../constants';
 
@@ -50,40 +51,44 @@ export const LandingPage: React.FC = () => {
                   <span className="text-[10px] text-ai-500 uppercase tracking-widest">Digital</span>
               </div>
           </div>
-          <button 
-            onClick={() => navigate('/app')}
-            className="bg-white/10 hover:bg-white/20 border border-white/10 text-white px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all backdrop-blur-md flex items-center gap-2"
-          >
-            Acceso Clientes <ArrowRight size={14} />
-          </button>
+          {/* Login Button removed as Login is now embedded */}
       </nav>
 
       {/* --- HERO SECTION --- */}
-      <section className="relative z-10 pt-20 pb-32 px-6 text-center max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ai-900/30 border border-ai-500/30 text-ai-400 text-[10px] font-bold uppercase tracking-widest mb-8 animate-fadeIn">
-              <Star size={12} /> Sistema Operativo de Vida v1.0
-          </div>
-          
-          <h1 className="text-5xl md:text-7xl font-serif font-bold text-white mb-8 leading-tight animate-slideInUp">
-              Recupere su activo <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-ai-300 via-ai-500 to-ai-700">más valioso: El Tiempo.</span>
-          </h1>
-          
-          <p className="text-lg md:text-xl text-stone-400 max-w-2xl mx-auto mb-12 leading-relaxed animate-slideInUp delay-100">
-              Una inteligencia artificial diseñada para gestionar su patrimonio, burocracia y logística vital. 
-              Desde trámites legales hasta la gestión de su hogar, todo en un solo lugar.
-          </p>
+      <section className="relative z-10 pt-10 pb-32 px-6 max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+              
+              {/* Left Column: Marketing Copy */}
+              <div className="flex-1 text-center lg:text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ai-900/30 border border-ai-500/30 text-ai-400 text-[10px] font-bold uppercase tracking-widest mb-8 animate-fadeIn">
+                      <Star size={12} /> Sistema Operativo de Vida v1.0
+                  </div>
+                  
+                  <h1 className="text-5xl md:text-7xl font-serif font-bold text-white mb-8 leading-tight animate-slideInUp">
+                      Recupere su activo <br/>
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-ai-300 via-ai-500 to-ai-700">más valioso: El Tiempo.</span>
+                  </h1>
+                  
+                  <p className="text-lg md:text-xl text-stone-400 max-w-2xl mx-auto lg:mx-0 mb-12 leading-relaxed animate-slideInUp delay-100">
+                      Una inteligencia artificial diseñada para gestionar su patrimonio, burocracia y logística vital. 
+                      Desde trámites legales hasta la gestión de su hogar, todo en un solo lugar.
+                  </p>
 
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 animate-slideInUp delay-200">
-              <button 
-                onClick={() => navigate('/app')}
-                className="px-8 py-4 bg-white text-black rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-stone-200 transition-colors shadow-[0_0_30px_rgba(255,255,255,0.1)] flex items-center gap-2"
-              >
-                Comenzar Ahora <ArrowRight size={18} />
-              </button>
-              <button className="px-8 py-4 bg-transparent border border-stone-700 text-stone-300 rounded-lg font-bold text-sm uppercase tracking-widest hover:border-white hover:text-white transition-colors">
-                Ver Demo
-              </button>
+                  <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 animate-slideInUp delay-200">
+                      <button className="px-8 py-4 bg-transparent border border-stone-700 text-stone-300 rounded-lg font-bold text-sm uppercase tracking-widest hover:border-white hover:text-white transition-colors">
+                        Ver Demo Interactiva
+                      </button>
+                  </div>
+              </div>
+
+              {/* Right Column: Embedded Login */}
+              <div className="w-full max-w-md animate-slideInUp delay-300">
+                  <LoginScreen 
+                    isEmbedded={true} 
+                    onLoginSuccess={() => navigate('/app')} 
+                  />
+              </div>
+
           </div>
       </section>
 

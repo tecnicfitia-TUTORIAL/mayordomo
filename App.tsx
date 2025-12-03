@@ -4,7 +4,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './services/firebaseConfig';
 import ClientApp from './ClientApp';
-import { LoginScreen } from './components/LoginScreen';
+import { LandingPage } from './components/LandingPage';
 import { MayordomoCompanion } from './components/MayordomoCompanion';
 
 const App: React.FC = () => {
@@ -60,7 +60,7 @@ const App: React.FC = () => {
         <Route 
             path="/" 
             element={
-                isAuthenticated ? <Navigate to="/app" replace /> : <LoginScreen onLoginSuccess={() => navigate('/app')} />
+                isAuthenticated ? <Navigate to="/app" replace /> : <LandingPage />
             } 
         />
         <Route 

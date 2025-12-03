@@ -10,9 +10,10 @@ const DEFAULT_PILLAR_ORDER = Object.values(PillarId);
 
 interface LoginScreenProps {
   onLoginSuccess?: () => void;
+  isEmbedded?: boolean;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, isEmbedded = false }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
@@ -170,35 +171,52 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
+  const containerClasses = isEmbedded 
+    ? "w-full max-w-md z-10 flex flex-col items-center space-y-6 bg-black/40 backdrop-blur-md p-8 rounded-2xl border border-stone-800 shadow-2xl"
+    : "min-h-screen w-full bg-[#121212] flex flex-col items-center justify-center p-6 relative overflow-hidden";
+
   return (
-    <div className="min-h-screen w-full bg-[#121212] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className={containerClasses}>
       
-      {/* Background Noise/Texture */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-           style={{ backgroundImage: `url("https://grainy-gradients.vercel.app/noise.svg")` }}>
-      </div>
-
-      {/* Gold Glow Effect */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#D4AF37] rounded-full blur-[120px] opacity-10 pointer-events-none"></div>
-
-      <div className="w-full max-w-md z-10 flex flex-col items-center space-y-8 animate-fadeIn">
-        
-        {/* Logo / Header */}
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#D4AF37] to-[#8a7020] rounded-2xl flex items-center justify-center shadow-lg shadow-[#D4AF37]/20 mb-6">
-            <ShieldCheck className="w-8 h-8 text-[#121212]" />
+      {!isEmbedded && (
+        <>
+          {/* Background Noise/Texture */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+               style={{ backgroundImage: `url("https://grainy-gradients.vercel.app/noise.svg")` }}>
           </div>
-          <h1 className="text-3xl font-serif text-[#f5f5f4] tracking-wide">
-            Mayordomo
-          </h1>
-          <p className="text-[#a8a29e] text-sm font-light tracking-widest uppercase">
-            Acceso Seguro
-          </p>
-        </div>
+
+          {/* Gold Glow Effect */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#D4AF37] rounded-full blur-[120px] opacity-10 pointer-events-none"></div>
+        </>
+      )}
+
+      <div className={`w-full ${!isEmbedded ? 'max-w-md z-10 flex flex-col items-center space-y-8 animate-fadeIn' : ''}`}>
+        
+        {/* Logo / Header - Only show if NOT embedded or simplified */}
+        {!isEmbedded && (
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#D4AF37] to-[#8a7020] rounded-2xl flex items-center justify-center shadow-lg shadow-[#D4AF37]/20 mb-6">
+              <ShieldCheck className="w-8 h-8 text-[#121212]" />
+            </div>
+            <h1 className="text-3xl font-serif text-[#f5f5f4] tracking-wide">
+              Mayordomo
+            </h1>
+            <p className="text-[#a8a29e] text-sm font-light tracking-widest uppercase">
+              Acceso Seguro
+            </p>
+          </div>
+        )}
+
+        {isEmbedded && (
+           <div className="text-center mb-4">
+              <h2 className="text-xl font-serif text-white">Bienvenido de nuevo</h2>
+              <p className="text-xs text-stone-400 uppercase tracking-widest mt-1">Acceda a su panel de control</p>
+           </div>
+        )}
 
         {/* Error Message */}
         {error && (
-          <div className="w-full bg-red-900/20 border border-red-800/50 text-red-200 px-4 py-3 rounded-lg text-sm text-center">
+          <div className="w-full bg-red-900/20 border border-red-800/50 text-red-200 px-4 py-3 rounded-lg text-sm text-center mb-4">
             {error}
           </div>
         )}
