@@ -5,11 +5,11 @@ export const MayordomoCompanion = () => {
   const [animationData, setAnimationData] = useState<any>(null);
 
   useEffect(() => {
-    // Cargamos la animación desde la URL proporcionada
-    fetch('https://lottie.host/5903b446-2433-4ee1-b75d-338272551469/3w0jKz5J5B.json')
-      .then(response => response.json())
-      .then(data => setAnimationData(data))
-      .catch(error => console.error("Error loading Lottie animation:", error));
+    // [DISABLED] Lottie URL is returning 403/XML causing render issues.
+    // fetch('https://lottie.host/5903b446-2433-4ee1-b75d-338272551469/3w0jKz5J5B.json')
+    //   .then(response => response.json())
+    //   .then(data => setAnimationData(data))
+    //   .catch(error => console.error("Error loading Lottie animation:", error));
   }, []);
 
   if (!animationData) return null;
