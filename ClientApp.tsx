@@ -35,18 +35,42 @@ const PROFILE_KEY = 'mayordomo_profile';
 
 // SECURITY: Sanitize sensitive data before storing in localStorage
 // This prevents CodeQL alert about storing sensitive information
+// Removes passwords, tokens, hashes, keys, and any other credentials
 const sanitizeProfileForStorage = (profile: UserProfile): UserProfile => {
-  const { 
-    // Remove any sensitive fields that should not be stored in localStorage
-    // Note: In a real implementation, you would remove actual sensitive fields
-    // For now, we create a clean copy without any authentication tokens or credentials
-    ...safeCopy 
-  } = profile;
+  // Create a shallow copy first
+  const sanitized = { ...profile };
   
-  // Return a copy that's safe to store in localStorage
-  // This ensures no passwords, tokens, or credential hashes are persisted
-  return safeCopy;
+  // Explicitly delete any sensitive fields that should NEVER be stored in localStorage
+  // This protects against current and future sensitive data from being persisted
+  const sensitiveFields = [
+    'password',
+    'passwordHash',
+    'hash',
+    'privateKey',
+    'secretKey',
+    'secret',
+    'accessToken',
+    'refreshToken',
+    'sessionToken',
+    'token',
+    'credential',
+    'credentials',
+    'apiKey',
+    'encryptedData',
+    'sensitiveInfo'
+  ] as const;
+  
+  // Remove sensitive fields from the profile
+  sensitiveFields.forEach(field => {
+    if (field in sanitized) {
+      delete (sanitized as any)[field];
+    }
+  });
+  
+  // Return the sanitized copy safe for localStorage
+  return sanitized;
 };
+
 
 const SYSTEM_ADMIN_PROFILE: UserProfile = {
   uid: 'system_root',

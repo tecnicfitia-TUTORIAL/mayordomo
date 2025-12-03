@@ -8,6 +8,39 @@ import { UserProfile, UserArchetype, SubscriptionTier, PillarId } from '../types
 const PROFILE_KEY = 'mayordomo_profile';
 const DEFAULT_PILLAR_ORDER = Object.values(PillarId);
 
+// SECURITY: Sanitize sensitive data before storing in localStorage
+// This prevents CodeQL alert about storing sensitive information
+const sanitizeProfileForStorage = (profile: UserProfile): UserProfile => {
+  const sanitized = { ...profile };
+  
+  // Explicitly delete any sensitive fields that should NEVER be stored in localStorage
+  const sensitiveFields = [
+    'password',
+    'passwordHash',
+    'hash',
+    'privateKey',
+    'secretKey',
+    'secret',
+    'accessToken',
+    'refreshToken',
+    'sessionToken',
+    'token',
+    'credential',
+    'credentials',
+    'apiKey',
+    'encryptedData',
+    'sensitiveInfo'
+  ] as const;
+  
+  sensitiveFields.forEach(field => {
+    if (field in sanitized) {
+      delete (sanitized as any)[field];
+    }
+  });
+  
+  return sanitized;
+};
+
 interface LoginScreenProps {
   onLoginSuccess?: () => void;
   isEmbedded?: boolean;
@@ -79,8 +112,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, isEmbe
         profile = newProfile;
       }
 
-      // 3. Save to LocalStorage for ClientApp
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      // 3. Save to LocalStorage for ClientApp (sanitized)
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(sanitizeProfileForStorage(profile)));
 
       // 4. Redirect
       if (onLoginSuccess) onLoginSuccess();
