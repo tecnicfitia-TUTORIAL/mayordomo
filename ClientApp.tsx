@@ -589,7 +589,7 @@ const ClientApp: React.FC = () => {
 
   return (
     <div 
-        className={`min-h-screen text-stone-200 font-sans flex flex-col md:flex-row overflow-hidden relative transition-all duration-500 ${getAppBackgroundStyle()}`}
+        className={`h-screen text-stone-200 font-sans flex flex-col md:flex-row overflow-hidden relative transition-all duration-500 ${getAppBackgroundStyle()}`}
         style={customBackgroundStyle}
     >
       
