@@ -27,6 +27,8 @@ import { BackgroundService } from './services/backgroundService';
 import { NotificationService, AppNotification } from './services/notificationService';
 import { EmailIngestionService, IncomingEmail } from './services/emailIngestionService';
 import { StripeService } from './services/stripeService';
+import { auth, db } from './services/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 import { Settings, LogOut, MessageSquare, X, Eye, Shield, CreditCard, ChevronRight, Edit3, Check, MoveUp, MoveDown, EyeOff, CloudOff, LifeBuoy, Undo2, HelpCircle, Palette, RefreshCw, FileText, LayoutDashboard, ShieldCheck, Home, Plane, Heart, Users } from 'lucide-react';
 
 const PROFILE_KEY = 'mayordomo_profile';
@@ -179,6 +181,7 @@ const ClientApp: React.FC = () => {
   useEffect(() => {
     const initializeSession = async () => {
         const saved = localStorage.getItem(PROFILE_KEY);
+        
         if (saved) {
             let user = JSON.parse(saved);
             
@@ -199,15 +202,48 @@ const ClientApp: React.FC = () => {
                 console.error("Failed to sync subscription:", e);
             }
             setProfile(user);
-            
-            // REDIRECCIÓN INTELIGENTE AL RECARGAR PÁGINA
-            // Si el usuario recarga y es admin, le mantenemos el acceso si estaba ahí, 
-            // o le llevamos si así lo desea. Por ahora, solo login inicial fuerza redirección.
-
             localStorage.setItem(PROFILE_KEY, JSON.stringify(user));
+        } else {
+            // FALLBACK: Try to recover profile from Firestore if Auth is active
+            // This prevents showing Onboarding unnecessarily if localStorage was cleared
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                try {
+                    console.log("[Session] Recovering profile from Firestore...");
+                    const docRef = doc(db, 'users', currentUser.uid);
+                    const docSnap = await getDoc(docRef);
+                    
+                    if (docSnap.exists()) {
+                        const userData = docSnap.data() as UserProfile;
+                        // Ensure local fields are present
+                        const recoveredProfile: UserProfile = {
+                            ...userData,
+                            uid: currentUser.uid, // Ensure UID matches
+                            grantedPermissions: userData.grantedPermissions || [],
+                            dashboardConfig: userData.dashboardConfig || { pillarOrder: DEFAULT_PILLAR_ORDER, hiddenPillars: [] }
+                        };
+                        
+                        setProfile(recoveredProfile);
+                        localStorage.setItem(PROFILE_KEY, JSON.stringify(recoveredProfile));
+                        console.log("[Session] Profile recovered successfully.");
+                    }
+                } catch (error) {
+                    console.error("[Session] Failed to recover profile:", error);
+                }
+            }
         }
     };
+    
+    // Listen for Auth State Changes to trigger recovery if needed
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+        if (user && !localStorage.getItem(PROFILE_KEY)) {
+             initializeSession();
+        }
+    });
+
     initializeSession();
+    
+    return () => unsubscribeAuth();
   }, []);
 
   // 2. RUN INFERENCE ENGINE

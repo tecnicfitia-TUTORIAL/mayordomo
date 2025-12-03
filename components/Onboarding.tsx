@@ -35,124 +35,32 @@ const DAILY_BACKGROUNDS = [
 export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Auth, 2: Profile, 3: Plan, 4: Permissions
+  // Start at Step 2 (Profile) directly. Step 1 (Auth) is handled by LoginScreen.
+  const [step, setStep] = useState(2); 
   const [isLoadingPayment, setIsLoadingPayment] = useState(false);
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [verificationSent, setVerificationSent] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
-  // Auth State
-  const [isLoginMode, setIsLoginMode] = useState(true); // Default to Login for cleaner look
-  const [showPassword, setShowPassword] = useState(false);
-  
-  // Password Recovery State
-  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [isResetting, setIsResetting] = useState(false);
-  const [resetMessage, setResetMessage] = useState<{text: string, type: 'SUCCESS' | 'ERROR'} | null>(null);
-  const [toast, setToast] = useState<{message: string, type: 'ERROR' | 'WARNING'} | null>(null);
-
-  // Legal State
-  const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
-  
-  // 1. Auth Data
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  
-  // 2. Profile Data
+  // Profile Data
   const [age, setAge] = useState<number | ''>('');
   const [gender, setGender] = useState('');
   const [occupation, setOccupation] = useState('');
   
-  // 3. Plan Data
+  // Plan Data
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(SubscriptionTier.FREE);
   
-  // 4. Permissions Data
+  // Permissions Data
   const [grantedPermissions, setGrantedPermissions] = useState<Set<string>>(new Set(['sys_notifications', 'sys_storage']));
 
   // --- DAILY SEED LOGIC FOR BACKGROUND SELECTION ---
   const dailyImage = useMemo(() => {
       const now = new Date();
-      // Generate a unique seed for the day: YYYYMMDD
       const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-      
-      // Select image index based on date seed
       const index = seed % DAILY_BACKGROUNDS.length;
       return DAILY_BACKGROUNDS[index];
   }, []);
 
-  const handleAuthAction = async () => {
-    setAuthError(null);
-    
-    if (isLoginMode) {
-      // --- LOGIN FLOW ---
-      setIsAuthLoading(true);
-      
-      try {
-        if (!auth) throw new Error("Firebase Auth no inicializado");
-
-        // 1. Authenticate with Firebase Auth
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const uid = userCredential.user.uid;
-        
-        // 2. CRITICAL STEP: Fetch Profile from Firestore IMMEDIATELY
-        const docRef = doc(db, 'users', uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            const rawData = docSnap.data();
-            
-            // 3. DECISION STEP: Check Role
-            // Normalize role: Handle 'admin', 'Admin', 'ADMIN' -> 'ADMIN'
-            const roleStr = rawData.role; 
-            const normalizedRole = (roleStr && String(roleStr).trim().toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
-            
-            console.log(`[Auth] Document Read Success. ID: ${uid}, Role: ${normalizedRole}`);
-
-            const userData: UserProfile = {
-                ...rawData,
-                uid: uid,
-                role: normalizedRole as 'ADMIN' | 'USER',
-                // Fallbacks for older data structures
-                subscriptionTier: rawData.subscriptionTier || SubscriptionTier.FREE,
-                grantedPermissions: rawData.grantedPermissions || [],
-                setupCompleted: rawData.setupCompleted ?? true
-            } as UserProfile;
-
-            setIsAuthLoading(false);
-            
-            // 4. Pass control to App.tsx (which handles smart routing based on Role)
-            onComplete(userData);
-        } else {
-            setAuthError("Perfil no encontrado en base de datos. Contacte soporte.");
-            setIsAuthLoading(false);
-        }
-
-      } catch (error: any) {
-        console.error("Login Error:", error);
-        let msg = "Error de autenticación.";
-        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-            msg = "Credenciales incorrectas.";
-        } else if (error.code === 'auth/too-many-requests') {
-            msg = "Demasiados intentos. Inténtelo más tarde.";
-        }
-        setAuthError(msg);
-        setIsAuthLoading(false);
-      }
-
-    } else {
-      // --- SIGNUP FLOW (Step 1 Validation) ---
-      if (!email.includes('@') || password.length < 6) {
-          setAuthError("Email inválido o contraseña muy corta (min 6).");
-          return;
-      }
-      setStep(prev => prev + 1);
-    }
-  };
-
   const handleNext = () => setStep(prev => prev + 1);
-  const handleBack = () => setStep(prev => Math.max(1, prev - 1));
+  const handleBack = () => setStep(prev => Math.max(2, prev - 1)); // Min step 2
 
   const handleManageSubscription = () => {
     setIsLoadingPayment(true);
@@ -177,108 +85,43 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   };
 
   const handleFinish = async () => {
-    setAuthError(null);
-    setIsAuthLoading(true);
+    setIsSaving(true);
 
     const archetype = determineArchetype(Number(age), occupation);
-    
-    // SAFETY: Use Selected Plan or fallback to FREE
     const finalTier = selectedPlan || SubscriptionTier.FREE;
 
-    // STRICT SECURITY POLICY:
-    // All new signups via the UI are 'USER' by default.
-    // 'ADMIN' roles must be assigned manually in the Database.
-    const role: 'ADMIN' | 'USER' = 'USER';
-
     try {
-        if (!auth) throw new Error("Firebase Auth no inicializado");
+        if (!auth.currentUser) throw new Error("No hay sesión activa.");
+        const uid = auth.currentUser.uid;
 
-        // 1. Create User in Firebase Auth
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        // 2. Send Email Verification
-        await sendEmailVerification(user);
-
-        // 3. Create Document in Firestore IMMEDIATELY
-        const userData = {
-            uid: user.uid,
-            email: email,
-            name: name || "Usuario",
-            role: role, 
-            subscriptionTier: finalTier,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
+        // Update existing profile in Firestore
+        const userRef = doc(db, 'users', uid);
+        
+        // We only update the fields collected here
+        const updates = {
             age: Number(age),
             gender,
             occupation,
             archetype, 
-            setupCompleted: true,
+            subscriptionTier: finalTier,
             grantedPermissions: Array.from(grantedPermissions),
-            stripeCustomerId: null // Will be populated by Backend/Stripe Webhook later
+            setupCompleted: true,
+            updatedAt: serverTimestamp()
         };
 
-        // Execute Write to Firestore
-        await setDoc(doc(db, 'users', user.uid), userData);
+        await setDoc(userRef, updates, { merge: true });
 
-        // Prepare local state object (using current date instead of serverTimestamp for UI)
-        const newProfile: UserProfile = {
-            ...userData,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        } as unknown as UserProfile;
+        // Get full updated profile to pass back
+        const docSnap = await getDoc(userRef);
+        const fullProfile = docSnap.data() as UserProfile;
 
-        // SHOW SUCCESS FEEDBACK & REDIRECT DELAY
-        setIsAuthLoading(false);
-        setVerificationSent(true);
-
-        setTimeout(() => {
-            onComplete(newProfile);
-        }, 2500); // 2.5s delay to read message
+        setIsSaving(false);
+        onComplete(fullProfile);
 
     } catch (error: any) {
-        console.error("Signup Error FULL:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-        console.error("Signup Error:", error);
-
-        let msg = "Error al crear la cuenta.";
-        if (error.code === 'auth/email-already-in-use') msg = "Este email ya está registrado.";
-        if (error.code === 'auth/weak-password') msg = "La contraseña es muy débil.";
-        
-        const detailedMsg = `${msg} [${error.code || 'Unknown'}: ${error.message}]`;
-        setToast({ message: detailedMsg, type: 'ERROR' });
-
-        setAuthError(msg);
-        setIsAuthLoading(false);
+        console.error("Onboarding Save Error:", error);
+        setIsSaving(false);
     }
-  };
-
-  // Password Recovery Logic
-  const handleOpenForgotPassword = () => {
-      setResetEmail(email); // Pre-fill
-      setShowForgotPasswordModal(true);
-      setResetMessage(null);
-  };
-
-  const handlePasswordReset = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!resetEmail) return;
-      
-      setIsResetting(true);
-      setResetMessage(null);
-
-      try {
-          if (!auth) throw new Error("Auth no inicializado");
-          await sendPasswordResetEmail(auth, resetEmail);
-          setResetMessage({ text: 'Email de recuperación enviado. Revise su bandeja de entrada.', type: 'SUCCESS' });
-      } catch (error: any) {
-          console.error("Reset Password Error:", error);
-          let msg = 'Error al enviar el email.';
-          if (error.code === 'auth/invalid-email') msg = 'El email no es válido.';
-          if (error.code === 'auth/user-not-found') msg = 'No existe cuenta con este email.';
-          setResetMessage({ text: msg, type: 'ERROR' });
-      } finally {
-          setIsResetting(false);
-      }
   };
 
   // --- RENDERS ---
@@ -319,20 +162,12 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   return (
     <div className="fixed inset-0 w-full h-full flex items-center justify-center p-4 font-sans bg-[#0c0a09]">
       
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
       {/* --- BACKGROUND LAYER (FIXED) --- */}
       <div className="fixed inset-0 z-0 w-full h-full">
-          {/* Daily Abstract Image */}
           <div 
             className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-1000 ease-in-out"
             style={{ backgroundImage: `url(${dailyImage})` }}
           ></div>
-          
-          {/* LUXURY VEIL (Overlay) - Removed for brightness */}
-
-
-          {/* Watermark Logo */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] pointer-events-none scale-150 mix-blend-overlay">
               <Logo className="w-[600px] h-[600px]" />
           </div>
@@ -341,11 +176,11 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
       {/* --- CENTRAL CARD --- */}
       <div className="relative z-10 w-full max-w-[450px] bg-stone-900/60 backdrop-blur-xl border border-stone-800/60 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden animate-scaleIn ring-1 ring-white/5">
         
-        {/* Progress Bar (Top) */}
+        {/* Progress Bar (Top) - Adjusted for 3 steps (2, 3, 4) */}
         <div className="h-1 w-full bg-stone-800/50">
             <div 
                 className="h-full bg-ai-500 transition-all duration-500 shadow-[0_0_10px_rgba(212,175,55,0.5)]"
-                style={{ width: `${(step / 4) * 100}%` }}
+                style={{ width: `${((step - 1) / 3) * 100}%` }}
             ></div>
         </div>
 
@@ -356,126 +191,19 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
                 <div className="select-none">
                     <Logo className="w-12 h-12" />
                 </div>
-                {step > 1 && !verificationSent && (
+                {step > 2 && (
                     <button onClick={handleBack} className="text-stone-500 hover:text-white transition-colors p-2">
                         <ArrowRight size={20} className="rotate-180" />
                     </button>
                 )}
             </div>
 
-            {/* ERROR DISPLAY */}
-            {authError && (
-                <div className="mb-6 p-3 bg-red-900/20 border border-red-500/30 rounded flex items-center gap-2 animate-fadeIn">
-                    <AlertCircle className="text-red-500 shrink-0" size={16} />
-                    <span className="text-xs text-red-300 font-bold">{authError}</span>
-                </div>
-            )}
-
-            {/* STEP 1: AUTH */}
-            {step === 1 && (
-                <div className="space-y-6 animate-fadeIn">
-                    <div>
-                        <h1 className="text-2xl font-serif font-bold text-white mb-2">
-                            {isLoginMode ? "Identificación" : "Nueva Credencial"}
-                        </h1>
-                        <p className="text-sm text-stone-400">
-                            {isLoginMode ? "Acceda al núcleo del sistema." : "Comience la configuración de su asistente."}
-                        </p>
-                    </div>
-
-                    <div className="space-y-4">
-                        {!isLoginMode && (
-                            <div className="group">
-                                <div className="flex items-center gap-3 bg-stone-950/50 border border-stone-800 rounded-lg px-4 py-3 focus-within:border-ai-500/50 transition-colors">
-                                    <User size={18} className="text-stone-500 group-focus-within:text-ai-500" />
-                                    <input 
-                                        type="text" 
-                                        value={name}
-                                        onChange={e => setName(e.target.value)}
-                                        placeholder="Nombre Completo"
-                                        className="bg-transparent w-full outline-none text-white text-sm placeholder-stone-600"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="group">
-                            <div className="flex items-center gap-3 bg-stone-950/50 border border-stone-800 rounded-lg px-4 py-3 focus-within:border-ai-500/50 transition-colors">
-                                <Mail size={18} className="text-stone-500 group-focus-within:text-ai-500" />
-                                <input 
-                                    type="email" 
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    placeholder="correo@ejemplo.com"
-                                    className="bg-transparent w-full outline-none text-white text-sm placeholder-stone-600"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="group relative">
-                            <div className="flex items-center gap-3 bg-stone-950/50 border border-stone-800 rounded-lg px-4 py-3 focus-within:border-ai-500/50 transition-colors">
-                                <Lock size={18} className="text-stone-500 group-focus-within:text-ai-500" />
-                                <input 
-                                    type={showPassword ? "text" : "password"} 
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    placeholder="Contraseña de Acceso"
-                                    className="bg-transparent w-full outline-none text-white text-sm placeholder-stone-600 pr-8"
-                                />
-                            </div>
-                            <button 
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-3.5 text-stone-600 hover:text-white transition-colors"
-                            >
-                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
-                        </div>
-                    </div>
-
-                    {isLoginMode && (
-                        <div className="text-right -mt-2">
-                            <button 
-                                onClick={handleOpenForgotPassword}
-                                className="text-[10px] text-stone-500 hover:text-ai-500 transition-colors font-medium tracking-wide"
-                            >
-                                ¿Olvidaste tu contraseña?
-                            </button>
-                        </div>
-                    )}
-
-                    <button 
-                        onClick={handleAuthAction}
-                        disabled={isAuthLoading || !email || !password}
-                        className="w-full bg-white hover:bg-stone-200 text-black font-bold py-4 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                        {isAuthLoading ? <Loader2 className="animate-spin" size={20} /> : <Fingerprint size={20} />}
-                        {isLoginMode ? "Autenticar" : "Crear Cuenta"}
-                    </button>
-
-                    {!isLoginMode && (
-                        <p className="text-[10px] text-stone-500 text-center leading-relaxed px-4">
-                            Al crear su cuenta, acepta nuestra <button onClick={() => setLegalType('PRIVACY')} className="text-stone-400 hover:text-ai-500 underline decoration-dotted transition-colors">Política de Privacidad</button> y nuestros <button onClick={() => setLegalType('TERMS')} className="text-stone-400 hover:text-ai-500 underline decoration-dotted transition-colors">Términos y Condiciones</button>.
-                        </p>
-                    )}
-
-                    <div className="text-center">
-                        <button 
-                            onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(null); }}
-                            className="text-[10px] uppercase tracking-widest font-bold text-stone-500 hover:text-ai-500 transition-colors"
-                        >
-                            {isLoginMode ? "Solicitar Acceso (Registro)" : "Ya tengo Credenciales"}
-                        </button>
-                    </div>
-                </div>
-            )}
-
             {/* STEP 2: PROFILE */}
             {step === 2 && (
                 <div className="space-y-6 animate-fadeIn">
                     <div>
-                        <h1 className="text-2xl font-serif font-bold text-white mb-2">Perfilado</h1>
-                        <p className="text-sm text-stone-400">Datos para la calibración del modelo de IA.</p>
+                        <h1 className="text-2xl font-serif font-bold text-white mb-2">Calibración</h1>
+                        <p className="text-sm text-stone-400">Configure su perfil para personalizar la IA.</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -588,59 +316,39 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
             {step === 4 && (
                 <div className="space-y-6 animate-fadeIn flex flex-col h-full">
                     
-                    {verificationSent ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-scaleIn">
-                            <div className="p-6 bg-emerald-900/20 rounded-full border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-                                <MailCheck size={48} className="text-emerald-500" />
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-serif font-bold text-white mb-2">Cuenta creada con éxito</h2>
-                                <p className="text-sm text-stone-400 max-w-xs mx-auto leading-relaxed">
-                                    Por favor, revisa tu correo para verificar tu identidad.
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-ai-500 uppercase tracking-widest animate-pulse">
-                                <Loader2 size={12} className="animate-spin" />
-                                Accediendo al sistema...
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            <div>
-                                <h1 className="text-2xl font-serif font-bold text-white mb-2">Protocolos</h1>
-                                <p className="text-sm text-stone-400">Active los permisos operativos.</p>
-                            </div>
+                    <div>
+                        <h1 className="text-2xl font-serif font-bold text-white mb-2">Protocolos</h1>
+                        <p className="text-sm text-stone-400">Active los permisos operativos.</p>
+                    </div>
 
-                            <div className="flex-1 overflow-y-auto custom-scrollbar -mr-4 pr-4 space-y-6 max-h-[350px]">
-                                <section>
-                                    <h3 className="text-xs font-bold text-ai-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                        <Shield size={12} /> Núcleo
-                                    </h3>
-                                    <div className="bg-stone-950/50 border border-stone-800 rounded-lg overflow-hidden">
-                                        {systemicPermissions.map(renderPermissionRow)}
-                                    </div>
-                                </section>
-
-                                <section>
-                                    <h3 className="text-xs font-bold text-ai-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                        <Database size={12} /> Inteligencia
-                                    </h3>
-                                    <div className="bg-stone-950/50 border border-stone-800 rounded-lg overflow-hidden">
-                                        {functionalPermissions.map(renderPermissionRow)}
-                                    </div>
-                                </section>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar -mr-4 pr-4 space-y-6 max-h-[350px]">
+                        <section>
+                            <h3 className="text-xs font-bold text-ai-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <Shield size={12} /> Núcleo
+                            </h3>
+                            <div className="bg-stone-950/50 border border-stone-800 rounded-lg overflow-hidden">
+                                {systemicPermissions.map(renderPermissionRow)}
                             </div>
+                        </section>
 
-                            <button 
-                                onClick={handleFinish}
-                                disabled={isAuthLoading}
-                                className="w-full bg-white hover:bg-stone-200 text-black font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 mt-4 shadow-[0_0_20px_rgba(255,255,255,0.15)] disabled:opacity-50"
-                            >
-                                {isAuthLoading ? <Loader2 className="animate-spin" size={20} /> : <Fingerprint size={20} />}
-                                {isAuthLoading ? 'Creando Ficha...' : 'Iniciar Sistema'}
-                            </button>
-                        </>
-                    )}
+                        <section>
+                            <h3 className="text-xs font-bold text-ai-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <Database size={12} /> Inteligencia
+                            </h3>
+                            <div className="bg-stone-950/50 border border-stone-800 rounded-lg overflow-hidden">
+                                {functionalPermissions.map(renderPermissionRow)}
+                            </div>
+                        </section>
+                    </div>
+
+                    <button 
+                        onClick={handleFinish}
+                        disabled={isSaving}
+                        className="w-full bg-white hover:bg-stone-200 text-black font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 mt-4 shadow-[0_0_20px_rgba(255,255,255,0.15)] disabled:opacity-50"
+                    >
+                        {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Fingerprint size={20} />}
+                        {isSaving ? 'Finalizando...' : 'Iniciar Sistema'}
+                    </button>
                 </div>
             )}
 
@@ -651,71 +359,6 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
       <div className="absolute bottom-4 text-center w-full z-10 opacity-30 pointer-events-none">
           <p className="text-[10px] font-mono text-stone-500 uppercase tracking-[0.2em]">Confort OS v1.0 // Secure Core</p>
       </div>
-
-      {/* Public Navigation Footer */}
-      <div className="absolute bottom-8 w-full z-20 flex justify-center gap-8 text-[10px] font-bold uppercase tracking-widest text-stone-500">
-          <button onClick={() => navigate('/precios')} className="hover:text-ai-500 transition-colors">Niveles de Servicio</button>
-          <button onClick={() => navigate('/ayuda')} className="hover:text-ai-500 transition-colors">Guía de Navegación</button>
-          <button onClick={() => navigate('/legal')} className="hover:text-ai-500 transition-colors">Información Legal</button>
-      </div>
-
-      {/* Public Modals (SEO Friendly Routes) */}
-      {location.pathname === '/precios' && <PublicPricingModal onClose={() => navigate('/')} />}
-      {location.pathname === '/ayuda' && <PublicGuideModal onClose={() => navigate('/')} />}
-      {location.pathname === '/legal' && <PublicLegalModal onClose={() => navigate('/')} />}
-
-      {/* Legal Modal Overlay (Internal) */}
-      {legalType && <LegalModal type={legalType} onClose={() => setLegalType(null)} />}
-
-      {/* Forgot Password Modal */}
-      {showForgotPasswordModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fadeIn">
-            <div className="w-full max-w-sm bg-stone-900 border border-stone-800 rounded-xl p-6 relative shadow-2xl">
-                <button 
-                    onClick={() => setShowForgotPasswordModal(false)}
-                    className="absolute top-4 right-4 text-stone-500 hover:text-white"
-                >
-                    <X size={20} />
-                </button>
-
-                <h2 className="text-lg font-serif font-bold text-white mb-2">Recuperar Acceso</h2>
-                <p className="text-sm text-stone-400 mb-6">
-                    Ingrese su email para recibir un enlace de restablecimiento.
-                </p>
-
-                <form onSubmit={handlePasswordReset} className="space-y-4">
-                    <div className="group">
-                        <div className="flex items-center gap-3 bg-stone-950 border border-stone-800 rounded-lg px-4 py-3 focus-within:border-ai-500/50 transition-colors">
-                            <Mail size={18} className="text-stone-500 group-focus-within:text-ai-500" />
-                            <input 
-                                type="email" 
-                                value={resetEmail}
-                                onChange={e => setResetEmail(e.target.value)}
-                                placeholder="correo@ejemplo.com"
-                                className="bg-transparent w-full outline-none text-white text-sm placeholder-stone-600"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    {resetMessage && (
-                        <div className={`text-xs p-3 rounded border ${resetMessage.type === 'SUCCESS' ? 'bg-emerald-900/20 text-emerald-500 border-emerald-500/30' : 'bg-red-900/20 text-red-500 border-red-500/30'}`}>
-                            {resetMessage.text}
-                        </div>
-                    )}
-
-                    <button 
-                        type="submit"
-                        disabled={isResetting || !resetEmail}
-                        className="w-full bg-ai-600 hover:bg-ai-500 disabled:opacity-50 text-black font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                        {isResetting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
-                        Enviar Enlace
-                    </button>
-                </form>
-            </div>
-        </div>
-      )}
 
     </div>
   );
