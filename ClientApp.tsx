@@ -35,8 +35,9 @@ import { EmailIngestionService, IncomingEmail } from './services/emailIngestionS
 import { StripeService } from './services/stripeService';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminDashboard } from './components/AdminDashboard';
-import { auth } from './services/firebaseConfig';
+import { auth, db } from './services/firebaseConfig';
 import { signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 const PROFILE_KEY = 'mayordomo_profile';
 
