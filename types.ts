@@ -311,6 +311,7 @@ export interface UserProfile {
   themePreference?: ThemePreference;
   themeConfig?: AppThemeConfig; // NEW: Visual Atmosphere settings
   dashboardConfig?: DashboardConfig;
+  role?: 'USER' | 'ADMIN'; // Added role field
 }
 
 export interface Attachment {

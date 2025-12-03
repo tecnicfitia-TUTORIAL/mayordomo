@@ -323,7 +323,7 @@ const ClientApp: React.FC = () => {
   // 4. ROUTE GUARD (PROTECCIÓN DE RUTA)
   useEffect(() => {
     // Si el usuario intenta ver el dashboard de soporte pero NO es admin, lo echamos.
-    if (showSupportDashboard && profile && profile.role !== 'ADMIN') {
+    if (showSupportDashboard && profile && (!profile.role || profile.role.toUpperCase() !== 'ADMIN')) {
         console.warn("[Security] Unauthorized access to Support Dashboard blocked.");
         setShowSupportDashboard(false);
         setCriticalAlert({
@@ -348,8 +348,8 @@ const ClientApp: React.FC = () => {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(sanitizeProfileForStorage(initializedProfile)));
 
     // --- ENRUTAMIENTO INTELIGENTE (SMART LOGIN FLOW) ---
-    // Si el rol es ADMIN, redirigimos directamente al Panel de Soporte.
-    if (newProfile.role === 'ADMIN') {
+    // Si el rol es ADMIN (case-insensitive), redirigimos directamente al Panel de Soporte.
+    if (newProfile.role && newProfile.role.toUpperCase() === 'ADMIN') {
         console.log("[Auth] Admin Login Detected. Redirecting to Support Console...");
         setShowSupportDashboard(true); 
         setIngestionToast({ msg: 'Bienvenido, Administrador. Sesión Iniciada.', type: 'INFO' });
@@ -707,7 +707,7 @@ const ClientApp: React.FC = () => {
 
             <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
               {/* ADMIN SHORTCUT (VISIBLE ON SIDEBAR) */}
-              {profile.role === 'ADMIN' && (
+              {profile.role && profile.role.toUpperCase() === 'ADMIN' && (
                   <button 
                       onClick={() => setShowSupportDashboard(true)} 
                       className="w-full mb-3 flex items-center justify-center gap-2 bg-red-900/10 hover:bg-red-900/30 text-red-500 border border-red-500/30 p-2 rounded-sm transition-colors text-xs font-bold uppercase tracking-widest"
@@ -724,7 +724,7 @@ const ClientApp: React.FC = () => {
                       <div className="absolute bottom-full left-0 mb-3 w-64 bg-stone-900 border border-stone-700 rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden animate-fadeIn">
                           
                           {/* ADMIN CONSOLE ENTRY - ALSO IN MENU AS BACKUP */}
-                          {profile.role === 'ADMIN' && (
+                          {profile.role && profile.role.toUpperCase() === 'ADMIN' && (
                             <>
                               <button onClick={() => { setIsSettingsMenuOpen(false); setShowEvolution(true); }} className="flex items-center gap-3 p-3 bg-red-900/10 hover:bg-red-900/30 text-red-300 hover:text-red-200 text-left transition-colors border-b border-stone-800">
                                   <Shield size={16} className="text-red-500" />
