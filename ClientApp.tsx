@@ -8,6 +8,7 @@ import { ChatInterface } from './components/ChatInterface';
 import { SettingsModal } from './components/SettingsModal';
 import { AppearanceModal } from './components/AppearanceModal';
 import { EvolutionPanel } from './components/EvolutionPanel';
+import { Activity } from 'lucide-react'; // Added Activity icon
 import { PillarCard } from './components/PillarCard';
 import { PillarDetailView } from './components/PillarDetailView';
 import { MissionBriefingCard } from './components/MissionBriefingCard';
@@ -118,7 +119,9 @@ const ClientApp: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false); // NEW: Admin Menu State
   const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const adminMenuRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState<string>('RESUMEN');
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
@@ -708,12 +711,34 @@ const ClientApp: React.FC = () => {
             <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
               {/* ADMIN SHORTCUT (VISIBLE ON SIDEBAR) */}
               {profile.role && profile.role.toUpperCase() === 'ADMIN' && (
-                  <button 
-                      onClick={() => setShowSupportDashboard(true)} 
-                      className="w-full mb-3 flex items-center justify-center gap-2 bg-red-900/10 hover:bg-red-900/30 text-red-500 border border-red-500/30 p-2 rounded-sm transition-colors text-xs font-bold uppercase tracking-widest"
-                  >
-                      <LifeBuoy size={16} /> Admin Console
-                  </button>
+                  <div className="relative mb-3" ref={adminMenuRef}>
+                      <button 
+                          onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)} 
+                          className={`w-full flex items-center justify-center gap-2 border p-2 rounded-sm transition-colors text-xs font-bold uppercase tracking-widest ${isAdminMenuOpen ? 'bg-red-900/30 text-red-400 border-red-500' : 'bg-red-900/10 hover:bg-red-900/30 text-red-500 border-red-500/30'}`}
+                      >
+                          <LifeBuoy size={16} /> Admin Tools
+                      </button>
+                      
+                      {isAdminMenuOpen && (
+                          <div className="absolute bottom-full left-0 w-full mb-2 bg-stone-900 border border-red-900/50 rounded-lg shadow-2xl z-50 overflow-hidden animate-fadeIn">
+                              <div className="bg-red-950/30 p-2 text-[10px] font-bold text-red-400 uppercase text-center border-b border-red-900/30">
+                                  Panel de Control
+                              </div>
+                              <button onClick={() => { setIsAdminMenuOpen(false); setShowSupportDashboard(true); }} className="w-full flex items-center gap-3 p-3 hover:bg-red-900/20 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
+                                  <Activity size={14} className="text-red-500" />
+                                  <div><div className="text-xs font-bold">Monitorización</div><div className="text-[9px] text-stone-500">Usuarios y Estado</div></div>
+                              </button>
+                              <button onClick={() => { setIsAdminMenuOpen(false); setShowEvolution(true); }} className="w-full flex items-center gap-3 p-3 hover:bg-red-900/20 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
+                                  <Users size={14} className="text-orange-500" />
+                                  <div><div className="text-xs font-bold">Simular Rol</div><div className="text-[9px] text-stone-500">Modo Invitado/VIP</div></div>
+                              </button>
+                              <button onClick={() => { setIsAdminMenuOpen(false); handleManualRefresh(); }} className="w-full flex items-center gap-3 p-3 hover:bg-red-900/20 text-stone-300 hover:text-white text-left transition-colors">
+                                  <RefreshCw size={14} className="text-blue-500" />
+                                  <div><div className="text-xs font-bold">Forzar Escaneo</div><div className="text-[9px] text-stone-500">Actualizar Sistema</div></div>
+                              </button>
+                          </div>
+                      )}
+                  </div>
               )}
 
               <div className="flex justify-between items-center relative" ref={settingsMenuRef}>
