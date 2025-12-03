@@ -28,6 +28,7 @@ import { NotificationService, AppNotification } from './services/notificationSer
 import { EmailIngestionService, IncomingEmail } from './services/emailIngestionService';
 import { StripeService } from './services/stripeService';
 import { auth, db } from './services/firebaseConfig';
+import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { Settings, LogOut, MessageSquare, X, Eye, Shield, CreditCard, ChevronRight, Edit3, Check, MoveUp, MoveDown, EyeOff, CloudOff, LifeBuoy, Undo2, HelpCircle, Palette, RefreshCw, FileText, LayoutDashboard, ShieldCheck, Home, Plane, Heart, Users } from 'lucide-react';
 
@@ -359,7 +360,12 @@ const ClientApp: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
     localStorage.removeItem(PROFILE_KEY);
     setProfile(null);
     setIsSimulating(false);
