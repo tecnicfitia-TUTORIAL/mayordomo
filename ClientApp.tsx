@@ -831,7 +831,7 @@ const ClientApp: React.FC = () => {
             </div>
 
             {/* --- MAIN CONTENT AREA --- */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-8 relative z-10">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-8 relative z-10 h-full">
                 
                 {/* TAB: RESUMEN */}
                 {activeTab === 'RESUMEN' && (
