@@ -614,7 +614,11 @@ const ClientApp: React.FC = () => {
       )}
 
       {showSupportDashboard && (
-          <SupportDashboard onClose={() => setShowSupportDashboard(false)} />
+          <SupportDashboard onClose={() => {
+            // When admin closes support dashboard, logout to return to landing page
+            setShowSupportDashboard(false);
+            handleLogout();
+          }} />
       )}
 
       {showSupportModal && (

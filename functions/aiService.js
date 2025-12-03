@@ -85,6 +85,7 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
 
 /**
  * 2. INFER OBLIGATIONS
+ * Enhanced error handling to prevent 500 errors
  */
 exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
@@ -98,17 +99,30 @@ exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], ma
   try {
     const { profile } = req.body;
     
-    // Defensive Check
+    // Defensive Check - Validate profile exists
     if (!profile) {
-        console.warn("Inference called without profile.");
-        return res.json({ obligations: [] });
+        console.warn("[inferObligations] Called without profile.");
+        return res.status(200).json({ obligations: [] });
     }
 
-    const ai = getAI();
+    // Validate API key availability
+    let ai;
+    try {
+      ai = getAI();
+    } catch (apiKeyError) {
+      console.error("[inferObligations] API Key Error:", apiKeyError.message);
+      return res.status(200).json({ 
+        obligations: [], 
+        error: "AI service temporarily unavailable" 
+      });
+    }
     
+    // Extract profile data with safe defaults
     const jurisdiction = profile.lifeContext?.currentJurisdiction?.name || "Global";
     const occupation = profile.occupation || "Digital Citizen";
     const age = profile.age || 30;
+
+    console.log(`[inferObligations] Processing: age=${age}, occupation=${occupation}, jurisdiction=${jurisdiction}`);
 
     const prompt = `
       ACTÚA COMO UN EXPERTO LEGAL, FISCAL Y ADMINISTRATIVO INTERNACIONAL.
@@ -136,43 +150,75 @@ exports.inferObligations = onRequest({ cors: true, secrets: [googleGenAiKey], ma
       ]
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        maxOutputTokens: 4000,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              title: { type: Type.STRING },
-              category: { type: Type.STRING, enum: [
-                'IDENTITY', 'TAX', 'HEALTH', 'ASSET', 'HOUSING', 'LEGAL'
-              ]},
-              jurisdiction: { type: Type.STRING },
-              description: { type: Type.STRING },
-              status: { type: Type.STRING, enum: ['MISSING', 'WARNING', 'OK'] }
+    // Call Gemini API with error handling
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          maxOutputTokens: 4000,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                title: { type: Type.STRING },
+                category: { type: Type.STRING, enum: [
+                  'IDENTITY', 'TAX', 'HEALTH', 'ASSET', 'HOUSING', 'LEGAL'
+                ]},
+                jurisdiction: { type: Type.STRING },
+                description: { type: Type.STRING },
+                status: { type: Type.STRING, enum: ['MISSING', 'WARNING', 'OK'] }
+              }
             }
           }
         }
-      }
-    });
+      });
+    } catch (geminiError) {
+      console.error("[inferObligations] Gemini API Error:", geminiError.message);
+      return res.status(200).json({ 
+        obligations: [], 
+        error: "AI inference temporarily unavailable" 
+      });
+    }
 
-    if (response.text) {
-      const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const data = JSON.parse(cleanText);
-      res.json({ obligations: data });
+    // Parse and validate response
+    if (response && response.text) {
+      try {
+        const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const data = JSON.parse(cleanText);
+        
+        // Validate that we got an array
+        if (Array.isArray(data)) {
+          console.log(`[inferObligations] Success: Generated ${data.length} obligations`);
+          return res.status(200).json({ obligations: data });
+        } else {
+          console.warn("[inferObligations] Invalid response format (not an array):", typeof data);
+          return res.status(200).json({ obligations: [] });
+        }
+      } catch (parseError) {
+        console.error("[inferObligations] JSON Parse Error:", parseError.message);
+        console.error("[inferObligations] Raw response:", response.text?.substring(0, 200));
+        return res.status(200).json({ obligations: [] });
+      }
     } else {
-      res.json({ obligations: [] });
+      console.warn("[inferObligations] Empty response from Gemini");
+      return res.status(200).json({ obligations: [] });
     }
 
   } catch (error) {
-    console.error("Inference Engine Error:", error);
-    // Graceful degradation: Return empty array instead of 500 to prevent app crash
-    res.json({ obligations: [], error: error.message });
+    // Catch-all for unexpected errors
+    console.error("[inferObligations] Unexpected Error:", error);
+    console.error("[inferObligations] Stack:", error.stack);
+    
+    // Return 200 with empty array to prevent client crash
+    return res.status(200).json({ 
+      obligations: [], 
+      error: "Internal processing error" 
+    });
   }
 });
 

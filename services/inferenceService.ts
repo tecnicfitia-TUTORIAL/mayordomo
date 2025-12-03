@@ -19,7 +19,10 @@ export const InferenceEngine = {
   inferObligations: async (profile: UserProfile): Promise<LifeObligation[]> => {
     try {
       const response = await axios.post(`${BASE_URL}/inferObligations`, { profile });
-      return response.data;
+      
+      // Cloud Function returns { obligations: [...] }
+      // Extract the obligations array from the response
+      return response.data.obligations || [];
 
     } catch (error) {
       console.error("Inference Engine Error:", error);
