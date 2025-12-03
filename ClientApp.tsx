@@ -27,11 +27,8 @@ import { DashboardBuilder } from './services/dashboardBuilder';
 import { BackgroundService } from './services/backgroundService';
 import { NotificationService, AppNotification } from './services/notificationService';
 import { EmailIngestionService, IncomingEmail } from './services/emailIngestionService';
-import { StripeService } from './services/stripeService';
-import { auth, db } from './services/firebaseConfig';
-import { signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { Settings, LogOut, MessageSquare, X, Eye, Shield, CreditCard, ChevronRight, Edit3, Check, MoveUp, MoveDown, EyeOff, CloudOff, LifeBuoy, Undo2, HelpCircle, Palette, RefreshCw, FileText, LayoutDashboard, ShieldCheck, Home, Plane, Heart, Users } from 'lucide-react';
+import { AdminSidebar } from './components/AdminSidebar';
+import { AdminDashboard } from './components/AdminDashboard';
 
 const PROFILE_KEY = 'mayordomo_profile';
 
@@ -119,9 +116,8 @@ const ClientApp: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
-  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false); // NEW: Admin Menu State
+  const [adminView, setAdminView] = useState<'MENU' | 'SIMULATION' | 'SUPPORT' | 'EVOLUTION'>('MENU');
   const settingsMenuRef = useRef<HTMLDivElement>(null);
-  const adminMenuRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState<string>('RESUMEN');
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
@@ -676,167 +672,175 @@ const ClientApp: React.FC = () => {
         />
       ) : (
         <>
-          <aside className={`w-full md:w-80 bg-dark-900 border-r border-stone-800 flex flex-col z-20 relative transition-colors duration-500 ${isSimulating ? 'border-red-900/50' : ''}`}>
-            
-            {isSimulating && (
-                <div className="bg-red-900/20 border-b border-red-500/30 p-2 text-center animate-fadeIn">
-                    <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1">
-                        [MODO SIMULACIÓN: {profile.subscriptionTier}]
-                    </p>
-                    <button onClick={handleExitSimulation} className="text-[9px] bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded-sm uppercase font-bold">
-                        Volver a Admin (Root)
-                    </button>
+          {/* --- ADMIN SIDEBAR (ONLY FOR ADMINS) --- */}
+          {(profile.role === 'ADMIN' || originalAdminProfile) && (
+             <AdminSidebar 
+                onOpenMenu={() => setAdminView('MENU')}
+                onOpenSettings={() => setIsSettingsMenuOpen(true)}
+                onOpenChat={() => setShowChat(true)}
+                onLogout={handleLogout}
+                activeView={adminView}
+             />
+          )}
+
+          {/* --- USER SIDEBAR (ONLY FOR NON-ADMINS) --- */}
+          {!(profile.role === 'ADMIN' || originalAdminProfile) && (
+            <aside className={`w-full md:w-80 bg-dark-900 border-r border-stone-800 flex flex-col z-20 relative transition-colors duration-500`}>
+              <div className="p-6 border-b border-stone-800 flex items-center gap-3 select-none">
+                <div className="select-none" title="System Core">
+                  <Logo className="w-10 h-10" />
                 </div>
-            )}
-
-            <div className="p-6 border-b border-stone-800 flex items-center gap-3 select-none">
-              <div className="select-none" title="System Core">
-                <Logo className="w-10 h-10" />
+                <div>
+                  <h1 className="font-serif font-bold text-lg text-ai-500 leading-none">El Mayordomo</h1>
+                  <span className="text-[10px] text-stone-500 uppercase tracking-widest">Digital</span>
+                </div>
               </div>
-              <div>
-                <h1 className="font-serif font-bold text-lg text-ai-500 leading-none">El Mayordomo</h1>
-                <span className="text-[10px] text-stone-500 uppercase tracking-widest">Digital</span>
+
+              <div className="p-4 border-b border-stone-800 bg-black/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-stone-500 uppercase font-bold">{profile.archetype}</span>
+                  <button onClick={() => setIsEditMode(!isEditMode)} className={`p-1.5 rounded-sm transition-colors ${isEditMode ? 'bg-ai-500 text-black' : 'text-stone-500 hover:bg-stone-800'}`} title="Editar Dashboard">
+                      {isEditMode ? <Check size={14} /> : <Edit3 size={14} />}
+                  </button>
+                </div>
+                <h2 className="text-xl font-serif text-stone-200">{profile.name}</h2>
+                <p className="text-xs text-stone-500 font-mono mt-1 truncate" title={profile.email}>{profile.email}</p>
+                {isEditMode && <p className="text-[9px] text-ai-500 mt-1 uppercase tracking-wide">Modo Edición Activado</p>}
               </div>
-            </div>
 
-            <div className="p-4 border-b border-stone-800 bg-black/20">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-stone-500 uppercase font-bold">{profile.archetype}</span>
-                <button onClick={() => setIsEditMode(!isEditMode)} className={`p-1.5 rounded-sm transition-colors ${isEditMode ? 'bg-ai-500 text-black' : 'text-stone-500 hover:bg-stone-800'}`} title="Editar Dashboard">
-                    {isEditMode ? <Check size={14} /> : <Edit3 size={14} />}
-                </button>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                <div className="text-xs text-stone-500 p-2 text-center opacity-50">
+                    Navegación Principal Superior
+                </div>
               </div>
-              <h2 className="text-xl font-serif text-stone-200">{profile.name}</h2>
-              <p className="text-xs text-stone-500 font-mono mt-1 truncate" title={profile.email}>{profile.email}</p>
-              {isEditMode && <p className="text-[9px] text-ai-500 mt-1 uppercase tracking-wide">Modo Edición Activado</p>}
-            </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-              {/* SIDEBAR PILLAR LIST REMOVED IN FAVOR OF TABS */}
-              <div className="text-xs text-stone-500 p-2 text-center opacity-50">
-                  Navegación Principal Superior
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
-              {/* ADMIN SHORTCUT (VISIBLE ON SIDEBAR) */}
-              {profile.role && profile.role.toUpperCase() === 'ADMIN' && (
-                  <div className="relative mb-3" ref={adminMenuRef}>
-                      <button 
-                          onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)} 
-                          className={`w-full flex items-center justify-center gap-2 border p-2 rounded-sm transition-colors text-xs font-bold uppercase tracking-widest ${isAdminMenuOpen ? 'bg-red-900/30 text-red-400 border-red-500' : 'bg-red-900/10 hover:bg-red-900/30 text-red-500 border-red-500/30'}`}
-                      >
-                          <LifeBuoy size={16} /> Admin Tools
-                      </button>
-                      
-                      {isAdminMenuOpen && (
-                          <div className="absolute bottom-full left-0 w-full mb-2 bg-stone-900 border border-red-900/50 rounded-lg shadow-2xl z-50 overflow-hidden animate-fadeIn">
-                              <div className="bg-red-950/30 p-2 text-[10px] font-bold text-red-400 uppercase text-center border-b border-red-900/30">
-                                  Panel de Control
-                              </div>
-                              <button onClick={() => { setIsAdminMenuOpen(false); setShowSupportDashboard(true); }} className="w-full flex items-center gap-3 p-3 hover:bg-red-900/20 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
-                                  <Activity size={14} className="text-red-500" />
-                                  <div><div className="text-xs font-bold">Monitorización</div><div className="text-[9px] text-stone-500">Usuarios y Estado</div></div>
-                              </button>
-                              <button onClick={() => { setIsAdminMenuOpen(false); setShowEvolution(true); }} className="w-full flex items-center gap-3 p-3 hover:bg-red-900/20 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
-                                  <Users size={14} className="text-orange-500" />
-                                  <div><div className="text-xs font-bold">Simular Rol</div><div className="text-[9px] text-stone-500">Modo Invitado/VIP</div></div>
-                              </button>
-                              <button onClick={() => { setIsAdminMenuOpen(false); handleManualRefresh(); }} className="w-full flex items-center gap-3 p-3 hover:bg-red-900/20 text-stone-300 hover:text-white text-left transition-colors">
-                                  <RefreshCw size={14} className="text-blue-500" />
-                                  <div><div className="text-xs font-bold">Forzar Escaneo</div><div className="text-[9px] text-stone-500">Actualizar Sistema</div></div>
-                              </button>
-                          </div>
-                      )}
-                  </div>
-              )}
-
-              <div className="flex justify-between items-center relative" ref={settingsMenuRef}>
-                  <button onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)} className={`p-2 rounded-full transition-colors ${isSettingsMenuOpen ? 'bg-stone-800 text-white' : 'text-stone-500 hover:text-white hover:bg-stone-800'}`}>
+              <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
+                <div className="flex justify-between items-center relative" ref={settingsMenuRef}>
+                  <button onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)} className="p-2 text-stone-500 hover:text-white transition-colors">
                     <Settings size={20} />
                   </button>
-                  {isSettingsMenuOpen && (
-                      <div className="absolute bottom-full left-0 mb-3 w-64 bg-stone-900 border border-stone-700 rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden animate-fadeIn">
-                          
-                          {/* ADMIN CONSOLE ENTRY - ALSO IN MENU AS BACKUP */}
-                          {profile.role && profile.role.toUpperCase() === 'ADMIN' && (
-                            <>
-                              <button onClick={() => { setIsSettingsMenuOpen(false); setShowEvolution(true); }} className="flex items-center gap-3 p-3 bg-red-900/10 hover:bg-red-900/30 text-red-300 hover:text-red-200 text-left transition-colors border-b border-stone-800">
-                                  <Shield size={16} className="text-red-500" />
-                                  <div><div className="text-xs font-bold">Consola de Evolución</div><div className="text-[9px] text-red-400">Simulación y Reglas</div></div>
-                              </button>
-                            </>
-                          )}
-
-                          <button onClick={handleOpenPermissions} className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
-                             <Shield size={16} className="text-ai-500" />
-                             <div><div className="text-xs font-bold">Protocolos y Permisos</div><div className="text-[9px] text-stone-500">Configuración Técnica</div></div>
-                             <ChevronRight size={14} className="ml-auto opacity-50" />
-                          </button>
-                          <button onClick={handleOpenAppearance} className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
-                             <Palette size={16} className="text-purple-500" />
-                             <div><div className="text-xs font-bold">Apariencia y Temas</div><div className="text-[9px] text-stone-500">Personalización Visual</div></div>
-                             <ChevronRight size={14} className="ml-auto opacity-50" />
-                          </button>
-                          <button onClick={handleOpenSubscription} className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
-                             <CreditCard size={16} className="text-emerald-500" />
-                             <div><div className="text-xs font-bold">Mi Suscripción</div><div className="text-[9px] text-stone-500">Facturación y Planes</div></div>
-                             <ChevronRight size={14} className="ml-auto opacity-50" />
-                          </button>
-                          <button onClick={handleOpenLegal} className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
-                             <FileText size={16} className="text-stone-400" />
-                             <div><div className="text-xs font-bold">Información Legal</div><div className="text-[9px] text-stone-500">Privacidad y Términos</div></div>
-                             <ChevronRight size={14} className="ml-auto opacity-50" />
-                          </button>
-                          <button onClick={handleOpenHelp} className="flex items-center gap-3 p-3 hover:bg-stone-800 text-stone-300 hover:text-white text-left transition-colors border-b border-stone-800">
-                             <HelpCircle size={16} className="text-blue-500" />
-                             <div><div className="text-xs font-bold">Ayuda y Contacto</div><div className="text-[9px] text-stone-500">Enviar Consulta</div></div>
-                             <ChevronRight size={14} className="ml-auto opacity-50" />
-                          </button>
-                          {isSimulating && (
-                              <button onClick={() => { setIsSettingsMenuOpen(false); handleExitSimulation(); }} className="flex items-center gap-3 p-3 bg-red-900/20 hover:bg-red-900/40 text-red-300 text-left transition-colors">
-                                  <Undo2 size={16} className="text-red-500" />
-                                  <div><div className="text-xs font-bold">Volver a Admin</div><div className="text-[9px] text-red-400">Salir de Simulación</div></div>
-                              </button>
-                          )}
-                      </div>
-                  )}
                   
-                  <div className="flex gap-2">
-                    <button onClick={() => !isOffline && setShowChat(!showChat)} disabled={isOffline} className={`p-2 rounded-full transition-colors ${showChat ? 'text-ai-400 bg-ai-900/20' : 'text-ai-500 hover:bg-stone-800 hover:text-ai-400 disabled:opacity-30 disabled:cursor-not-allowed'}`} title="Abrir Asistente">
-                      <MessageSquare size={20} />
-                    </button>
-                    <button onClick={handleLogout} className="p-2 hover:bg-stone-800 rounded-full text-stone-500 hover:text-red-400 transition-colors">
-                      <LogOut size={20} />
-                    </button>
-                  </div>
+                  {isSettingsMenuOpen && (
+                    <div className="absolute bottom-full left-0 mb-2 w-48 bg-stone-900 border border-stone-800 rounded-lg shadow-xl overflow-hidden animate-fadeIn z-50">
+                      <button onClick={handleOpenPermissions} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
+                        <Shield size={14} /> Permisos
+                      </button>
+                      <button onClick={handleOpenSubscription} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
+                        <CreditCard size={14} /> Suscripción
+                      </button>
+                      <button onClick={handleOpenAppearance} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
+                        <Palette size={14} /> Apariencia
+                      </button>
+                      <button onClick={handleOpenHelp} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
+                        <HelpCircle size={14} /> Ayuda
+                      </button>
+                      <button onClick={handleOpenSupport} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
+                        <LifeBuoy size={14} /> Soporte
+                      </button>
+                      <div className="border-t border-stone-800 my-1"></div>
+                      <button onClick={() => setLegalType('PRIVACY')} className="w-full text-left px-4 py-2 text-[10px] text-stone-500 hover:text-stone-300">Privacidad</button>
+                      <button onClick={() => setLegalType('TERMS')} className="w-full text-left px-4 py-2 text-[10px] text-stone-500 hover:text-stone-300">Términos</button>
+                    </div>
+                  )}
+
+                  <button onClick={() => setShowChat(!showChat)} className={`p-2 transition-colors ${showChat ? 'text-ai-500' : 'text-stone-500 hover:text-white'}`}>
+                    <MessageSquare size={20} />
+                  </button>
+                  <button onClick={handleLogout} className="p-2 text-stone-500 hover:text-red-500 transition-colors">
+                    <LogOut size={20} />
+                  </button>
+                </div>
+              </div>
+            </aside>
+          )}
+
+          <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-stone-950">
+            
+            {/* --- ADMIN DASHBOARD LOGIC --- */}
+            {(profile.role === 'ADMIN' || originalAdminProfile) && adminView === 'MENU' && (
+                <AdminDashboard 
+                    onSimulate={(tier) => {
+                        handleSimulationChange(tier);
+                        setAdminView('SIMULATION');
+                    }}
+                    onOpenSupport={() => setAdminView('SUPPORT')}
+                    onOpenEvolution={() => setAdminView('EVOLUTION')}
+                    onForceScan={handleManualRefresh}
+                />
+            )}
+
+            {(profile.role === 'ADMIN' || originalAdminProfile) && adminView === 'SUPPORT' && (
+                <SupportDashboard onClose={() => setAdminView('MENU')} />
+            )}
+
+            {(profile.role === 'ADMIN' || originalAdminProfile) && adminView === 'EVOLUTION' && evolutionConfig && (
+                <EvolutionPanel 
+                    profile={activeProfileForModal}
+                    lifeStageConfig={evolutionConfig}
+                    onAddPermission={handleAddPermission}
+                    onClose={() => setAdminView('MENU')}
+                    onSimulateTier={(tier) => {
+                        handleSimulationChange(tier);
+                        setAdminView('SIMULATION');
+                    }}
+                    onOpenSupport={() => setAdminView('SUPPORT')}
+                    isEmbedded={true}
+                />
+            )}
+
+            {/* --- STANDARD USER VIEW (Used for Normal Users OR Admin Simulation) --- */}
+            {(!(profile.role === 'ADMIN' || originalAdminProfile) || adminView === 'SIMULATION') && (
+            <>
+            {/* --- HEADER --- */}
+            <div className="h-16 border-b border-stone-800 flex items-center justify-between px-8 bg-black/40 backdrop-blur-md z-20 shrink-0">
+              <div className="flex items-center gap-4">
+                {isSimulating && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-red-900/20 border border-red-500/30 rounded-full">
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Simulando: {profile.subscriptionTier}</span>
+                        <button onClick={() => setAdminView('MENU')} className="ml-2 text-[10px] text-stone-400 hover:text-white underline">Salir</button>
+                    </div>
+                )}
+                {!isSimulating && <h2 className="text-sm font-bold text-stone-400 uppercase tracking-widest">Panel de Control</h2>}
+              </div>
+              
+              {/* --- HEADER ACTIONS --- */}
+              <div className="flex items-center gap-4">
+                {isRefreshing && (
+                    <div className="flex items-center gap-2 text-ai-500 text-xs animate-pulse">
+                        <RefreshCw size={12} className="animate-spin" />
+                        <span>Sincronizando...</span>
+                    </div>
+                )}
+                
+                <div className="h-4 w-px bg-stone-800"></div>
+
+                <button 
+                  onClick={() => setShowEvolution(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-ai-900/10 border border-ai-500/20 text-ai-500 hover:bg-ai-900/20 transition-all group"
+                >
+                  <Activity size={14} className="group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold">Evolución</span>
+                </button>
+
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-900 border border-stone-800">
+                   <div className={`w-2 h-2 rounded-full ${isOffline ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+                   <span className="text-xs font-mono text-stone-500">{isOffline ? 'OFFLINE' : 'ONLINE'}</span>
+                </div>
               </div>
             </div>
-          </aside>
 
-          <main className="flex-1 flex flex-col relative overflow-hidden transition-colors duration-500 bg-transparent">
-            
-            <div className="absolute top-4 right-4 z-40">
-                <button onClick={handleManualRefresh} disabled={isRefreshing || isOffline} className={`p-2 rounded-full bg-black/40 text-stone-400 hover:text-white border border-stone-700 hover:border-ai-500 backdrop-blur-sm transition-all shadow-lg ${isRefreshing ? 'opacity-70 cursor-wait' : ''}`} title="Actualizar Sistema (Escaneo Manual)">
-                    <RefreshCw size={18} className={isRefreshing ? 'animate-spin text-ai-500' : ''} />
-                </button>
-            </div>
-
-            {profile.themeConfig?.type !== 'CUSTOM' && (
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
-            )}
-            
-            {isSimulating && (
-                <div className="absolute top-2 right-16 z-50 opacity-50 pointer-events-none">
-                    <Eye className="text-red-500 animate-pulse" />
+            {/* --- CHAT OVERLAY --- */}
+            {showChat && (
+              <div className="absolute top-16 right-0 w-96 bottom-0 z-40 border-l border-stone-800 bg-stone-950 shadow-2xl animate-slideInRight">
+                <div className="flex items-center justify-between p-4 border-b border-stone-800 bg-stone-900/50">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <MessageSquare size={16} className="text-ai-500" /> Asistente
+                    </h3>
+                    <button onClick={() => setShowChat(false)} className="text-stone-500 hover:text-white">
+                        <X size={16} />
+                    </button>
                 </div>
-            )}
-
-            {showChat && !isOffline && (
-              <div className="absolute bottom-4 left-4 z-50 w-96 h-[600px] max-h-[85vh] bg-stone-900 border border-stone-700 rounded-lg shadow-2xl flex flex-col overflow-hidden animate-slideInUp backdrop-blur-sm">
-                <button onClick={() => setShowChat(false)} className="absolute top-2 right-2 z-50 p-1 bg-black/50 hover:bg-black/80 text-stone-400 hover:text-white rounded-full transition-colors">
-                  <X size={14} />
-                </button>
                 <ChatInterface userProfile={profile} pillarStatuses={pillars} />
               </div>
             )}
@@ -915,6 +919,8 @@ const ClientApp: React.FC = () => {
                 )}
 
             </div>
+            </>
+            )}
           </main>
         </>
       )}
