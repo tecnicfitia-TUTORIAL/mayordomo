@@ -15,7 +15,7 @@ export const MayordomoCompanion = () => {
   if (!animationData) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-32 h-32 cursor-pointer hover:scale-110 transition-transform">
+    <div className="fixed bottom-4 left-4 z-50 w-32 h-32 cursor-pointer hover:scale-110 transition-transform">
       <Lottie
         animationData={animationData}
         loop={true}
