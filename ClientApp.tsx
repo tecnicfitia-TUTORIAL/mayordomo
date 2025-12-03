@@ -823,13 +823,15 @@ const ClientApp: React.FC = () => {
                 
                 <div className="h-4 w-px bg-stone-800"></div>
 
-                <button 
-                  onClick={() => setShowEvolution(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-ai-900/10 border border-ai-500/20 text-ai-500 hover:bg-ai-900/20 transition-all group"
-                >
-                  <Activity size={14} className="group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-bold">Evolución</span>
-                </button>
+                {(profile.role === 'ADMIN' || originalAdminProfile) && (
+                  <button 
+                    onClick={() => setShowEvolution(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-ai-900/10 border border-ai-500/20 text-ai-500 hover:bg-ai-900/20 transition-all group"
+                  >
+                    <Activity size={14} className="group-hover:scale-110 transition-transform" />
+                    <span className="text-xs font-bold">Evolución</span>
+                  </button>
+                )}
 
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-900 border border-stone-800">
                    <div className={`w-2 h-2 rounded-full ${isOffline ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
