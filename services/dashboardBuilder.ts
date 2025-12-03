@@ -95,7 +95,25 @@ export const DashboardBuilder = {
         }
     }
 
+    // 4. PERMISSION ENFORCEMENT (SECURITY LAYER)
+    // If the user lacks the required permission, lock the card and obfuscate details.
+    const secureItems = items.map(item => {
+        if (item.requiredPermission && !profile.grantedPermissions?.includes(item.requiredPermission)) {
+            return {
+                ...item,
+                isLocked: true,
+                description: 'Acceso restringido por configuración de privacidad.',
+                // Keep title but maybe obfuscate specific data if it was in title? 
+                // For now, title is usually generic enough ("Sexto Sentido", "Autorización Requerida")
+                // But let's be safe for Sixth Sense
+                opportunities: item.type === 'SIXTH_SENSE' ? [] : item.opportunities, 
+                metadata: { ...item.metadata, actionLabel: 'Habilitar Permiso' }
+            };
+        }
+        return item;
+    });
+
     // Sort by priority desc
-    return items.sort((a, b) => b.priority - a.priority);
+    return secureItems.sort((a, b) => b.priority - a.priority);
   }
 };

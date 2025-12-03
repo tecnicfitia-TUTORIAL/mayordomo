@@ -8,7 +8,12 @@ import { ChatInterface } from './components/ChatInterface';
 import { SettingsModal } from './components/SettingsModal';
 import { AppearanceModal } from './components/AppearanceModal';
 import { EvolutionPanel } from './components/EvolutionPanel';
-import { Activity } from 'lucide-react'; // Added Activity icon
+import { 
+  Activity, LayoutDashboard, ShieldCheck, Home, Plane, Heart, Users, 
+  Settings, LogOut, MessageSquare, RefreshCw, CloudOff, Check, Edit3, 
+  Shield, CreditCard, Palette, HelpCircle, LifeBuoy, ChevronRight, 
+  FileText, Undo2, Eye, X 
+} from 'lucide-react';
 import { PillarCard } from './components/PillarCard';
 import { PillarDetailView } from './components/PillarDetailView';
 import { MissionBriefingCard } from './components/MissionBriefingCard';
