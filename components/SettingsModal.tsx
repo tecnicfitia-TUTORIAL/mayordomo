@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { UserProfile, SubscriptionTier } from '../types';
 import { SUBSCRIPTION_PLANS, STRIPE_URLS, getTierLevel } from '../constants';
-import { X, ExternalLink, Check, Shield, Zap, Star, Crown, ChevronRight, User, Briefcase, MapPin, Save, Loader2, Fingerprint } from 'lucide-react';
+import { X, ExternalLink, Check, Shield, Zap, Star, Crown, ChevronRight, User, Briefcase, MapPin, Save, Loader2, Fingerprint, Lock, Smartphone } from 'lucide-react';
 import { LegalModal } from './LegalModal';
+import { MfaModal } from './MfaModal';
 import { startRegistration } from '@simplewebauthn/browser';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../services/firebaseConfig';
@@ -20,6 +21,7 @@ type SettingsTab = 'PLANS' | 'PROFILE' | 'SECURITY';
 export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('PLANS');
   const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
+  const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
   
   // PROFILE FORM STATE
   const [formData, setFormData] = useState<Partial<UserProfile>>({
@@ -150,6 +152,45 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
             {/* TAB: SECURITY */}
             {activeTab === 'SECURITY' && (
               <div className="max-w-2xl mx-auto space-y-8">
+                
+                {/* MFA SECTION */}
+                <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6 relative overflow-hidden">
+                  {profile.mfaEnabled && (
+                    <div className="absolute top-0 right-0 p-4">
+                      <div className="flex items-center gap-1 text-emerald-500 text-xs font-bold bg-emerald-900/20 px-2 py-1 rounded border border-emerald-500/30">
+                        <Check size={12} /> ACTIVO
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-stone-800 rounded-lg">
+                      <Smartphone className="w-6 h-6 text-emerald-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-white mb-2">Autenticación de Doble Factor (MFA)</h3>
+                      <p className="text-stone-400 text-sm mb-6">
+                        Proteja acciones críticas (Banco, Certificado Digital, DEHú) usando Google Authenticator. Requerido para niveles PRO y VIP.
+                      </p>
+                      
+                      {!profile.mfaEnabled ? (
+                        <button
+                          onClick={() => setIsMfaModalOpen(true)}
+                          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg transition-colors"
+                        >
+                          <Lock className="w-4 h-4" />
+                          Activar Seguridad Alta
+                        </button>
+                      ) : (
+                        <p className="text-xs text-stone-500 italic">
+                          Su cuenta está protegida con estándares de grado militar.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* BIOMETRICS SECTION */}
                 <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6">
                   <div className="flex items-start gap-4">
                     <div className="p-3 bg-stone-800 rounded-lg">
@@ -441,6 +482,16 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
       
       {/* Legal Modal Overlay */}
       {legalType && <LegalModal type={legalType} onClose={() => setLegalType(null)} />}
+
+      {/* MFA Modal Overlay */}
+      <MfaModal 
+        isOpen={isMfaModalOpen}
+        onClose={() => setIsMfaModalOpen(false)}
+        onSuccess={() => {
+            if (onUpdate) onUpdate({ ...profile, mfaEnabled: true });
+        }}
+        mode="SETUP"
+      />
     </div>
   );
 };

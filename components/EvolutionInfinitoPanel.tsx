@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Activity, Cpu, Zap, Check, X, Terminal, Clock, Sparkles, Server, Globe, ShieldAlert, ArrowRight } from 'lucide-react';
 import { EvolutionService, SystemImprovementProposal, scanMacroContext, analyzeGapAndPropose } from '../services/evolutionService';
 import { AnalyticsService } from '../services/analyticsService';
-import { UserProfile, LifeStageConfig, MacroContextEvent, PermissionProposal } from '../types';
+import { UserProfile, LifeStageConfig, MacroContextEvent, PermissionProposal, SubscriptionTier } from '../types';
+import { MfaModal } from './MfaModal';
 
 interface Props {
   onClose: () => void;
@@ -21,6 +22,10 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
   const [macroEvent, setMacroEvent] = useState<MacroContextEvent | null>(null);
   const [permissionProposal, setPermissionProposal] = useState<PermissionProposal | null>(null);
   const [isScanningMacro, setIsScanningMacro] = useState(false);
+  
+  // Security State
+  const [isMfaOpen, setIsMfaOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   // Track View on Mount
   useEffect(() => {
@@ -34,6 +39,45 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
     }, 800);
     return () => clearInterval(interval);
   }, []);
+
+  const handleApprovePermission = () => {
+    if (!permissionProposal) return;
+
+    const perm = permissionProposal.proposedPermission;
+    
+    // 1. Tier Check
+    // Simplified check: In real app, compare enum values or use a helper
+    const isVipRequired = perm.minTier === SubscriptionTier.VIP;
+    const isProRequired = perm.minTier === SubscriptionTier.PRO;
+    
+    const userIsFree = profile.subscriptionTier === SubscriptionTier.FREE;
+    const userIsBasic = profile.subscriptionTier === SubscriptionTier.BASIC;
+
+    if ((isVipRequired || isProRequired) && (userIsFree || userIsBasic)) {
+        alert(`Esta función requiere nivel ${perm.minTier}. Actualice su suscripción.`);
+        return;
+    }
+
+    // 2. Security Check (MFA)
+    // Sensitive permissions list
+    const SENSITIVE_PERMS = ['func_open_banking', 'func_digital_cert', 'func_dehu_sync', 'func_health_kit'];
+    
+    if (SENSITIVE_PERMS.includes(perm.id)) {
+        setPendingAction(perm.label);
+        setIsMfaOpen(true);
+    } else {
+        // Non-sensitive: Approve directly
+        setLogs(prev => [...prev, `> Permiso [${perm.label}] activado.`]);
+        setPermissionProposal(null);
+    }
+  };
+
+  const handleMfaSuccess = () => {
+    setLogs(prev => [...prev, `> AUTORIZACIÓN MFA CORRECTA.`]);
+    setLogs(prev => [...prev, `> Permiso [${pendingAction}] activado y encriptado en Bóveda.`]);
+    setPermissionProposal(null);
+    setPendingAction(null);
+  };
 
   const runAnalysis = async () => {
     AnalyticsService.track('CLICK', 'Run_System_Analysis_Button');
@@ -248,9 +292,22 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
                         </div>
                     </div>
 
-                    <button className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors">
-                        APROBAR Y ACTIVAR PERMISO
-                    </button>
+                    <div className="flex gap-3 mt-4">
+                        <button 
+                          onClick={handleApprovePermission}
+                          className="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/50 py-2 rounded flex items-center justify-center gap-2 transition-colors text-xs font-bold"
+                        >
+                          <ShieldCheck className="w-4 h-4" />
+                          APROBAR
+                        </button>
+                        <button 
+                          onClick={() => setPermissionProposal(null)}
+                          className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/50 py-2 rounded flex items-center justify-center gap-2 transition-colors text-xs font-bold"
+                        >
+                          <X className="w-4 h-4" />
+                          DENEGAR
+                        </button>
+                    </div>
                  </div>
                )}
 
@@ -275,6 +332,16 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
         </div>
 
       </div>
+
+      <MfaModal 
+        isOpen={isMfaOpen}
+        onClose={() => {
+            setIsMfaOpen(false);
+            setPendingAction(null);
+        }}
+        onSuccess={handleMfaSuccess}
+        mode="VERIFY"
+      />
     </div>
   );
 };
