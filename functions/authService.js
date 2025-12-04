@@ -16,7 +16,7 @@ const rpName = 'Mayordomo App';
  * 1. Generate Registration Options
  * Call this when a logged-in user wants to setup FaceID/TouchID
  */
-exports.generateRegistrationOptions = onCall(async (request) => {
+exports.generateRegistrationOptions = onCall({ cors: true }, async (request) => {
   const userId = request.auth ? request.auth.uid : null;
   if (!userId) {
     throw new HttpsError('unauthenticated', 'User must be logged in to register a passkey');
@@ -59,7 +59,7 @@ exports.generateRegistrationOptions = onCall(async (request) => {
  * 2. Verify Registration
  * Call this after the frontend creates the credential
  */
-exports.verifyRegistration = onCall(async (request) => {
+exports.verifyRegistration = onCall({ cors: true }, async (request) => {
   try {
     const userId = request.auth ? request.auth.uid : null;
     if (!userId) {
@@ -178,7 +178,7 @@ exports.verifyRegistration = onCall(async (request) => {
  * If email is provided, it targets that user.
  * If email is NOT provided, it initiates a "Usernameless" (Resident Key) flow.
  */
-exports.generateAuthenticationOptions = onCall(async (request) => {
+exports.generateAuthenticationOptions = onCall({ cors: true }, async (request) => {
   const { email, rpID } = request.data;
   console.log("generateAuthenticationOptions called:", { email, rpID });
   
@@ -242,7 +242,7 @@ exports.generateAuthenticationOptions = onCall(async (request) => {
  * 4. Verify Authentication
  * Call this after frontend signs the challenge
  */
-exports.verifyAuthentication = onCall(async (request) => {
+exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
   try {
     console.log("verifyAuthentication called with data:", JSON.stringify(request.data));
     const { email, response, rpID, origin } = request.data;
