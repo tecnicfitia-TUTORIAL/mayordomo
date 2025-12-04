@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Cpu, Zap, Check, X, Terminal, Clock, Sparkles, Server, Globe, ShieldAlert, ArrowRight } from 'lucide-react';
 import { EvolutionService, SystemImprovementProposal, scanMacroContext, analyzeGapAndPropose } from '../services/evolutionService';
+import { AnalyticsService } from '../services/analyticsService';
 import { UserProfile, LifeStageConfig, MacroContextEvent, PermissionProposal } from '../types';
 
 interface Props {
@@ -21,6 +22,11 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
   const [permissionProposal, setPermissionProposal] = useState<PermissionProposal | null>(null);
   const [isScanningMacro, setIsScanningMacro] = useState(false);
 
+  // Track View on Mount
+  useEffect(() => {
+    AnalyticsService.track('VIEW', 'Evolution_Panel_Opened');
+  }, []);
+
   // Simulate TFLOPS fluctuation
   useEffect(() => {
     const interval = setInterval(() => {
@@ -30,6 +36,7 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
   }, []);
 
   const runAnalysis = async () => {
+    AnalyticsService.track('CLICK', 'Run_System_Analysis_Button');
     setStatus('ANALYZING');
     setLogs(prev => [...prev, "> Iniciando conexión con Gemini Pro Vision..."]);
     
@@ -49,6 +56,7 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
   };
 
   const runPermissionScan = async () => {
+    AnalyticsService.track('CLICK', 'Run_Macro_Scan_Button');
     setIsScanningMacro(true);
     setMacroEvent(null);
     setPermissionProposal(null);

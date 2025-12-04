@@ -1,6 +1,7 @@
 
 import axios from 'axios';
 import { MacroContextEvent, PermissionProposal, UserProfile, PermissionModule, SubscriptionTier } from "../types";
+import { AnalyticsService } from './analyticsService';
 
 const PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-project';
 const REGION = 'us-central1';
@@ -186,8 +187,41 @@ export const EvolutionService = {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 2500));
 
-    // Mock Gemini Response
-    return [
+    // 1. LEER COMPORTAMIENTO REAL DEL USUARIO (Session Memory)
+    const behavior = AnalyticsService.getRecentBehavior();
+    const frustrationDetected = AnalyticsService.detectFrustration();
+    
+    const dynamicProposals: SystemImprovementProposal[] = [];
+
+    // 2. GENERAR PROPUESTAS BASADAS EN DATOS REALES
+    
+    // Caso A: Detección de Frustración (Rage Clicks o Errores)
+    if (frustrationDetected) {
+        dynamicProposals.push({
+            id: `fix_frust_${Date.now()}`,
+            title: 'Simplificación de Interfaz Detectada',
+            description: 'Se detectaron patrones de clicks repetitivos (Rage Clicks). El usuario parece confundido con la UI actual. Se sugiere activar el modo "Simplificado".',
+            impact: 'HIGH',
+            type: 'UX',
+            status: 'PENDING'
+        });
+    }
+
+    // Caso B: Análisis de Flujos (Si hay datos)
+    const flowCompletions = behavior.filter(e => e.type === 'FLOW_COMPLETE');
+    if (flowCompletions.length > 0) {
+        dynamicProposals.push({
+            id: `opt_flow_${Date.now()}`,
+            title: 'Acelerar Flujos Recuentes',
+            description: `El usuario completa frecuentemente el flujo "${flowCompletions[0].elementId}". Crear un acceso directo en el Dashboard principal.`,
+            impact: 'MEDIUM',
+            type: 'UX',
+            status: 'PENDING'
+        });
+    }
+
+    // 3. PROPUESTAS BASE (SIEMPRE DISPONIBLES SI NO HAY DATOS)
+    const baseProposals: SystemImprovementProposal[] = [
       {
         id: 'imp_01',
         title: 'Reducir pasos en el onboarding',
@@ -203,16 +237,11 @@ export const EvolutionService = {
         impact: 'MEDIUM',
         type: 'UX',
         status: 'PENDING'
-      },
-      {
-        id: 'imp_03',
-        title: 'Optimización de carga de fuentes',
-        description: 'LCP (Largest Contentful Paint) excede 2.5s en móviles 4G. Precargar fuentes críticas.',
-        impact: 'LOW',
-        type: 'PERFORMANCE',
-        status: 'PENDING'
       }
     ];
+
+    // Mezclar propuestas dinámicas con las base
+    return [...dynamicProposals, ...baseProposals];
   },
 
   getMacroContext: async (): Promise<MacroContextEvent[]> => {
