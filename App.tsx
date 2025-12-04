@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, applyActionCode } from 'firebase/auth';
 import { auth } from './services/firebaseConfig';
 import ClientApp from './ClientApp';
 import { LandingPage } from './components/LandingPage';
@@ -12,6 +12,29 @@ const App: React.FC = () => {
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Handle Firebase Auth Action Links (Verify Email, Reset Password)
+    const handleAuthAction = async () => {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      const actionCode = params.get('oobCode');
+
+      if (mode === 'verifyEmail' && actionCode) {
+        try {
+          await applyActionCode(auth, actionCode);
+          // Redirect to home with success flag to show in LoginScreen
+          navigate('/?verified=true', { replace: true });
+        } catch (error) {
+          console.error("Error verifying email:", error);
+          // Redirect with error
+          navigate('/?verified=error', { replace: true });
+        }
+      }
+    };
+
+    handleAuthAction();
+  }, [location, navigate]);
 
   useEffect(() => {
     // Manejo de modo Mock / Offline (si no hay API Keys)
@@ -25,6 +48,8 @@ const App: React.FC = () => {
     // Suscripción a Firebase Auth
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
+        // If user is logged in, check if verified (optional enforcement here)
+        // But usually we let ClientApp handle the profile loading.
         setIsAuthenticated(true);
       } else {
         setIsAuthenticated(false);
