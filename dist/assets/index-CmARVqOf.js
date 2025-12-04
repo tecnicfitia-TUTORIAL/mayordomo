@@ -38429,15 +38429,8 @@ const SettingsModal = ({ profile, onUpdate, onClose }) => {
   const handleRegisterBiometrics = async () => {
     setIsSaving(true);
     try {
-      const auth2 = getAuth();
-      if (!auth2.currentUser) {
-        alert("Debe iniciar sesión para configurar la biometría.");
-        return;
-      }
       const generateRegOptions = httpsCallable(functions, "generateRegistrationOptions");
-      const optsResponse = await generateRegOptions({
-        rpID: window.location.hostname
-      });
+      const optsResponse = await generateRegOptions({ rpID: window.location.hostname });
       const opts = optsResponse.data;
       const attResp = await startRegistration(opts);
       const verifyReg = httpsCallable(functions, "verifyRegistration");

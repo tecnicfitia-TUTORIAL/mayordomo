@@ -36,17 +36,9 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
   const handleRegisterBiometrics = async () => {
     setIsSaving(true);
     try {
-      const auth = getAuth();
-      if (!auth.currentUser) {
-        alert("Debe iniciar sesión para configurar la biometría.");
-        return;
-      }
-
       // 1. Get Options
       const generateRegOptions = httpsCallable(functions, 'generateRegistrationOptions');
-      const optsResponse = await generateRegOptions({ 
-        rpID: window.location.hostname 
-      });
+      const optsResponse = await generateRegOptions({ rpID: window.location.hostname });
       const opts = optsResponse.data as any;
 
       // 2. Create Credential
