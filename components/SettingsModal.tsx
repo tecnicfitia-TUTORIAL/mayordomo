@@ -42,7 +42,10 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
       const opts = optsResponse.data as any;
 
       // 2. Create Credential
-      const attResp = await startRegistration(opts);
+      // SimpleWebAuthn expects the options object directly.
+      // If optsResponse.data is the options object, we pass it.
+      // We ensure it's treated as PublicKeyCredentialCreationOptionsJSON
+      const attResp = await startRegistration(opts as any);
 
       // 3. Verify
       const verifyReg = httpsCallable(functions, 'verifyRegistration');

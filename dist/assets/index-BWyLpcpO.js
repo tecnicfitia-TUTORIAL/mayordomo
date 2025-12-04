@@ -37847,7 +37847,8 @@ const generateChatResponse = async (history, currentMessage, pillars, profile, a
       currentMessage,
       pillars,
       profile,
-      attachments: attachments2
+      attachments: attachments2,
+      locale: navigator.language || "es-ES"
     });
     return response.data.text;
   } catch (error) {
@@ -42946,7 +42947,13 @@ const LoginScreen = ({ onLoginSuccess, isEmbedded = false }) => {
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-white font-bold", children: email }),
         "."
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-stone-500 mb-8", children: "Por seguridad, no podrá acceder a la plataforma hasta que verifique su dirección. Revise su bandeja de entrada (y spam)." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm text-stone-500 mb-8", children: [
+        "Por seguridad, no podrá acceder a la plataforma hasta que verifique su dirección. Revise su bandeja de entrada (y spam).",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-amber-500 font-bold", children: "Importante:" }),
+        " Tiene 2 horas para verificar su cuenta antes de que el enlace expire."
+      ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {

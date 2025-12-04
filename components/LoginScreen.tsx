@@ -308,6 +308,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, isEmbe
                   </p>
                   <p className="text-sm text-stone-500 mb-8">
                       Por seguridad, no podrá acceder a la plataforma hasta que verifique su dirección. Revise su bandeja de entrada (y spam).
+                      <br/><br/>
+                      <span className="text-amber-500 font-bold">Importante:</span> Tiene 2 horas para verificar su cuenta antes de que el enlace expire.
                   </p>
                   <button 
                       onClick={() => {
