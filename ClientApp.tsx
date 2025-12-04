@@ -786,6 +786,8 @@ const ClientApp: React.FC = () => {
             {(profile.role === 'ADMIN' || originalAdminProfile) && adminView === 'EVOLUTION' && (
                 <EvolutionInfinitoPanel 
                     onClose={() => setAdminView('MENU')}
+                    profile={activeProfileForModal}
+                    evolutionConfig={evolutionConfig}
                 />
             )}
 

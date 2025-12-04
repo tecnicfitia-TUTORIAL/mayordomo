@@ -1,13 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
-import { Activity, Cpu, Zap, Check, X, Terminal, Clock, Sparkles, Server } from 'lucide-react';
-import { EvolutionService, SystemImprovementProposal } from '../services/evolutionService';
+import { Activity, Cpu, Zap, Check, X, Terminal, Clock, Sparkles, Server, Globe, ShieldAlert, ArrowRight } from 'lucide-react';
+import { EvolutionService, SystemImprovementProposal, scanMacroContext, analyzeGapAndPropose } from '../services/evolutionService';
+import { UserProfile, LifeStageConfig, MacroContextEvent, PermissionProposal } from '../types';
 
-export const EvolutionInfinitoPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+interface Props {
+  onClose: () => void;
+  profile: UserProfile;
+  evolutionConfig: LifeStageConfig | null;
+}
+
+export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evolutionConfig }) => {
   const [status, setStatus] = useState<'IDLE' | 'ANALYZING' | 'COMPLETE'>('IDLE');
   const [proposals, setProposals] = useState<SystemImprovementProposal[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [tflops, setTflops] = useState(0);
+
+  // Permission Evolution State
+  const [macroEvent, setMacroEvent] = useState<MacroContextEvent | null>(null);
+  const [permissionProposal, setPermissionProposal] = useState<PermissionProposal | null>(null);
+  const [isScanningMacro, setIsScanningMacro] = useState(false);
 
   // Simulate TFLOPS fluctuation
   useEffect(() => {
@@ -36,6 +48,35 @@ export const EvolutionInfinitoPanel: React.FC<{ onClose: () => void }> = ({ onCl
     }
   };
 
+  const runPermissionScan = async () => {
+    setIsScanningMacro(true);
+    setMacroEvent(null);
+    setPermissionProposal(null);
+    setLogs(prev => [...prev, "> Escaneando contexto macro-global (Internet)..."]);
+    
+    const event = await scanMacroContext();
+    setMacroEvent(event);
+    setLogs(prev => [...prev, `> Evento detectado: [${event.source}] ${event.title}`]);
+    
+    if (evolutionConfig) {
+        setLogs(prev => [...prev, "> Analizando brecha de seguridad (Micro vs Macro)..."]);
+        // Simulate small delay for effect
+        await new Promise(r => setTimeout(r, 1000));
+        
+        const proposal = await analyzeGapAndPropose(event, profile, evolutionConfig.modules);
+        setPermissionProposal(proposal);
+        if (proposal) {
+            setLogs(prev => [...prev, `> Propuesta de Permiso: ${proposal.title}`]);
+        } else {
+            setLogs(prev => [...prev, "> El perfil actual ya está protegido."]);
+        }
+    } else {
+        setLogs(prev => [...prev, "> Error: Configuración de evolución no disponible."]);
+    }
+    
+    setIsScanningMacro(false);
+  };
+
   const handleApply = (id: string) => {
     setProposals(prev => prev.map(p => p.id === id ? { ...p, status: 'APPLIED' } : p));
   };
@@ -56,7 +97,7 @@ export const EvolutionInfinitoPanel: React.FC<{ onClose: () => void }> = ({ onCl
           <div>
             <h1 className="text-2xl font-serif font-bold text-white tracking-wide">EVOLUTION CORE INFINITO</h1>
             <div className="flex items-center gap-2 text-xs font-mono text-stone-500">
-              <span className={`w-2 h-2 rounded-full ${status === 'ANALIZANDO' ? 'bg-purple-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+              <span className={`w-2 h-2 rounded-full ${status === 'ANALYZING' ? 'bg-purple-500 animate-pulse' : 'bg-emerald-500'}`}></span>
               {status === 'ANALYZING' ? 'ANALIZANDO SISTEMA...' : 'ESPERANDO CICLO'}
             </div>
           </div>
@@ -99,6 +140,19 @@ export const EvolutionInfinitoPanel: React.FC<{ onClose: () => void }> = ({ onCl
                 )}
                 {status === 'ANALYZING' ? 'PROCESANDO...' : 'EJECUTAR ANÁLISIS MANUAL'}
               </button>
+
+              <button 
+                onClick={runPermissionScan}
+                disabled={isScanningMacro}
+                className="w-full mt-3 py-4 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-500/50 text-blue-300 font-bold rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                {isScanningMacro ? (
+                    <Globe className="animate-spin" />
+                ) : (
+                    <ShieldAlert className="group-hover:scale-110 transition-transform" />
+                )}
+                {isScanningMacro ? 'ESCANEANDO...' : 'ESCANEAR ENTORNO (MACRO)'}
+              </button>
            </div>
 
            {/* TERMINAL OUTPUT */}
@@ -122,6 +176,36 @@ export const EvolutionInfinitoPanel: React.FC<{ onClose: () => void }> = ({ onCl
 
         {/* RIGHT: PROPOSALS */}
         <div className="flex-1 bg-stone-950 p-8 overflow-y-auto custom-scrollbar">
+           
+           {/* PERMISSION PROPOSAL CARD */}
+           {permissionProposal && (
+             <div className="mb-8 bg-blue-950/20 border border-blue-500/30 rounded-xl p-6 animate-slideInUp">
+                <div className="flex items-center gap-3 mb-4">
+                    <Globe className="text-blue-400" size={24} />
+                    <div>
+                        <h3 className="text-lg font-bold text-white">Alerta de Contexto: {macroEvent?.source}</h3>
+                        <p className="text-xs text-blue-300">Detectado: {macroEvent?.title}</p>
+                    </div>
+                </div>
+                
+                <div className="bg-black/40 p-4 rounded-lg border border-blue-500/20 mb-4">
+                    <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                        <ShieldAlert size={16} className="text-amber-500" />
+                        Propuesta de Evolución
+                    </h4>
+                    <p className="text-stone-300 text-sm mb-3">{permissionProposal.reasoning}</p>
+                    <div className="flex items-center justify-between bg-stone-900 p-3 rounded border border-stone-800">
+                        <span className="text-xs font-mono text-stone-500">Permiso Sugerido:</span>
+                        <span className="text-sm font-bold text-white">{permissionProposal.proposedPermission.label}</span>
+                    </div>
+                </div>
+
+                <button className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors">
+                    APROBAR Y ACTIVAR PERMISO
+                </button>
+             </div>
+           )}
+
            <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
               <Server size={20} className="text-stone-500" />
               Propuestas de Mejora
