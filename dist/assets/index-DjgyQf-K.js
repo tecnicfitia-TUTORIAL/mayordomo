@@ -42902,21 +42902,17 @@ const LoginScreen = ({ onLoginSuccess, isEmbedded = false }) => {
     setIsLoading(true);
     setError(null);
     try {
-      if (!email) {
-        setError("Por favor, introduzca su email para iniciar sesión con biometría.");
-        setIsLoading(false);
-        return;
-      }
+      const emailToUse = email ? email.trim() : "";
       const generateAuthOptions = httpsCallable(functions, "generateAuthenticationOptions");
       const optsResponse = await generateAuthOptions({
-        email,
+        email: emailToUse,
         rpID: window.location.hostname
       });
       const opts = optsResponse.data;
       const asseResp = await startAuthentication(opts);
       const verifyAuth = httpsCallable(functions, "verifyAuthentication");
       const verificationResp = await verifyAuth({
-        email,
+        email: emailToUse,
         response: asseResp,
         rpID: window.location.hostname,
         origin: window.location.origin
