@@ -21,30 +21,30 @@ const db = admin.firestore();
  * Prevents login if email is not verified.
  * Allows a 2-minute grace period for new accounts to allow the frontend to send the email.
  */
-exports.checkEmailVerification = beforeUserSignedIn((event) => {
-  const user = event.data;
+// exports.checkEmailVerification = beforeUserSignedIn((event) => {
+//   const user = event.data;
   
-  // If email is already verified, allow access
-  if (user.emailVerified) {
-    return;
-  }
+//   // If email is already verified, allow access
+//   if (user.emailVerified) {
+//     return;
+//   }
 
-  // Check creation time to allow initial login for sending the verification email
-  // We give a 2-minute window (120000 ms)
-  const creationTime = new Date(user.metadata.creationTime).getTime();
-  const now = Date.now();
+//   // Check creation time to allow initial login for sending the verification email
+//   // We give a 2-minute window (120000 ms)
+//   const creationTime = new Date(user.metadata.creationTime).getTime();
+//   const now = Date.now();
   
-  if (now - creationTime < 120000) {
-      // New user (created < 2 mins ago) -> Allow login so frontend can send email
-      return;
-  }
+//   if (now - creationTime < 120000) {
+//       // New user (created < 2 mins ago) -> Allow login so frontend can send email
+//       return;
+//   }
 
-  // If not verified and older than 2 minutes -> BLOCK
-  throw new https.HttpsError(
-    'permission-denied', 
-    'Debe verificar su correo electrónico para iniciar sesión. Revise su bandeja de entrada.'
-  );
-});
+//   // If not verified and older than 2 minutes -> BLOCK
+//   throw new https.HttpsError(
+//     'permission-denied', 
+//     'Debe verificar su correo electrónico para iniciar sesión. Revise su bandeja de entrada.'
+//   );
+// });
 
 // Export Bank & Email Services
 exports.createLinkToken = bankService.createLinkToken;
