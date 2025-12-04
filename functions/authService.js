@@ -60,65 +60,65 @@ exports.generateRegistrationOptions = onCall(async (request) => {
  * Call this after the frontend creates the credential
  */
 exports.verifyRegistration = onCall(async (request) => {
-  const userId = request.auth ? request.auth.uid : null;
-  if (!userId) {
-    throw new HttpsError('unauthenticated', 'User must be logged in');
-  }
-
-  const { response, rpID, origin } = request.data;
-
-  const userDoc = await db.collection('users').doc(userId).get();
-  const expectedChallenge = userDoc.data()?.currentChallenge;
-
-  if (!expectedChallenge) {
-    throw new HttpsError('failed-precondition', 'No challenge found for user');
-  }
-
-  let verification;
   try {
-    verification = await verifyRegistrationResponse({
-      response,
-      expectedChallenge,
-      expectedOrigin: origin,
-      expectedRPID: rpID,
-    });
+    const userId = request.auth ? request.auth.uid : null;
+    if (!userId) {
+      throw new HttpsError('unauthenticated', 'User must be logged in');
+    }
+
+    const { response, rpID, origin } = request.data;
+
+    const userDoc = await db.collection('users').doc(userId).get();
+    const expectedChallenge = userDoc.data()?.currentChallenge;
+
+    if (!expectedChallenge) {
+      throw new HttpsError('failed-precondition', 'No challenge found for user');
+    }
+
+    let verification;
+    try {
+      verification = await verifyRegistrationResponse({
+        response,
+        expectedChallenge,
+        expectedOrigin: origin,
+        expectedRPID: rpID,
+      });
+    } catch (error) {
+      console.error("Verification logic failed", error);
+      throw new HttpsError('invalid-argument', `Verification failed: ${error.message}`);
+    }
+
+    const { verified, registrationInfo } = verification;
+
+    if (verified && registrationInfo) {
+      const { credentialPublicKey, credentialID, counter } = registrationInfo;
+
+      // Robust Buffer conversion
+      const credentialIDBase64 = Buffer.from(credentialID).toString('base64url');
+      const credentialPublicKeyBase64 = Buffer.from(credentialPublicKey).toString('base64url');
+
+      await db.collection('users').doc(userId).collection('authenticators').add({
+        credentialID: credentialIDBase64,
+        credentialPublicKey: credentialPublicKeyBase64,
+        counter,
+        transports: response.response.transports || [],
+        created: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Clean up challenge
+      await db.collection('users').doc(userId).update({
+        currentChallenge: admin.firestore.FieldValue.delete()
+      });
+
+      return { verified: true };
+    }
+
+    return { verified: false };
   } catch (error) {
-    console.error("Verification failed", error);
-    throw new HttpsError('invalid-argument', error.message);
+    console.error("verifyRegistration Top-Level Error:", error);
+    // Ensure we don't leak sensitive info, but give enough to debug
+    throw new HttpsError('internal', error.message || "Internal Server Error");
   }
-
-  const { verified, registrationInfo } = verification;
-
-  if (verified && registrationInfo) {
-    const { credentialPublicKey, credentialID, counter } = registrationInfo;
-
-    // Save the new authenticator
-    // Note: credentialID is a Buffer/Uint8Array. Firestore stores it as Binary.
-    // SimpleWebAuthn uses base64url strings in JSON, but internal types might be Buffers.
-    // We will store it as is from registrationInfo (Buffer) or convert if needed.
-    // For querying, storing as base64url string is often easier.
-    
-    // Convert Buffer to Base64URL string for storage/comparison
-    const credentialIDBase64 = Buffer.from(credentialID).toString('base64url');
-    const credentialPublicKeyBase64 = Buffer.from(credentialPublicKey).toString('base64url');
-
-    await db.collection('users').doc(userId).collection('authenticators').add({
-      credentialID: credentialIDBase64,
-      credentialPublicKey: credentialPublicKeyBase64,
-      counter,
-      transports: response.response.transports || [],
-      created: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Clean up challenge
-    await db.collection('users').doc(userId).update({
-      currentChallenge: admin.firestore.FieldValue.delete()
-    });
-
-    return { verified: true };
-  }
-
-  return { verified: false };
 });
 
 /**
