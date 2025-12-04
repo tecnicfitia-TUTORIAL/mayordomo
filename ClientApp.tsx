@@ -8,6 +8,7 @@ import { ChatInterface } from './components/ChatInterface';
 import { SettingsModal } from './components/SettingsModal';
 import { AppearanceModal } from './components/AppearanceModal';
 import { EvolutionPanel } from './components/EvolutionPanel';
+import { EvolutionInfinitoPanel } from './components/EvolutionInfinitoPanel';
 import { 
   Activity, LayoutDashboard, ShieldCheck, Home, Plane, Heart, Users, 
   Settings, LogOut, MessageSquare, RefreshCw, CloudOff, Check, Edit3, 
@@ -782,18 +783,9 @@ const ClientApp: React.FC = () => {
                 <SupportDashboard onClose={() => setAdminView('MENU')} />
             )}
 
-            {(profile.role === 'ADMIN' || originalAdminProfile) && adminView === 'EVOLUTION' && evolutionConfig && (
-                <EvolutionPanel 
-                    profile={activeProfileForModal}
-                    lifeStageConfig={evolutionConfig}
-                    onAddPermission={handleAddPermission}
+            {(profile.role === 'ADMIN' || originalAdminProfile) && adminView === 'EVOLUTION' && (
+                <EvolutionInfinitoPanel 
                     onClose={() => setAdminView('MENU')}
-                    onSimulateTier={(tier) => {
-                        handleSimulationChange(tier);
-                        setAdminView('SIMULATION');
-                    }}
-                    onOpenSupport={() => setAdminView('SUPPORT')}
-                    isEmbedded={true}
                 />
             )}
 

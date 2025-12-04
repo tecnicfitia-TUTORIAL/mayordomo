@@ -166,3 +166,61 @@ export const analyzeGapAndPropose = async (
     return null;
   }
 };
+
+// --- EVOLUTION CORE INFINITO (System Agent) ---
+
+export interface SystemImprovementProposal {
+  id: string;
+  title: string;
+  description: string;
+  impact: 'HIGH' | 'MEDIUM' | 'LOW';
+  type: 'UX' | 'PERFORMANCE' | 'SECURITY';
+  status: 'PENDING' | 'APPLIED' | 'DISMISSED';
+}
+
+export const EvolutionService = {
+  /**
+   * Simulates a call to Gemini to analyze system logs and propose improvements.
+   */
+  analyzeSystemLogs: async (): Promise<SystemImprovementProposal[]> => {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 2500));
+
+    // Mock Gemini Response
+    return [
+      {
+        id: 'imp_01',
+        title: 'Reducir pasos en el onboarding',
+        description: 'Se detectó una tasa de abandono del 15% en el paso de "Conexión Bancaria". Se sugiere moverlo después del registro inicial.',
+        impact: 'HIGH',
+        type: 'UX',
+        status: 'PENDING'
+      },
+      {
+        id: 'imp_02',
+        title: 'Añadir modo oscuro automático',
+        description: 'El 80% de los accesos son después de las 20:00. Sincronizar el tema con la hora del sistema mejoraría la retención.',
+        impact: 'MEDIUM',
+        type: 'UX',
+        status: 'PENDING'
+      },
+      {
+        id: 'imp_03',
+        title: 'Optimización de carga de fuentes',
+        description: 'LCP (Largest Contentful Paint) excede 2.5s en móviles 4G. Precargar fuentes críticas.',
+        impact: 'LOW',
+        type: 'PERFORMANCE',
+        status: 'PENDING'
+      }
+    ];
+  },
+
+  getMacroContext: async (): Promise<MacroContextEvent[]> => {
+    // Simulate API Call
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(MOCK_MACRO_EVENTS);
+      }, 800);
+    });
+  }
+};
