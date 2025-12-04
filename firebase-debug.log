@@ -1,0 +1,185 @@
+[debug] [2025-12-04T15:55:48.908Z] ----------------------------------------------------------------------
+[debug] [2025-12-04T15:55:48.914Z] Command:       /usr/local/share/nvm/versions/node/v24.11.1/bin/node /home/codespace/nvm/current/bin/firebase deploy --only functions:verifyRegistration
+[debug] [2025-12-04T15:55:48.915Z] CLI Version:   14.26.0
+[debug] [2025-12-04T15:55:48.915Z] Platform:      linux
+[debug] [2025-12-04T15:55:48.915Z] Node Version:  v24.11.1
+[debug] [2025-12-04T15:55:48.915Z] Time:          Thu Dec 04 2025 15:55:48 GMT+0000 (Coordinated Universal Time)
+[debug] [2025-12-04T15:55:48.915Z] Env Overrides: GITHUB_API_URL, GITHUB_API_URL
+[debug] [2025-12-04T15:55:48.915Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-12-04T15:55:49.092Z] Object "/functions" in "firebase.json" has unknown property: {"additionalProperty":"region"}
+[debug] [2025-12-04T15:55:49.092Z] Object "/functions" in "firebase.json" is missing required property: {"missingProperty":"remoteSource"}
+[debug] [2025-12-04T15:55:49.092Z] Field "/functions" in "firebase.json" is possibly invalid: must be array
+[debug] [2025-12-04T15:55:49.092Z] Field "/functions" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[debug] [2025-12-04T15:55:49.095Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-04T15:55:49.095Z] > authorizing via signed-in user (tecnicfitia@tecnicalfitnesartificialintelligence.app)
+[debug] [2025-12-04T15:55:49.096Z] [iam] checking project studio-9130063297-9636d for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2025-12-04T15:55:49.096Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:49.097Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:49.097Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions [none]
+[debug] [2025-12-04T15:55:49.097Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions x-goog-quota-user=projects/studio-9130063297-9636d
+[debug] [2025-12-04T15:55:49.097Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2025-12-04T15:55:49.716Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions 200
+[debug] [2025-12-04T15:55:49.716Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2025-12-04T15:55:49.717Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:49.717Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:49.717Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/studio-9130063297-9636d/serviceAccounts/studio-9130063297-9636d@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2025-12-04T15:55:49.717Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/studio-9130063297-9636d/serviceAccounts/studio-9130063297-9636d@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2025-12-04T15:55:50.293Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/studio-9130063297-9636d/serviceAccounts/studio-9130063297-9636d@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2025-12-04T15:55:50.293Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/studio-9130063297-9636d/serviceAccounts/studio-9130063297-9636d@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'studio-9130063297-9636d'...
+[info] 
+[info] i  deploying functions 
+[debug] [2025-12-04T15:55:50.296Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:50.296Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:50.296Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d [none]
+[debug] [2025-12-04T15:55:50.462Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d 200
+[debug] [2025-12-04T15:55:50.463Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d {"projectNumber":"1091783968160","projectId":"studio-9130063297-9636d","lifecycleState":"ACTIVE","name":"Firebase app","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-11-20T21:40:30.002447Z","parent":{"type":"folder","id":"298258681344"}}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2025-12-04T15:55:50.465Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:50.465Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:50.465Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/studio-9130063297-9636d/adminSdkConfig [none]
+[debug] [2025-12-04T15:55:50.966Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/studio-9130063297-9636d/adminSdkConfig 200
+[debug] [2025-12-04T15:55:50.966Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/studio-9130063297-9636d/adminSdkConfig {"projectId":"studio-9130063297-9636d","storageBucket":"studio-9130063297-9636d.firebasestorage.app"}
+[debug] [2025-12-04T15:55:50.967Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:50.967Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:50.967Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/studio-9130063297-9636d/configs [none]
+[debug] [2025-12-04T15:55:51.182Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/studio-9130063297-9636d/configs 200
+[debug] [2025-12-04T15:55:51.182Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/studio-9130063297-9636d/configs {}
+[debug] [2025-12-04T15:55:51.183Z] Validating nodejs source
+[debug] [2025-12-04T15:55:51.518Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "@simplewebauthn/server": "^13.2.2",
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0",
+    "gocardless-nodejs": "^1.0.0",
+    "googleapis": "^140.0.0",
+    "plaid": "^26.0.0",
+    "stripe": "^14.0.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
+[debug] [2025-12-04T15:55:51.518Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2025-12-04T15:55:51.520Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-12-04T15:55:51.524Z] Found firebase-functions binary at '/workspaces/mayordomo/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8807
+
+[debug] [2025-12-04T15:55:52.623Z] Got response from /__/functions.yaml {"endpoints":{"checkEmailVerification":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"blockingTrigger":{"eventType":"providers/cloud.auth/eventTypes/user.beforeSignIn","options":{"accessToken":false,"idToken":false,"refreshToken":false}},"entryPoint":"checkEmailVerification"},"createLinkToken":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"PLAID_CLIENT_ID"},{"key":"PLAID_SECRET"}],"labels":{},"httpsTrigger":{},"entryPoint":"createLinkToken"},"exchangePublicToken":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"PLAID_CLIENT_ID"},{"key":"PLAID_SECRET"}],"labels":{},"httpsTrigger":{},"entryPoint":"exchangePublicToken"},"getBankData":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"PLAID_CLIENT_ID"},{"key":"PLAID_SECRET"}],"labels":{},"httpsTrigger":{},"entryPoint":"getBankData"},"disconnectBank":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"PLAID_CLIENT_ID"},{"key":"PLAID_SECRET"}],"labels":{},"httpsTrigger":{},"entryPoint":"disconnectBank"},"getGmailAuthUrl":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GMAIL_CLIENT_ID"},{"key":"GMAIL_CLIENT_SECRET"}],"labels":{},"httpsTrigger":{},"entryPoint":"getGmailAuthUrl"},"scanGmail":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GMAIL_CLIENT_ID"},{"key":"GMAIL_CLIENT_SECRET"}],"labels":{},"httpsTrigger":{},"entryPoint":"scanGmail"},"generateChatResponse":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GOOGLE_GEN_AI_KEY"}],"labels":{},"httpsTrigger":{},"entryPoint":"generateChatResponse"},"inferObligations":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GOOGLE_GEN_AI_KEY"}],"labels":{},"httpsTrigger":{},"entryPoint":"inferObligations"},"analyzeGapAndPropose":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"GOOGLE_GEN_AI_KEY"}],"labels":{},"httpsTrigger":{},"entryPoint":"analyzeGapAndPropose"},"generateRegistrationOptions":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"generateRegistrationOptions"},"verifyRegistration":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"verifyRegistration"},"generateAuthenticationOptions":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"generateAuthenticationOptions"},"verifyAuthentication":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"verifyAuthentication"},"stripeWebhook":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"STRIPE_SECRET_KEY"},{"key":"STRIPE_WEBHOOK_SECRET"}],"labels":{},"httpsTrigger":{},"entryPoint":"stripeWebhook"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"identitytoolkit.googleapis.com","reason":"Needed for auth blocking functions"}],"extensions":{},"params":[{"type":"secret","name":"PLAID_CLIENT_ID"},{"type":"secret","name":"PLAID_SECRET"},{"type":"secret","name":"GMAIL_CLIENT_ID"},{"type":"secret","name":"GMAIL_CLIENT_SECRET"},{"type":"secret","name":"GOOGLE_GEN_AI_KEY"},{"type":"secret","name":"STRIPE_SECRET_KEY"},{"type":"secret","name":"STRIPE_WEBHOOK_SECRET"}]}
+[info] i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled... 
+[debug] [2025-12-04T15:55:56.659Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-04T15:55:56.659Z] > authorizing via signed-in user (tecnicfitia@tecnicalfitnesartificialintelligence.app)
+[debug] [2025-12-04T15:55:56.659Z] [iam] checking project studio-9130063297-9636d for permissions ["firebase.projects.get","firebaseextensions.instances.list"]
+[debug] [2025-12-04T15:55:56.659Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:56.659Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:56.659Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions [none]
+[debug] [2025-12-04T15:55:56.659Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions x-goog-quota-user=projects/studio-9130063297-9636d
+[debug] [2025-12-04T15:55:56.659Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2025-12-04T15:55:57.283Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions 200
+[debug] [2025-12-04T15:55:57.283Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-9130063297-9636d:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2025-12-04T15:55:57.284Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:57.284Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:57.284Z] >>> [apiv2][query] GET https://firebaseextensions.googleapis.com/v1beta/projects/studio-9130063297-9636d/instances pageSize=100&pageToken=
+[debug] [2025-12-04T15:55:57.978Z] <<< [apiv2][status] GET https://firebaseextensions.googleapis.com/v1beta/projects/studio-9130063297-9636d/instances 200
+[debug] [2025-12-04T15:55:57.978Z] <<< [apiv2][body] GET https://firebaseextensions.googleapis.com/v1beta/projects/studio-9130063297-9636d/instances {}
+[debug] [2025-12-04T15:55:57.979Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:57.980Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:57.980Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_CLIENT_ID [none]
+[debug] [2025-12-04T15:55:58.366Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_CLIENT_ID 200
+[debug] [2025-12-04T15:55:58.366Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_CLIENT_ID {"name":"projects/1091783968160/secrets/PLAID_CLIENT_ID","replication":{"automatic":{}},"createTime":"2025-12-01T14:39:24.520605Z","etag":"\"1644e4f215f4f0\""}
+[debug] [2025-12-04T15:55:58.367Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:58.367Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:58.367Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_CLIENT_ID/versions/latest [none]
+[debug] [2025-12-04T15:55:58.725Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_CLIENT_ID/versions/latest 200
+[debug] [2025-12-04T15:55:58.725Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_CLIENT_ID/versions/latest {"name":"projects/1091783968160/secrets/PLAID_CLIENT_ID/versions/2","createTime":"2025-12-01T21:03:49.302443Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"1644ea50d2f4ab\""}
+[debug] [2025-12-04T15:55:58.726Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:58.726Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:58.726Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_SECRET [none]
+[debug] [2025-12-04T15:55:59.080Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_SECRET 200
+[debug] [2025-12-04T15:55:59.080Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_SECRET {"name":"projects/1091783968160/secrets/PLAID_SECRET","replication":{"automatic":{}},"createTime":"2025-12-01T14:40:23.052235Z","labels":{"firebase-managed":"functions"},"etag":"\"1644fa9b7bf542\""}
+[debug] [2025-12-04T15:55:59.080Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:59.080Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:59.080Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_SECRET/versions/latest [none]
+[debug] [2025-12-04T15:55:59.385Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_SECRET/versions/latest 200
+[debug] [2025-12-04T15:55:59.385Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/PLAID_SECRET/versions/latest {"name":"projects/1091783968160/secrets/PLAID_SECRET/versions/3","createTime":"2025-12-02T16:30:19.114011Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"1644fa9c8aba1b\""}
+[debug] [2025-12-04T15:55:59.386Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:59.386Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:59.386Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_ID [none]
+[debug] [2025-12-04T15:55:59.739Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_ID 200
+[debug] [2025-12-04T15:55:59.739Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_ID {"name":"projects/1091783968160/secrets/GMAIL_CLIENT_ID","replication":{"automatic":{}},"createTime":"2025-12-02T13:32:52.629144Z","labels":{"firebase-managed":"functions"},"etag":"\"1644f822000af3\""}
+[debug] [2025-12-04T15:55:59.739Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:59.739Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:55:59.739Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_ID/versions/latest [none]
+[debug] [2025-12-04T15:56:00.056Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_ID/versions/latest 200
+[debug] [2025-12-04T15:56:00.056Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_ID/versions/latest {"name":"projects/1091783968160/secrets/GMAIL_CLIENT_ID/versions/1","createTime":"2025-12-02T13:42:26.592932Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"1644f8442c40a4\""}
+[debug] [2025-12-04T15:56:00.057Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:00.057Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:00.057Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_SECRET [none]
+[debug] [2025-12-04T15:56:00.189Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_SECRET 200
+[debug] [2025-12-04T15:56:00.189Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_SECRET {"name":"projects/1091783968160/secrets/GMAIL_CLIENT_SECRET","replication":{"automatic":{}},"createTime":"2025-12-02T13:42:49.350752Z","labels":{"firebase-managed":"functions"},"etag":"\"1644f8459148b1\""}
+[debug] [2025-12-04T15:56:00.189Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:00.189Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:00.189Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_SECRET/versions/latest [none]
+[debug] [2025-12-04T15:56:00.337Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_SECRET/versions/latest 200
+[debug] [2025-12-04T15:56:00.337Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GMAIL_CLIENT_SECRET/versions/latest {"name":"projects/1091783968160/secrets/GMAIL_CLIENT_SECRET/versions/2","createTime":"2025-12-02T16:29:44.292336Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"1644fa9a7763f0\""}
+[debug] [2025-12-04T15:56:00.338Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:00.338Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:00.338Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GOOGLE_GEN_AI_KEY [none]
+[debug] [2025-12-04T15:56:00.680Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GOOGLE_GEN_AI_KEY 200
+[debug] [2025-12-04T15:56:00.681Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GOOGLE_GEN_AI_KEY {"name":"projects/1091783968160/secrets/GOOGLE_GEN_AI_KEY","replication":{"automatic":{}},"createTime":"2025-12-02T16:17:36.948698Z","labels":{"firebase-managed":"functions"},"etag":"\"1644fa6f26c12d\""}
+[debug] [2025-12-04T15:56:00.681Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:00.681Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:00.681Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GOOGLE_GEN_AI_KEY/versions/latest [none]
+[debug] [2025-12-04T15:56:01.013Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GOOGLE_GEN_AI_KEY/versions/latest 200
+[debug] [2025-12-04T15:56:01.013Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/GOOGLE_GEN_AI_KEY/versions/latest {"name":"projects/1091783968160/secrets/GOOGLE_GEN_AI_KEY/versions/2","createTime":"2025-12-02T19:27:01.561603Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"1644fd147f3d03\""}
+[debug] [2025-12-04T15:56:01.013Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.013Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.013Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_SECRET_KEY [none]
+[debug] [2025-12-04T15:56:01.358Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_SECRET_KEY 200
+[debug] [2025-12-04T15:56:01.358Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_SECRET_KEY {"name":"projects/1091783968160/secrets/STRIPE_SECRET_KEY","replication":{"automatic":{}},"createTime":"2025-11-28T16:36:42.587208Z","labels":{"firebase-managed":"functions"},"etag":"\"1644aa3c0dfe72\""}
+[debug] [2025-12-04T15:56:01.358Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.358Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.358Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_SECRET_KEY/versions/latest [none]
+[debug] [2025-12-04T15:56:01.537Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_SECRET_KEY/versions/latest 200
+[debug] [2025-12-04T15:56:01.537Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_SECRET_KEY/versions/latest {"name":"projects/1091783968160/secrets/STRIPE_SECRET_KEY/versions/2","createTime":"2025-12-02T16:19:39.450663Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"1644fa766a3d27\""}
+[debug] [2025-12-04T15:56:01.538Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.538Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.538Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_WEBHOOK_SECRET [none]
+[debug] [2025-12-04T15:56:01.652Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_WEBHOOK_SECRET 200
+[debug] [2025-12-04T15:56:01.653Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_WEBHOOK_SECRET {"name":"projects/1091783968160/secrets/STRIPE_WEBHOOK_SECRET","replication":{"automatic":{}},"createTime":"2025-12-01T15:12:27.367914Z","labels":{"firebase-managed":"functions"},"etag":"\"1644e56847e0a9\""}
+[debug] [2025-12-04T15:56:01.653Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.653Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.653Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_WEBHOOK_SECRET/versions/latest [none]
+[debug] [2025-12-04T15:56:01.783Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_WEBHOOK_SECRET/versions/latest 200
+[debug] [2025-12-04T15:56:01.783Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/studio-9130063297-9636d/secrets/STRIPE_WEBHOOK_SECRET/versions/latest {"name":"projects/1091783968160/secrets/STRIPE_WEBHOOK_SECRET/versions/2","createTime":"2025-12-02T16:24:37.164450Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"1644fa8828fda2\""}
+[info] i  functions: preparing functions directory for uploading... 
+[info] i  functions: packaged /workspaces/mayordomo/functions (92.65 KB) for uploading 
+[debug] [2025-12-04T15:56:01.817Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.817Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:01.817Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/studio-9130063297-9636d/locations/-/functions [none]
+[debug] [2025-12-04T15:56:02.448Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/studio-9130063297-9636d/locations/-/functions 200
+[debug] [2025-12-04T15:56:02.448Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/studio-9130063297-9636d/locations/-/functions {}
+[debug] [2025-12-04T15:56:02.448Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:02.449Z] Checked if tokens are valid: true, expires at: 1764864933160
+[debug] [2025-12-04T15:56:02.449Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/studio-9130063297-9636d/locations/-/functions filter=environment%3D%22GEN_2%22

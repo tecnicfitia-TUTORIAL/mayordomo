@@ -93,9 +93,38 @@ exports.verifyRegistration = onCall(async (request) => {
     if (verified && registrationInfo) {
       const { credentialPublicKey, credentialID, counter } = registrationInfo;
 
+      console.log("Registration Info received:", { 
+        hasCredentialID: !!credentialID, 
+        credentialIDType: typeof credentialID,
+        hasPublicKey: !!credentialPublicKey 
+      });
+
+      if (!credentialID) {
+        throw new Error("credentialID is missing in registrationInfo");
+      }
+
       // Robust Buffer conversion
-      const credentialIDBase64 = Buffer.from(credentialID).toString('base64url');
-      const credentialPublicKeyBase64 = Buffer.from(credentialPublicKey).toString('base64url');
+      // If it's already a string, assume it's base64url and use it directly or convert if needed.
+      // SimpleWebAuthn v13 usually returns Uint8Array for these fields in registrationInfo.
+      
+      let credentialIDBase64;
+      if (Buffer.isBuffer(credentialID) || credentialID instanceof Uint8Array) {
+         credentialIDBase64 = Buffer.from(credentialID).toString('base64url');
+      } else if (typeof credentialID === 'string') {
+         credentialIDBase64 = credentialID;
+      } else {
+         // Fallback or error
+         credentialIDBase64 = String(credentialID);
+      }
+
+      let credentialPublicKeyBase64;
+      if (Buffer.isBuffer(credentialPublicKey) || credentialPublicKey instanceof Uint8Array) {
+        credentialPublicKeyBase64 = Buffer.from(credentialPublicKey).toString('base64url');
+      } else if (typeof credentialPublicKey === 'string') {
+        credentialPublicKeyBase64 = credentialPublicKey;
+      } else {
+        credentialPublicKeyBase64 = String(credentialPublicKey);
+      }
 
       await db.collection('users').doc(userId).collection('authenticators').add({
         credentialID: credentialIDBase64,
