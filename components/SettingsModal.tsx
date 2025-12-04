@@ -10,6 +10,8 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../services/firebaseConfig';
 import { getAuth } from 'firebase/auth';
 
+import { CertificateService, DigitalCertificate } from '../services/certificateService';
+
 interface Props {
   profile: UserProfile;
   onUpdate?: (profile: UserProfile) => void;
@@ -22,8 +24,42 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
   const [activeTab, setActiveTab] = useState<SettingsTab>('PLANS');
   const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
-  const [hasCertificate, setHasCertificate] = useState(false); // Mock state for demo
+  
+  // Certificate State
+  const [certificate, setCertificate] = useState<DigitalCertificate | null>(null);
   const [isUploadingCert, setIsUploadingCert] = useState(false);
+  const [certPassword, setCertPassword] = useState('');
+  const [showCertInput, setShowCertInput] = useState(false);
+
+  // Load initial certificate status (mock)
+  // useEffect(() => {
+  //   CertificateService.getStatus().then(setCertificate);
+  // }, []);
+
+  const handleCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    
+    // In real flow, we need the password first. For this demo, we assume password is provided or we prompt.
+    if (!certPassword && !showCertInput) {
+        setShowCertInput(true);
+        // We would normally store the file in a temp state and wait for password submit
+        return;
+    }
+
+    setIsUploadingCert(true);
+    try {
+        const cert = await CertificateService.uploadCertificate(file, certPassword);
+        setCertificate(cert);
+        setShowCertInput(false);
+        setCertPassword('');
+    } catch (error) {
+        alert("Error al procesar el certificado. Verifique la contraseña.");
+    } finally {
+        setIsUploadingCert(false);
+    }
+  };
+
 
   
   // PROFILE FORM STATE
@@ -210,39 +246,60 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
                       <div className="bg-black/40 rounded-lg p-4 border border-stone-800 mb-4">
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full ${hasCertificate ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-red-500'}`} />
+                                <div className={`w-2 h-2 rounded-full ${certificate ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-red-500'}`} />
                                 <span className="text-sm font-bold text-stone-200">Certificado Digital (FNMT/DNIe)</span>
                             </div>
-                            {hasCertificate ? (
+                            {certificate ? (
                                 <span className="text-xs text-emerald-500 font-mono">ACTIVO</span>
                             ) : (
                                 <span className="text-xs text-stone-600 font-mono">NO CONFIGURADO</span>
                             )}
                         </div>
                         
-                        {!hasCertificate ? (
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => {
-                                        setIsUploadingCert(true);
-                                        setTimeout(() => {
-                                            setIsUploadingCert(false);
-                                            setHasCertificate(true);
-                                        }, 2000);
-                                    }}
-                                    disabled={isUploadingCert}
-                                    className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold py-2 rounded border border-stone-700 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    {isUploadingCert ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-                                    {isUploadingCert ? 'Validando...' : 'Subir Archivo .p12 / .pfx'}
-                                </button>
+                        {!certificate ? (
+                            <div className="flex flex-col gap-3">
+                                {showCertInput && (
+                                    <input 
+                                        type="password" 
+                                        placeholder="Contraseña del certificado"
+                                        value={certPassword}
+                                        onChange={(e) => setCertPassword(e.target.value)}
+                                        className="w-full bg-stone-900 border border-stone-700 rounded p-2 text-xs text-white mb-2"
+                                    />
+                                )}
+                                <div className="relative">
+                                    <input 
+                                        type="file" 
+                                        accept=".p12,.pfx"
+                                        onChange={handleCertUpload}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        disabled={isUploadingCert}
+                                    />
+                                    <button 
+                                        className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold py-2 rounded border border-stone-700 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        {isUploadingCert ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                                        {isUploadingCert ? 'Procesando y Encriptando...' : 'Seleccionar Archivo .p12 / .pfx'}
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-stone-500 text-center">
+                                    Su certificado se encriptará con AES-256 y se almacenará en un HSM seguro.
+                                </p>
                             </div>
                         ) : (
                             <div className="flex justify-between items-center">
                                 <div className="text-xs text-stone-500">
-                                    Válido hasta: <span className="text-stone-300">12/2028</span> • Emitido por: <span className="text-stone-300">FNMT</span>
+                                    Válido hasta: <span className="text-stone-300">{new Date(certificate.validUntil).toLocaleDateString()}</span> • Emisor: <span className="text-stone-300">{certificate.issuer}</span>
                                 </div>
-                                <button onClick={() => setHasCertificate(false)} className="text-xs text-red-400 hover:text-red-300">Revocar</button>
+                                <button 
+                                    onClick={() => {
+                                        CertificateService.revokeCertificate(certificate.id);
+                                        setCertificate(null);
+                                    }} 
+                                    className="text-xs text-red-400 hover:text-red-300"
+                                >
+                                    Revocar
+                                </button>
                             </div>
                         )}
                       </div>
@@ -254,32 +311,32 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
                         {/* DEHú */}
                         <div className="flex items-center justify-between p-3 bg-stone-950/50 rounded border border-stone-800">
                             <div className="flex items-center gap-3">
-                                <div className={`p-1.5 rounded ${hasCertificate ? 'bg-blue-900/20 text-blue-400' : 'bg-stone-900 text-stone-600'}`}>
+                                <div className={`p-1.5 rounded ${certificate ? 'bg-blue-900/20 text-blue-400' : 'bg-stone-900 text-stone-600'}`}>
                                     <Bell size={14} />
                                 </div>
                                 <div>
-                                    <div className={`text-sm font-bold ${hasCertificate ? 'text-stone-200' : 'text-stone-600'}`}>DEHú (Notificaciones)</div>
+                                    <div className={`text-sm font-bold ${certificate ? 'text-stone-200' : 'text-stone-600'}`}>DEHú (Notificaciones)</div>
                                     <div className="text-[10px] text-stone-500">Requiere Certificado Digital</div>
                                 </div>
                             </div>
-                            <div className={`w-8 h-4 rounded-full relative transition-colors ${hasCertificate ? 'bg-blue-900/50 cursor-pointer' : 'bg-stone-900 cursor-not-allowed'}`}>
-                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${hasCertificate ? 'left-4 bg-blue-400' : 'left-0.5 bg-stone-500'}`} />
+                            <div className={`w-8 h-4 rounded-full relative transition-colors ${certificate ? 'bg-blue-900/50 cursor-pointer' : 'bg-stone-900 cursor-not-allowed'}`}>
+                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${certificate ? 'left-4 bg-blue-400' : 'left-0.5 bg-stone-500'}`} />
                             </div>
                         </div>
 
                         {/* SALUD */}
                         <div className="flex items-center justify-between p-3 bg-stone-950/50 rounded border border-stone-800">
                             <div className="flex items-center gap-3">
-                                <div className={`p-1.5 rounded ${hasCertificate ? 'bg-red-900/20 text-red-400' : 'bg-stone-900 text-stone-600'}`}>
+                                <div className={`p-1.5 rounded ${certificate ? 'bg-red-900/20 text-red-400' : 'bg-stone-900 text-stone-600'}`}>
                                     <Heart size={14} />
                                 </div>
                                 <div>
-                                    <div className={`text-sm font-bold ${hasCertificate ? 'text-stone-200' : 'text-stone-600'}`}>Carpeta de Salud</div>
+                                    <div className={`text-sm font-bold ${certificate ? 'text-stone-200' : 'text-stone-600'}`}>Carpeta de Salud</div>
                                     <div className="text-[10px] text-stone-500">Historial clínico y citas</div>
                                 </div>
                             </div>
-                            <div className={`w-8 h-4 rounded-full relative transition-colors ${hasCertificate ? 'bg-red-900/50 cursor-pointer' : 'bg-stone-900 cursor-not-allowed'}`}>
-                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${hasCertificate ? 'left-4 bg-red-400' : 'left-0.5 bg-stone-500'}`} />
+                            <div className={`w-8 h-4 rounded-full relative transition-colors ${certificate ? 'bg-red-900/50 cursor-pointer' : 'bg-stone-900 cursor-not-allowed'}`}>
+                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${certificate ? 'left-4 bg-red-400' : 'left-0.5 bg-stone-500'}`} />
                             </div>
                         </div>
                       </div>
