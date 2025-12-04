@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { UserProfile, SubscriptionTier } from '../types';
 import { SUBSCRIPTION_PLANS, STRIPE_URLS, getTierLevel } from '../constants';
-import { X, ExternalLink, Check, Shield, Zap, Star, Crown, ChevronRight, User, Briefcase, MapPin, Save, Loader2, Fingerprint, Lock, Smartphone } from 'lucide-react';
+import { X, ExternalLink, Check, Shield, Zap, Star, Crown, ChevronRight, User, Briefcase, MapPin, Save, Loader2, Fingerprint, Lock, Smartphone, Upload, Bell, Heart, Mail } from 'lucide-react';
 import { LegalModal } from './LegalModal';
 import { MfaModal } from './MfaModal';
 import { startRegistration } from '@simplewebauthn/browser';
@@ -22,6 +22,9 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
   const [activeTab, setActiveTab] = useState<SettingsTab>('PLANS');
   const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
+  const [hasCertificate, setHasCertificate] = useState(false); // Mock state for demo
+  const [isUploadingCert, setIsUploadingCert] = useState(false);
+
   
   // PROFILE FORM STATE
   const [formData, setFormData] = useState<Partial<UserProfile>>({
@@ -186,6 +189,131 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
                           Su cuenta está protegida con estándares de grado militar.
                         </p>
                       )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* DIGITAL IDENTITY VAULT */}
+                <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-stone-800 rounded-lg">
+                      <Briefcase className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-white mb-2">Bóveda de Identidad Digital</h3>
+                      <p className="text-stone-400 text-sm mb-6">
+                        Centralice su Certificado Digital para automatizar trámites con la Administración (DEHú, AEAT, Salud).
+                        Su certificado se encripta con estándares bancarios.
+                      </p>
+
+                      {/* CERTIFICATE STATUS */}
+                      <div className="bg-black/40 rounded-lg p-4 border border-stone-800 mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full ${hasCertificate ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-red-500'}`} />
+                                <span className="text-sm font-bold text-stone-200">Certificado Digital (FNMT/DNIe)</span>
+                            </div>
+                            {hasCertificate ? (
+                                <span className="text-xs text-emerald-500 font-mono">ACTIVO</span>
+                            ) : (
+                                <span className="text-xs text-stone-600 font-mono">NO CONFIGURADO</span>
+                            )}
+                        </div>
+                        
+                        {!hasCertificate ? (
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => {
+                                        setIsUploadingCert(true);
+                                        setTimeout(() => {
+                                            setIsUploadingCert(false);
+                                            setHasCertificate(true);
+                                        }, 2000);
+                                    }}
+                                    disabled={isUploadingCert}
+                                    className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold py-2 rounded border border-stone-700 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {isUploadingCert ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                                    {isUploadingCert ? 'Validando...' : 'Subir Archivo .p12 / .pfx'}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex justify-between items-center">
+                                <div className="text-xs text-stone-500">
+                                    Válido hasta: <span className="text-stone-300">12/2028</span> • Emitido por: <span className="text-stone-300">FNMT</span>
+                                </div>
+                                <button onClick={() => setHasCertificate(false)} className="text-xs text-red-400 hover:text-red-300">Revocar</button>
+                            </div>
+                        )}
+                      </div>
+
+                      {/* CONNECTED SERVICES */}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Servicios Vinculados</h4>
+                        
+                        {/* DEHú */}
+                        <div className="flex items-center justify-between p-3 bg-stone-950/50 rounded border border-stone-800">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-1.5 rounded ${hasCertificate ? 'bg-blue-900/20 text-blue-400' : 'bg-stone-900 text-stone-600'}`}>
+                                    <Bell size={14} />
+                                </div>
+                                <div>
+                                    <div className={`text-sm font-bold ${hasCertificate ? 'text-stone-200' : 'text-stone-600'}`}>DEHú (Notificaciones)</div>
+                                    <div className="text-[10px] text-stone-500">Requiere Certificado Digital</div>
+                                </div>
+                            </div>
+                            <div className={`w-8 h-4 rounded-full relative transition-colors ${hasCertificate ? 'bg-blue-900/50 cursor-pointer' : 'bg-stone-900 cursor-not-allowed'}`}>
+                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${hasCertificate ? 'left-4 bg-blue-400' : 'left-0.5 bg-stone-500'}`} />
+                            </div>
+                        </div>
+
+                        {/* SALUD */}
+                        <div className="flex items-center justify-between p-3 bg-stone-950/50 rounded border border-stone-800">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-1.5 rounded ${hasCertificate ? 'bg-red-900/20 text-red-400' : 'bg-stone-900 text-stone-600'}`}>
+                                    <Heart size={14} />
+                                </div>
+                                <div>
+                                    <div className={`text-sm font-bold ${hasCertificate ? 'text-stone-200' : 'text-stone-600'}`}>Carpeta de Salud</div>
+                                    <div className="text-[10px] text-stone-500">Historial clínico y citas</div>
+                                </div>
+                            </div>
+                            <div className={`w-8 h-4 rounded-full relative transition-colors ${hasCertificate ? 'bg-red-900/50 cursor-pointer' : 'bg-stone-900 cursor-not-allowed'}`}>
+                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${hasCertificate ? 'left-4 bg-red-400' : 'left-0.5 bg-stone-500'}`} />
+                            </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+                {/* EMAIL SECTION */}
+                <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-stone-800 rounded-lg">
+                      <Mail className="w-6 h-6 text-amber-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-white mb-2">Email & Comunicaciones</h3>
+                      <p className="text-stone-400 text-sm mb-4">
+                        Conecte su cuenta de correo para que el Mayordomo pueda detectar facturas, citas y eventos importantes.
+                      </p>
+                      
+                      <div className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-stone-800">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg" alt="Gmail" className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="text-sm font-bold text-white">Google Gmail</div>
+                                <div className="text-xs text-stone-500">Lectura de facturas y calendario</div>
+                            </div>
+                        </div>
+                        <button className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold rounded border border-stone-700 transition-colors">
+                            Conectar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
