@@ -387,6 +387,10 @@ exports.verifyAuthentication = onCall(async (request) => {
     return { verified: false };
   } catch (error) {
     console.error("verifyAuthentication Top-Level Error:", error);
+    // If it's already a known HttpsError, re-throw it to preserve the status code (e.g. 400, 404)
+    if (error.httpErrorCode) {
+      throw error;
+    }
     throw new HttpsError('internal', error.message || "Internal Server Error");
   }
 });
