@@ -47,7 +47,7 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
   }
 
   try {
-    const { history, currentMessage, pillars, profile, attachments } = req.body;
+    const { history, currentMessage, pillars, profile, attachments, locale } = req.body;
     
     // Defensive check
     if (!currentMessage) {
@@ -55,6 +55,7 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
     }
 
     const ai = getAI();
+    const userLocale = locale || 'es-ES';
 
     // Construct Pillar Context
     const pillarContext = pillars ? pillars.map(p => 
@@ -65,8 +66,9 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
     Eres "El Mayordomo Digital".
     
     IDIOMA OBLIGATORIO:
-    - Debes responder SIEMPRE en ESPAÑOL.
-    - Nunca respondas en inglés.
+    - Debes responder SIEMPRE en el idioma del usuario: ${userLocale}.
+    - Si el idioma es español (es, es-ES, es-MX, etc.), usa un tono formal y servicial.
+    - Si el idioma es inglés (en, en-US, etc.), usa un tono formal "Butler-like".
 
     TU OBJETIVO:
     Gestionar la vida del usuario basándote estrictamente en sus 5 Pilares y sus Permisos.

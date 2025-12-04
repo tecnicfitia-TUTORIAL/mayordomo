@@ -23,7 +23,8 @@ export const generateChatResponse = async (
       currentMessage,
       pillars,
       profile,
-      attachments
+      attachments,
+      locale: navigator.language || 'es-ES'
     });
 
     return response.data.text;
