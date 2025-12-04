@@ -108,8 +108,8 @@ export const EvolutionInfinitoPanel: React.FC<{ onClose: () => void }> = ({ onCl
                  <span>SYSTEM LOGS</span>
               </div>
               <div className="space-y-2 text-stone-400">
-                 <div className="opacity-50">> System initialized.</div>
-                 <div className="opacity-50">> Monitoring active.</div>
+                 <div className="opacity-50">&gt; System initialized.</div>
+                 <div className="opacity-50">&gt; Monitoring active.</div>
                  {logs.map((log, i) => (
                     <div key={i} className="text-purple-300 animate-slideInLeft">{log}</div>
                  ))}
