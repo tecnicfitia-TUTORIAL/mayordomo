@@ -36,9 +36,11 @@ exports.checkEmailVerification = beforeUserSignedIn((event) => {
   
   if (now - creationTime < 120000) {
       // New user (created < 2 mins ago) -> Allow login so frontend can send email
+      console.log(`[Auth] Allowing new unverified user: ${user.email}`);
       return;
   }
 
+  console.log(`[Auth] Blocking unverified user: ${user.email}`);
   // If not verified and older than 2 minutes -> BLOCK
   throw new https.HttpsError(
     'permission-denied', 

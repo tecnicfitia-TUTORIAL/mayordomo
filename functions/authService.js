@@ -93,10 +93,17 @@ exports.verifyRegistration = onCall(async (request) => {
     if (verified && registrationInfo) {
       let { credentialPublicKey, credentialID, counter } = registrationInfo;
 
+      // Speculative fix: Check for alternative property names
+      if (!credentialPublicKey && registrationInfo.publicKey) {
+        console.warn("credentialPublicKey missing, found publicKey instead.");
+        credentialPublicKey = registrationInfo.publicKey;
+      }
+
       console.log("Registration Info received:", { 
         hasCredentialID: !!credentialID, 
         credentialIDType: typeof credentialID,
-        hasPublicKey: !!credentialPublicKey 
+        hasPublicKey: !!credentialPublicKey,
+        keys: Object.keys(registrationInfo)
       });
 
       // Fallback: If credentialID is missing in registrationInfo, use the one from the response (client-side ID)
@@ -111,6 +118,7 @@ exports.verifyRegistration = onCall(async (request) => {
       }
 
       if (!credentialPublicKey) {
+        console.error("Full Registration Info:", JSON.stringify(registrationInfo, (k, v) => (v instanceof Uint8Array || (v && v.type === 'Buffer') ? '[Buffer]' : v)));
         throw new Error("credentialPublicKey is missing in registrationInfo");
       }
 
