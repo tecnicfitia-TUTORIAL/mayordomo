@@ -220,6 +220,30 @@ export const EvolutionService = {
         });
     }
 
+    // Caso C: Análisis de Destinos Frecuentes (Heatmap de Navegación)
+    const viewEvents = behavior.filter(e => e.type === 'VIEW');
+    const viewCounts: Record<string, number> = {};
+    
+    viewEvents.forEach(e => {
+        if (e.elementId && !e.elementId.includes('Dashboard') && !e.elementId.includes('Home')) {
+            viewCounts[e.elementId] = (viewCounts[e.elementId] || 0) + 1;
+        }
+    });
+
+    // Identificar pantallas muy visitadas (> 2 visitas en sesión corta)
+    const frequentScreens = Object.entries(viewCounts).filter(([_, count]) => count >= 3);
+    
+    frequentScreens.forEach(([screenName, count]) => {
+        dynamicProposals.push({
+            id: `nav_hotspot_${screenName.replace(/\s/g, '')}_${Date.now()}`,
+            title: `Acceso Prioritario: ${screenName}`,
+            description: `Patrón de uso detectado: Has visitado "${screenName}" ${count} veces recientemente. Se sugiere anclarlo como Widget en el Dashboard.`,
+            impact: 'LOW',
+            type: 'UX',
+            status: 'PENDING'
+        });
+    });
+
     // 3. PROPUESTAS BASE (SIEMPRE DISPONIBLES SI NO HAY DATOS)
     const baseProposals: SystemImprovementProposal[] = [
       {
