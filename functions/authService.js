@@ -91,13 +91,16 @@ exports.verifyRegistration = onCall(async (request) => {
     const { verified, registrationInfo } = verification;
 
     if (verified && registrationInfo) {
-      let { credentialPublicKey, credentialID, counter } = registrationInfo;
+      // FIX: In @simplewebauthn/server v13+, credential info is nested in 'credential' object
+      const { credential } = registrationInfo;
+      let credentialID = credential?.id;
+      let credentialPublicKey = credential?.publicKey;
+      let counter = credential?.counter;
 
-      // Speculative fix: Check for alternative property names
-      if (!credentialPublicKey && registrationInfo.publicKey) {
-        console.warn("credentialPublicKey missing, found publicKey instead.");
-        credentialPublicKey = registrationInfo.publicKey;
-      }
+      // Fallback for older versions or different structures (just in case)
+      if (!credentialID) credentialID = registrationInfo.credentialID;
+      if (!credentialPublicKey) credentialPublicKey = registrationInfo.credentialPublicKey;
+      if (counter === undefined) counter = registrationInfo.counter;
 
       console.log("Registration Info received:", { 
         hasCredentialID: !!credentialID, 
