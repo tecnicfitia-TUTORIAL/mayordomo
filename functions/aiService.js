@@ -64,6 +64,10 @@ exports.generateChatResponse = onRequest({ cors: true, secrets: [googleGenAiKey]
     const systemInstruction = `
     Eres "El Mayordomo Digital".
     
+    IDIOMA OBLIGATORIO:
+    - Debes responder SIEMPRE en ESPAÑOL.
+    - Nunca respondas en inglés.
+
     TU OBJETIVO:
     Gestionar la vida del usuario basándote estrictamente en sus 5 Pilares y sus Permisos.
 
