@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getAuth, signInWithPopup, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile, User, sendEmailVerification, signOut } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile, User, sendEmailVerification, signOut, signInWithCustomToken } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Fingerprint, Loader2, ShieldCheck, Mail, Lock, User as UserIcon, ArrowLeft, MailCheck } from 'lucide-react';
-import { db } from '../services/firebaseConfig';
+import { db, functions } from '../services/firebaseConfig';
 import { UserProfile, UserArchetype, SubscriptionTier, PillarId } from '../types';
+import { httpsCallable } from 'firebase/functions';
+import { startAuthentication } from '@simplewebauthn/browser';
 
 const PROFILE_KEY = 'mayordomo_profile';
 const DEFAULT_PILLAR_ORDER = Object.values(PillarId);
@@ -47,6 +49,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, isEmbedded = false }) => {
+  const auth = getAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -61,8 +64,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, isEmbe
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-
-  const auth = getAuth();
 
   useEffect(() => {
     // Check if WebAuthn is available
@@ -247,31 +248,47 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, isEmbe
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Implement Full Firebase WebAuthn / Passkey Logic here.
-      // Currently this is a stub to demonstrate the UI and browser API call.
-      
-      // 1. Challenge from server (needed for real implementation)
-      const challenge = new Uint8Array(32); 
-      window.crypto.getRandomValues(challenge);
+      if (!email) {
+        setError("Por favor, introduzca su email para iniciar sesión con biometría.");
+        setIsLoading(false);
+        return;
+      }
 
-      // 2. Browser Native API Call
-      const credential = await navigator.credentials.get({
-        publicKey: {
-          challenge,
-          rpId: window.location.hostname,
-          userVerification: "required",
-        }
+      // 1. Get Authentication Options
+      const generateAuthOptions = httpsCallable(functions, 'generateAuthenticationOptions');
+      const optsResponse = await generateAuthOptions({ 
+        email, 
+        rpID: window.location.hostname 
+      });
+      const opts = optsResponse.data as any;
+
+      // 2. Start Authentication in Browser
+      const asseResp = await startAuthentication(opts);
+
+      // 3. Verify Authentication
+      const verifyAuth = httpsCallable(functions, 'verifyAuthentication');
+      const verificationResp = await verifyAuth({
+        email,
+        response: asseResp,
+        rpID: window.location.hostname,
+        origin: window.location.origin
       });
 
-      if (credential) {
-        console.log("Biometric credential received:", credential);
-        // 3. Verify with Firebase Functions (Backend) -> Create Custom Token -> signInWithCustomToken
-        // For demo, we just simulate success if we had a user
-        // await handleAuthSuccess(mockUser);
+      const verification = verificationResp.data as any;
+
+      if (verification.verified && verification.token) {
+        await signInWithCustomToken(auth, verification.token);
+      } else {
+        setError("Autenticación biométrica fallida.");
       }
-    } catch (err) {
-      console.error("Biometric Login Error:", err);
-      setError("No se pudo verificar la identidad biométrica.");
+
+    } catch (err: any) {
+      console.error("Biometric Error:", err);
+      if (err.message && err.message.includes('not-found')) {
+         setError("Usuario no encontrado o sin biometría configurada.");
+      } else {
+         setError(err.message || "Error en autenticación biométrica.");
+      }
     } finally {
       setIsLoading(false);
     }

@@ -2,8 +2,12 @@
 import React, { useState } from 'react';
 import { UserProfile, SubscriptionTier } from '../types';
 import { SUBSCRIPTION_PLANS, STRIPE_URLS, getTierLevel } from '../constants';
-import { X, ExternalLink, Check, Shield, Zap, Star, Crown, ChevronRight, User, Briefcase, MapPin, Save, Loader2 } from 'lucide-react';
+import { X, ExternalLink, Check, Shield, Zap, Star, Crown, ChevronRight, User, Briefcase, MapPin, Save, Loader2, Fingerprint } from 'lucide-react';
 import { LegalModal } from './LegalModal';
+import { startRegistration } from '@simplewebauthn/browser';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../services/firebaseConfig';
+import { getAuth } from 'firebase/auth';
 
 interface Props {
   profile: UserProfile;
@@ -11,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-type SettingsTab = 'PLANS' | 'PROFILE';
+type SettingsTab = 'PLANS' | 'PROFILE' | 'SECURITY';
 
 export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('PLANS');
@@ -28,6 +32,47 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
       zipCode: profile.zipCode || ''
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  const handleRegisterBiometrics = async () => {
+    setIsSaving(true);
+    try {
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        alert("Debe iniciar sesión para configurar la biometría.");
+        return;
+      }
+
+      // 1. Get Options
+      const generateRegOptions = httpsCallable(functions, 'generateRegistrationOptions');
+      const optsResponse = await generateRegOptions({ 
+        rpID: window.location.hostname 
+      });
+      const opts = optsResponse.data as any;
+
+      // 2. Create Credential
+      const attResp = await startRegistration(opts);
+
+      // 3. Verify
+      const verifyReg = httpsCallable(functions, 'verifyRegistration');
+      const verificationResp = await verifyReg({
+        response: attResp,
+        rpID: window.location.hostname,
+        origin: window.location.origin
+      });
+
+      const verification = verificationResp.data as any;
+      if (verification.verified) {
+        alert("Biometría activada correctamente. Ahora puede iniciar sesión con su huella o rostro.");
+      } else {
+        alert("Error al activar biometría. Inténtelo de nuevo.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert("Error: " + (error.message || "No se pudo activar la biometría."));
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   const handleOpenCheckout = (tier: SubscriptionTier) => {
     const url = STRIPE_URLS[tier];
@@ -96,11 +141,62 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
             >
                 Mi Perfil
             </button>
+            <button 
+                onClick={() => setActiveTab('SECURITY')}
+                className={`px-4 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors ${activeTab === 'SECURITY' ? 'border-ai-500 text-white' : 'border-transparent text-stone-500 hover:text-stone-300'}`}
+            >
+                Seguridad
+            </button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8 bg-stone-950/30">
             
+            {/* TAB: SECURITY */}
+            {activeTab === 'SECURITY' && (
+              <div className="max-w-2xl mx-auto space-y-8">
+                <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-stone-800 rounded-lg">
+                      <Fingerprint className="w-6 h-6 text-[#D4AF37]" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-white mb-2">Autenticación Biométrica</h3>
+                      <p className="text-stone-400 text-sm mb-6">
+                        Active el acceso mediante huella dactilar, reconocimiento facial o llave de seguridad (Passkeys) para iniciar sesión de forma rápida y segura sin contraseña.
+                      </p>
+                      
+                      <button
+                        onClick={handleRegisterBiometrics}
+                        disabled={isSaving}
+                        className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#b68e29] text-black font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {isSaving ? <Loader2 className="animate-spin w-4 h-4" /> : <Fingerprint className="w-4 h-4" />}
+                        Configurar Biometría
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-stone-800 rounded-lg">
+                      <Shield className="w-6 h-6 text-stone-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-white mb-2">Contraseña</h3>
+                      <p className="text-stone-400 text-sm mb-4">
+                        Si necesita cambiar su contraseña, le enviaremos un enlace a su correo electrónico.
+                      </p>
+                      <button className="text-[#D4AF37] hover:text-[#b68e29] text-sm font-bold transition-colors">
+                        Solicitar cambio de contraseña
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* TAB: PLANS */}
             {activeTab === 'PLANS' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">

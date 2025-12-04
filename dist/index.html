@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#0c0a09" />
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Confort">
@@ -11,172 +12,8 @@
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2586/2586703.png">
     
     <title>Confort 65/35</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              ai: {
-                50: '#fbf7e3',
-                100: '#f5ecbe',
-                200: '#ede092',
-                300: '#e4d062',
-                400: '#dbb934',
-                500: '#d4af37', 
-                600: '#b68e29',
-                700: '#926d23',
-                800: '#785824',
-                900: '#664a24'
-              },
-              user: {
-                50: '#fdf4f4',
-                100: '#fce7e7',
-                200: '#f9d3d3',
-                300: '#f4b0b0',
-                400: '#eb8282',
-                500: '#cd5c5c', 
-                600: '#c53e3e',
-                700: '#a52e2e',
-                800: '#892929',
-                900: '#722626'
-              },
-              dark: {
-                800: 'rgb(var(--color-dark-800) / <alpha-value>)',
-                900: 'rgb(var(--color-dark-900) / <alpha-value>)',
-                950: 'rgb(var(--color-dark-950) / <alpha-value>)'
-              },
-              stone: {
-                200: 'rgb(var(--color-stone-200) / <alpha-value>)',
-                300: 'rgb(var(--color-stone-300) / <alpha-value>)',
-                400: 'rgb(var(--color-stone-400) / <alpha-value>)',
-                500: 'rgb(var(--color-stone-500) / <alpha-value>)',
-                700: 'rgb(var(--color-stone-700) / <alpha-value>)',
-                800: 'rgb(var(--color-stone-800) / <alpha-value>)'
-              }
-            },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              serif: ['"Playfair Display"', 'serif']
-            },
-            animation: {
-              'fadeIn': 'fadeIn 0.5s ease-out',
-              'scaleIn': 'scaleIn 0.3s ease-out',
-              'slideInRight': 'slideInRight 0.5s ease-out',
-              'slideInUp': 'slideInUp 0.5s ease-out',
-              'scanline': 'scanline 2s linear infinite'
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' }
-              },
-              scaleIn: {
-                '0%': { opacity: '0', transform: 'scale(0.9)' },
-                '100%': { opacity: '1', transform: 'scale(1)' }
-              },
-              slideInRight: {
-                '0%': { opacity: '0', transform: 'translateX(20px)' },
-                '100%': { opacity: '1', transform: 'translateX(0)' }
-              },
-              slideInUp: {
-                '0%': { opacity: '0', transform: 'translateY(100%)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' }
-              },
-              scanline: {
-                '0%': { top: '0%' },
-                '100%': { top: '100%' }
-              }
-            },
-            backgroundImage: {
-              'noise': "url('https://grainy-gradients.vercel.app/noise.svg')"
-            }
-          }
-        }
-      };
-    </script>
-    <style>
-      :root {
-        /* NIGHT MODE (Default) - Deep Charcoal & Gold */
-        --color-dark-950: 12 10 9;   
-        --color-dark-900: 28 25 23;  
-        --color-dark-800: 41 37 36;  
 
-        --color-stone-200: 231 229 228; 
-        --color-stone-300: 214 211 209;
-        --color-stone-400: 168 162 158; 
-        --color-stone-500: 120 113 108; 
-        --color-stone-700: 68 64 60;
-        --color-stone-800: 41 37 36;    
-      }
 
-      .light {
-        /* LIGHT MODE - Bone White & Bronze/Dark Grey */
-        --color-dark-950: 250 250 249; /* Stone 50 */
-        --color-dark-900: 245 245 244; /* Stone 100 */
-        --color-dark-800: 231 229 228; /* Stone 200 */
-
-        --color-stone-200: 28 25 23;    /* Stone 900 (Text Main) */
-        --color-stone-300: 68 64 60;    /* Stone 700 */
-        --color-stone-400: 87 83 78;    /* Stone 600 */
-        --color-stone-500: 120 113 108; /* Stone 500 */
-        --color-stone-700: 214 211 209; /* Stone 300 (Borders) */
-        --color-stone-800: 231 229 228; /* Stone 200 (Borders/Bg) */
-      }
-
-      body {
-        background-color: rgb(var(--color-dark-950));
-        color: rgb(var(--color-stone-200));
-        -webkit-tap-highlight-color: transparent;
-        transition: background-color 0.5s ease, color 0.5s ease;
-      }
-      
-      body::before {
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-image: url('https://grainy-gradients.vercel.app/noise.svg');
-        opacity: 0.03;
-        pointer-events: none;
-        z-index: 9999;
-        mix-blend-mode: overlay;
-      }
-
-      /* Transitions for theme switching */
-      div, button, aside, main {
-         transition: background-color 0.3s ease, border-color 0.3s ease;
-      }
-
-      .custom-scrollbar::-webkit-scrollbar {
-        width: 4px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-track {
-        background: rgba(var(--color-dark-800), 0.5);
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #d4af37;
-        border-radius: 2px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #b68e29;
-      }
-      
-      .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-      }
-      .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
-      
-      h1, h2, h3, h4, h5, h6 {
-        font-family: 'Playfair Display', serif;
-      }
-    </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
 
 <script type="importmap">
@@ -194,7 +31,8 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/assets/index-CFruIJP2.js"></script>
+  <script type="module" crossorigin src="/assets/index-B_MN90sz.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-yrjQk7Lx.css">
 </head>
   <body>
     <div id="root"></div>
