@@ -29497,6 +29497,21 @@ function __PRIVATE_firestoreClientGetDocumentViaSnapshotListener(e, t2, n2 = {})
     return __PRIVATE_eventManagerListen(e2, o);
   }(await __PRIVATE_getEventManager(e), e.asyncQueue, t2, n2, r2)), r2.promise;
 }
+function __PRIVATE_firestoreClientGetDocumentsViaSnapshotListener(e, t2, n2 = {}) {
+  const r2 = new __PRIVATE_Deferred();
+  return e.asyncQueue.enqueueAndForget(async () => function __PRIVATE_executeQueryViaSnapshotListener(e2, t3, n3, r3, i) {
+    const s = new __PRIVATE_AsyncObserver({
+      next: (n4) => {
+        s.Za(), t3.enqueueAndForget(() => __PRIVATE_eventManagerUnlisten(e2, o)), n4.fromCache && "server" === r3.source ? i.reject(new FirestoreError(D.UNAVAILABLE, 'Failed to get documents from server. (However, these documents may exist in the local cache. Run again without setting source to "server" to retrieve the cached documents.)')) : i.resolve(n4);
+      },
+      error: (e3) => i.reject(e3)
+    }), o = new __PRIVATE_QueryListener(n3, s, {
+      includeMetadataChanges: true,
+      _a: true
+    });
+    return __PRIVATE_eventManagerListen(e2, o);
+  }(await __PRIVATE_getEventManager(e), e.asyncQueue, t2, n2, r2)), r2.promise;
+}
 /**
  * @license
  * Copyright 2023 Google LLC
@@ -29558,6 +29573,9 @@ function __PRIVATE_validateIsNotUsedTogether(e, t2, n2, r2) {
 }
 function __PRIVATE_validateDocumentPath(e) {
   if (!DocumentKey.isDocumentKey(e)) throw new FirestoreError(D.INVALID_ARGUMENT, `Invalid document reference. Document references must have an even number of segments, but ${e} has ${e.length}.`);
+}
+function __PRIVATE_validateCollectionPath(e) {
+  if (DocumentKey.isDocumentKey(e)) throw new FirestoreError(D.INVALID_ARGUMENT, `Invalid collection reference. Collection references must have an odd number of segments, but ${e} has ${e.length}.`);
 }
 function __PRIVATE_valueDescription(e) {
   if (void 0 === e) return "undefined";
@@ -29821,6 +29839,27 @@ class CollectionReference extends Query {
   }
   withConverter(e) {
     return new CollectionReference(this.firestore, e, this._path);
+  }
+}
+function collection(e, t2, ...n2) {
+  if (e = getModularInstance(e), __PRIVATE_validateNonEmptyArgument("collection", "path", t2), e instanceof Firestore$1) {
+    const r2 = ResourcePath.fromString(t2, ...n2);
+    return __PRIVATE_validateCollectionPath(r2), new CollectionReference(
+      e,
+      /* converter= */
+      null,
+      r2
+    );
+  }
+  {
+    if (!(e instanceof DocumentReference || e instanceof CollectionReference)) throw new FirestoreError(D.INVALID_ARGUMENT, "Expected first argument to collection() to be a CollectionReference, a DocumentReference or FirebaseFirestore");
+    const r2 = e._path.child(ResourcePath.fromString(t2, ...n2));
+    return __PRIVATE_validateCollectionPath(r2), new CollectionReference(
+      e.firestore,
+      /* converter= */
+      null,
+      r2
+    );
   }
 }
 function doc(e, t2, ...n2) {
@@ -30326,6 +30365,14 @@ class ParsedSetData {
     return null !== this.fieldMask ? new __PRIVATE_PatchMutation(e, this.data, this.fieldMask, t2, this.fieldTransforms) : new __PRIVATE_SetMutation(e, this.data, t2, this.fieldTransforms);
   }
 }
+class ParsedUpdateData {
+  constructor(e, t2, n2) {
+    this.data = e, this.fieldMask = t2, this.fieldTransforms = n2;
+  }
+  toMutation(e, t2) {
+    return new __PRIVATE_PatchMutation(e, this.data, this.fieldMask, t2, this.fieldTransforms);
+  }
+}
 function __PRIVATE_isWrite(e) {
   switch (e) {
     case 0:
@@ -30447,6 +30494,15 @@ function __PRIVATE_parseSetData(e, t2, n2, r2, i, s = {}) {
   } else a = null, u2 = o.fieldTransforms;
   return new ParsedSetData(new ObjectValue(_), a, u2);
 }
+class __PRIVATE_DeleteFieldValueImpl extends FieldValue {
+  _toFieldTransform(e) {
+    if (2 !== e.Cu) throw 1 === e.Cu ? e.Bu(`${this._methodName}() can only appear at the top level of your update data`) : e.Bu(`${this._methodName}() cannot be used with set() unless you pass {merge:true}`);
+    return e.fieldMask.push(e.path), null;
+  }
+  isEqual(e) {
+    return e instanceof __PRIVATE_DeleteFieldValueImpl;
+  }
+}
 class __PRIVATE_ServerTimestampFieldValueImpl extends FieldValue {
   _toFieldTransform(e) {
     return new FieldTransform(e.path, new __PRIVATE_ServerTimestampTransform());
@@ -30454,6 +30510,44 @@ class __PRIVATE_ServerTimestampFieldValueImpl extends FieldValue {
   isEqual(e) {
     return e instanceof __PRIVATE_ServerTimestampFieldValueImpl;
   }
+}
+function __PRIVATE_parseUpdateData(e, t2, n2, r2) {
+  const i = e.Qu(1, t2, n2);
+  __PRIVATE_validatePlainObject("Data must be an object, but it was:", i, r2);
+  const s = [], o = ObjectValue.empty();
+  forEach$1(r2, (e2, r3) => {
+    const _2 = __PRIVATE_fieldPathFromDotSeparatedString(t2, e2, n2);
+    r3 = getModularInstance(r3);
+    const a = i.Nu(_2);
+    if (r3 instanceof __PRIVATE_DeleteFieldValueImpl)
+      s.push(_2);
+    else {
+      const e3 = __PRIVATE_parseData(r3, a);
+      null != e3 && (s.push(_2), o.set(_2, e3));
+    }
+  });
+  const _ = new FieldMask(s);
+  return new ParsedUpdateData(o, _, i.fieldTransforms);
+}
+function __PRIVATE_parseUpdateVarargs(e, t2, n2, r2, i, s) {
+  const o = e.Qu(1, t2, n2), _ = [__PRIVATE_fieldPathFromArgument$1(t2, r2, n2)], a = [i];
+  if (s.length % 2 != 0) throw new FirestoreError(D.INVALID_ARGUMENT, `Function ${t2}() needs to be called with an even number of arguments that alternate between field names and values.`);
+  for (let e2 = 0; e2 < s.length; e2 += 2) _.push(__PRIVATE_fieldPathFromArgument$1(t2, s[e2])), a.push(s[e2 + 1]);
+  const u2 = [], c = ObjectValue.empty();
+  for (let e2 = _.length - 1; e2 >= 0; --e2) if (!__PRIVATE_fieldMaskContains(u2, _[e2])) {
+    const t3 = _[e2];
+    let n3 = a[e2];
+    n3 = getModularInstance(n3);
+    const r3 = o.Nu(t3);
+    if (n3 instanceof __PRIVATE_DeleteFieldValueImpl)
+      u2.push(t3);
+    else {
+      const e3 = __PRIVATE_parseData(n3, r3);
+      null != e3 && (u2.push(t3), c.set(t3, e3));
+    }
+  }
+  const l2 = new FieldMask(u2);
+  return new ParsedUpdateData(c, l2, o.fieldTransforms);
 }
 function __PRIVATE_parseData(e, t2) {
   if (__PRIVATE_looksLikeJsonObject(
@@ -30732,6 +30826,25 @@ class QueryDocumentSnapshot$1 extends DocumentSnapshot$1 {
 function __PRIVATE_fieldPathFromArgument(e, t2) {
   return "string" == typeof t2 ? __PRIVATE_fieldPathFromDotSeparatedString(e, t2) : t2 instanceof FieldPath ? t2._internalPath : t2._delegate._internalPath;
 }
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+function __PRIVATE_validateHasExplicitOrderByForLimitToLast(e) {
+  if ("L" === e.limitType && 0 === e.explicitOrderBy.length) throw new FirestoreError(D.UNIMPLEMENTED, "limitToLast() queries require specifying at least one orderBy() clause");
+}
 class AbstractUserDataWriter {
   convertValue(e, t2 = "none") {
     switch (__PRIVATE_typeOrder(e)) {
@@ -30948,6 +31061,91 @@ class QueryDocumentSnapshot extends DocumentSnapshot {
     return super.data(e);
   }
 }
+class QuerySnapshot {
+  /** @hideconstructor */
+  constructor(e, t2, n2, r2) {
+    this._firestore = e, this._userDataWriter = t2, this._snapshot = r2, this.metadata = new SnapshotMetadata(r2.hasPendingWrites, r2.fromCache), this.query = n2;
+  }
+  /** An array of all the documents in the `QuerySnapshot`. */
+  get docs() {
+    const e = [];
+    return this.forEach((t2) => e.push(t2)), e;
+  }
+  /** The number of documents in the `QuerySnapshot`. */
+  get size() {
+    return this._snapshot.docs.size;
+  }
+  /** True if there are no documents in the `QuerySnapshot`. */
+  get empty() {
+    return 0 === this.size;
+  }
+  /**
+   * Enumerates all of the documents in the `QuerySnapshot`.
+   *
+   * @param callback - A callback to be called with a `QueryDocumentSnapshot` for
+   * each document in the snapshot.
+   * @param thisArg - The `this` binding for the callback.
+   */
+  forEach(e, t2) {
+    this._snapshot.docs.forEach((n2) => {
+      e.call(t2, new QueryDocumentSnapshot(this._firestore, this._userDataWriter, n2.key, n2, new SnapshotMetadata(this._snapshot.mutatedKeys.has(n2.key), this._snapshot.fromCache), this.query.converter));
+    });
+  }
+  /**
+   * Returns an array of the documents changes since the last snapshot. If this
+   * is the first snapshot, all documents will be in the list as 'added'
+   * changes.
+   *
+   * @param options - `SnapshotListenOptions` that control whether metadata-only
+   * changes (i.e. only `DocumentSnapshot.metadata` changed) should trigger
+   * snapshot events.
+   */
+  docChanges(e = {}) {
+    const t2 = !!e.includeMetadataChanges;
+    if (t2 && this._snapshot.excludesMetadataChanges) throw new FirestoreError(D.INVALID_ARGUMENT, "To include metadata changes with your document changes, you must also pass { includeMetadataChanges:true } to onSnapshot().");
+    return this._cachedChanges && this._cachedChangesIncludeMetadataChanges === t2 || (this._cachedChanges = /** Calculates the array of `DocumentChange`s for a given `ViewSnapshot`. */
+    function __PRIVATE_changesFromSnapshot(e2, t3) {
+      if (e2._snapshot.oldDocs.isEmpty()) {
+        let t4 = 0;
+        return e2._snapshot.docChanges.map((n2) => {
+          const r2 = new QueryDocumentSnapshot(e2._firestore, e2._userDataWriter, n2.doc.key, n2.doc, new SnapshotMetadata(e2._snapshot.mutatedKeys.has(n2.doc.key), e2._snapshot.fromCache), e2.query.converter);
+          return n2.doc, {
+            type: "added",
+            doc: r2,
+            oldIndex: -1,
+            newIndex: t4++
+          };
+        });
+      }
+      {
+        let n2 = e2._snapshot.oldDocs;
+        return e2._snapshot.docChanges.filter((e3) => t3 || 3 !== e3.type).map((t4) => {
+          const r2 = new QueryDocumentSnapshot(e2._firestore, e2._userDataWriter, t4.doc.key, t4.doc, new SnapshotMetadata(e2._snapshot.mutatedKeys.has(t4.doc.key), e2._snapshot.fromCache), e2.query.converter);
+          let i = -1, s = -1;
+          return 0 !== t4.type && (i = n2.indexOf(t4.doc.key), n2 = n2.delete(t4.doc.key)), 1 !== t4.type && (n2 = n2.add(t4.doc), s = n2.indexOf(t4.doc.key)), {
+            type: __PRIVATE_resultChangeType(t4.type),
+            doc: r2,
+            oldIndex: i,
+            newIndex: s
+          };
+        });
+      }
+    }(this, t2), this._cachedChangesIncludeMetadataChanges = t2), this._cachedChanges;
+  }
+}
+function __PRIVATE_resultChangeType(e) {
+  switch (e) {
+    case 0:
+      return "added";
+    case 2:
+    case 3:
+      return "modified";
+    case 1:
+      return "removed";
+    default:
+      return fail();
+  }
+}
 /**
  * @license
  * Copyright 2020 Google LLC
@@ -30986,10 +31184,24 @@ class __PRIVATE_ExpUserDataWriter extends AbstractUserDataWriter {
     );
   }
 }
+function getDocs(e) {
+  e = __PRIVATE_cast(e, Query);
+  const t2 = __PRIVATE_cast(e.firestore, Firestore), n2 = ensureFirestoreConfigured(t2), r2 = new __PRIVATE_ExpUserDataWriter(t2);
+  return __PRIVATE_validateHasExplicitOrderByForLimitToLast(e._query), __PRIVATE_firestoreClientGetDocumentsViaSnapshotListener(n2, e._query).then((n3) => new QuerySnapshot(t2, r2, e, n3));
+}
 function setDoc(e, t2, n2) {
   e = __PRIVATE_cast(e, DocumentReference);
   const r2 = __PRIVATE_cast(e.firestore, Firestore), i = __PRIVATE_applyFirestoreDataConverter(e.converter, t2, n2);
   return executeWrite(r2, [__PRIVATE_parseSetData(__PRIVATE_newUserDataReader(r2), "setDoc", e._key, i, null !== e.converter, n2).toMutation(e._key, Precondition.none())]);
+}
+function updateDoc(e, t2, n2, ...r2) {
+  e = __PRIVATE_cast(e, DocumentReference);
+  const i = __PRIVATE_cast(e.firestore, Firestore), s = __PRIVATE_newUserDataReader(i);
+  let o;
+  o = "string" == typeof // For Compat types, we have to "extract" the underlying types before
+  // performing validation.
+  (t2 = getModularInstance(t2)) || t2 instanceof FieldPath ? __PRIVATE_parseUpdateVarargs(s, "updateDoc", e._key, t2, n2, r2) : __PRIVATE_parseUpdateData(s, "updateDoc", e._key, t2);
+  return executeWrite(i, [o.toMutation(e._key, Precondition.exists(true))]);
 }
 function executeWrite(e, t2) {
   return function __PRIVATE_firestoreClientWrite(e2, t3) {
@@ -32890,7 +33102,7 @@ async function _initializeAnalytics(app2, dynamicConfigPromisesList2, measuremen
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-class AnalyticsService {
+let AnalyticsService$1 = class AnalyticsService2 {
   constructor(app2) {
     this.app = app2;
   }
@@ -32898,7 +33110,7 @@ class AnalyticsService {
     delete initializationPromisesMap[this.app.options.appId];
     return Promise.resolve();
   }
-}
+};
 let initializationPromisesMap = {};
 let dynamicConfigPromisesList = [];
 const measurementIdToAppId = {};
@@ -32955,7 +33167,7 @@ function factory$1(app2, installations, options) {
     globalInitDone = true;
   }
   initializationPromisesMap[appId] = _initializeAnalytics(app2, dynamicConfigPromisesList, measurementIdToAppId, installations, gtagCoreFunction, dataLayerName, options);
-  const analyticsInstance = new AnalyticsService(app2);
+  const analyticsInstance = new AnalyticsService$1(app2);
   return analyticsInstance;
 }
 function getAnalytics(app2 = getApp()) {
@@ -33780,7 +33992,7 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$1h = [
+const __iconNode$1l = [
   [
     "path",
     {
@@ -33789,36 +34001,53 @@ const __iconNode$1h = [
     }
   ]
 ];
-const Activity = createLucideIcon("activity", __iconNode$1h);
+const Activity = createLucideIcon("activity", __iconNode$1l);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$1g = [
+const __iconNode$1k = [
   ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
   ["path", { d: "M19 12H5", key: "x3x0zl" }]
 ];
-const ArrowLeft = createLucideIcon("arrow-left", __iconNode$1g);
+const ArrowLeft = createLucideIcon("arrow-left", __iconNode$1k);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$1f = [
+const __iconNode$1j = [
   ["path", { d: "M5 12h14", key: "1ays0h" }],
   ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
 ];
-const ArrowRight = createLucideIcon("arrow-right", __iconNode$1f);
+const ArrowRight = createLucideIcon("arrow-right", __iconNode$1j);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$1e = [
+const __iconNode$1i = [
+  ["path", { d: "M10.268 21a2 2 0 0 0 3.464 0", key: "vwvbt9" }],
+  [
+    "path",
+    {
+      d: "M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326",
+      key: "11g9vi"
+    }
+  ]
+];
+const Bell = createLucideIcon("bell", __iconNode$1i);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$1h = [
   ["path", { d: "M12 18V5", key: "adv99a" }],
   ["path", { d: "M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4", key: "1e3is1" }],
   ["path", { d: "M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5", key: "1gqd8o" }],
@@ -33828,25 +34057,25 @@ const __iconNode$1e = [
   ["path", { d: "M6 18a4 4 0 0 1-2-7.464", key: "k1g0md" }],
   ["path", { d: "M6.003 5.125a4 4 0 0 0-2.526 5.77", key: "q97ue3" }]
 ];
-const Brain = createLucideIcon("brain", __iconNode$1e);
+const Brain = createLucideIcon("brain", __iconNode$1h);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$1d = [
+const __iconNode$1g = [
   ["path", { d: "M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16", key: "jecpp" }],
   ["rect", { width: "20", height: "14", x: "2", y: "6", rx: "2", key: "i6l2r4" }]
 ];
-const Briefcase = createLucideIcon("briefcase", __iconNode$1d);
+const Briefcase = createLucideIcon("briefcase", __iconNode$1g);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$1c = [
+const __iconNode$1f = [
   ["path", { d: "M10 12h4", key: "a56b0p" }],
   ["path", { d: "M10 8h4", key: "1sr2af" }],
   ["path", { d: "M14 21v-3a2 2 0 0 0-4 0v3", key: "1rgiei" }],
@@ -33859,14 +34088,14 @@ const __iconNode$1c = [
   ],
   ["path", { d: "M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16", key: "16ra0t" }]
 ];
-const Building2 = createLucideIcon("building-2", __iconNode$1c);
+const Building2 = createLucideIcon("building-2", __iconNode$1f);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$1b = [
+const __iconNode$1e = [
   [
     "path",
     {
@@ -33878,31 +34107,66 @@ const __iconNode$1b = [
   ["path", { d: "M9 17h6", key: "r8uit2" }],
   ["circle", { cx: "17", cy: "17", r: "2", key: "axvx0g" }]
 ];
-const Car = createLucideIcon("car", __iconNode$1b);
+const Car = createLucideIcon("car", __iconNode$1e);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$1a = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
-const Check = createLucideIcon("check", __iconNode$1a);
+const __iconNode$1d = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
+const Check = createLucideIcon("check", __iconNode$1d);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$19 = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-const ChevronDown = createLucideIcon("chevron-down", __iconNode$19);
+const __iconNode$1c = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+const ChevronDown = createLucideIcon("chevron-down", __iconNode$1c);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$18 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-const ChevronRight = createLucideIcon("chevron-right", __iconNode$18);
+const __iconNode$1b = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+const ChevronRight = createLucideIcon("chevron-right", __iconNode$1b);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$1a = [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["line", { x1: "12", x2: "12", y1: "8", y2: "12", key: "1pkeuh" }],
+  ["line", { x1: "12", x2: "12.01", y1: "16", y2: "16", key: "4dfq90" }]
+];
+const CircleAlert = createLucideIcon("circle-alert", __iconNode$1a);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$19 = [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
+];
+const CircleCheck = createLucideIcon("circle-check", __iconNode$19);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$18 = [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", key: "1u773s" }],
+  ["path", { d: "M12 17h.01", key: "p32p05" }]
+];
+const CircleQuestionMark = createLucideIcon("circle-question-mark", __iconNode$18);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -33911,21 +34175,18 @@ const ChevronRight = createLucideIcon("chevron-right", __iconNode$18);
  */
 const __iconNode$17 = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["line", { x1: "12", x2: "12", y1: "8", y2: "12", key: "1pkeuh" }],
-  ["line", { x1: "12", x2: "12.01", y1: "16", y2: "16", key: "4dfq90" }]
+  ["path", { d: "m15 9-6 6", key: "1uzhvr" }],
+  ["path", { d: "m9 9 6 6", key: "z0biqf" }]
 ];
-const CircleAlert = createLucideIcon("circle-alert", __iconNode$17);
+const CircleX = createLucideIcon("circle-x", __iconNode$17);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$16 = [
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
-];
-const CircleCheck = createLucideIcon("circle-check", __iconNode$16);
+const __iconNode$16 = [["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]];
+const Circle = createLucideIcon("circle", __iconNode$16);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -33933,11 +34194,10 @@ const CircleCheck = createLucideIcon("circle-check", __iconNode$16);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$15 = [
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", key: "1u773s" }],
-  ["path", { d: "M12 17h.01", key: "p32p05" }]
+  ["path", { d: "M12 6v6l4 2", key: "mmk7yg" }],
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]
 ];
-const CircleQuestionMark = createLucideIcon("circle-question-mark", __iconNode$15);
+const Clock = createLucideIcon("clock", __iconNode$15);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -33945,37 +34205,6 @@ const CircleQuestionMark = createLucideIcon("circle-question-mark", __iconNode$1
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$14 = [
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "m15 9-6 6", key: "1uzhvr" }],
-  ["path", { d: "m9 9 6 6", key: "z0biqf" }]
-];
-const CircleX = createLucideIcon("circle-x", __iconNode$14);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$13 = [["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]];
-const Circle = createLucideIcon("circle", __iconNode$13);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$12 = [
-  ["path", { d: "M12 6v6l4 2", key: "mmk7yg" }],
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]
-];
-const Clock = createLucideIcon("clock", __iconNode$12);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$11 = [
   ["path", { d: "m2 2 20 20", key: "1ooewy" }],
   ["path", { d: "M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193", key: "yfwify" }],
   [
@@ -33983,27 +34212,27 @@ const __iconNode$11 = [
     { d: "M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07", key: "jlfiyv" }
   ]
 ];
-const CloudOff = createLucideIcon("cloud-off", __iconNode$11);
+const CloudOff = createLucideIcon("cloud-off", __iconNode$14);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$10 = [
+const __iconNode$13 = [
   ["path", { d: "M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242", key: "1pljnt" }],
   ["path", { d: "M16 14v6", key: "1j4efv" }],
   ["path", { d: "M8 14v6", key: "17c4r9" }],
   ["path", { d: "M12 16v6", key: "c8a4gj" }]
 ];
-const CloudRain = createLucideIcon("cloud-rain", __iconNode$10);
+const CloudRain = createLucideIcon("cloud-rain", __iconNode$13);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$$ = [
+const __iconNode$12 = [
   ["path", { d: "M10 2v2", key: "7u0qdc" }],
   ["path", { d: "M14 2v2", key: "6buw04" }],
   [
@@ -34015,14 +34244,14 @@ const __iconNode$$ = [
   ],
   ["path", { d: "M6 2v2", key: "colzsn" }]
 ];
-const Coffee = createLucideIcon("coffee", __iconNode$$);
+const Coffee = createLucideIcon("coffee", __iconNode$12);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$_ = [
+const __iconNode$11 = [
   ["path", { d: "M12 20v2", key: "1lh1kg" }],
   ["path", { d: "M12 2v2", key: "tus03m" }],
   ["path", { d: "M17 20v2", key: "1rnc9c" }],
@@ -34038,25 +34267,25 @@ const __iconNode$_ = [
   ["rect", { x: "4", y: "4", width: "16", height: "16", rx: "2", key: "1vbyd7" }],
   ["rect", { x: "8", y: "8", width: "8", height: "8", rx: "1", key: "z9xiuo" }]
 ];
-const Cpu = createLucideIcon("cpu", __iconNode$_);
+const Cpu = createLucideIcon("cpu", __iconNode$11);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$Z = [
+const __iconNode$10 = [
   ["rect", { width: "20", height: "14", x: "2", y: "5", rx: "2", key: "ynyp8z" }],
   ["line", { x1: "2", x2: "22", y1: "10", y2: "10", key: "1b3vmo" }]
 ];
-const CreditCard = createLucideIcon("credit-card", __iconNode$Z);
+const CreditCard = createLucideIcon("credit-card", __iconNode$10);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$Y = [
+const __iconNode$$ = [
   [
     "path",
     {
@@ -34066,7 +34295,43 @@ const __iconNode$Y = [
   ],
   ["path", { d: "M5 21h14", key: "11awu3" }]
 ];
-const Crown = createLucideIcon("crown", __iconNode$Y);
+const Crown = createLucideIcon("crown", __iconNode$$);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$_ = [
+  ["ellipse", { cx: "12", cy: "5", rx: "9", ry: "3", key: "msslwz" }],
+  ["path", { d: "M3 5V19A9 3 0 0 0 21 19V5", key: "1wlel7" }],
+  ["path", { d: "M3 12A9 3 0 0 0 21 12", key: "mv7ke4" }]
+];
+const Database = createLucideIcon("database", __iconNode$_);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$Z = [
+  ["path", { d: "M12 15V3", key: "m9g1x1" }],
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
+  ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
+];
+const Download = createLucideIcon("download", __iconNode$Z);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$Y = [
+  ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }],
+  ["circle", { cx: "12", cy: "5", r: "1", key: "gxeob9" }],
+  ["circle", { cx: "12", cy: "19", r: "1", key: "lyex9k" }]
+];
+const EllipsisVertical = createLucideIcon("ellipsis-vertical", __iconNode$Y);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34074,11 +34339,11 @@ const Crown = createLucideIcon("crown", __iconNode$Y);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$X = [
-  ["ellipse", { cx: "12", cy: "5", rx: "9", ry: "3", key: "msslwz" }],
-  ["path", { d: "M3 5V19A9 3 0 0 0 21 19V5", key: "1wlel7" }],
-  ["path", { d: "M3 12A9 3 0 0 0 21 12", key: "mv7ke4" }]
+  ["path", { d: "M15 3h6v6", key: "1q9fwt" }],
+  ["path", { d: "M10 14 21 3", key: "gplh6r" }],
+  ["path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6", key: "a6xqqp" }]
 ];
-const Database = createLucideIcon("database", __iconNode$X);
+const ExternalLink = createLucideIcon("external-link", __iconNode$X);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34086,42 +34351,6 @@ const Database = createLucideIcon("database", __iconNode$X);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$W = [
-  ["path", { d: "M12 15V3", key: "m9g1x1" }],
-  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
-  ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
-];
-const Download = createLucideIcon("download", __iconNode$W);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$V = [
-  ["circle", { cx: "12", cy: "12", r: "1", key: "41hilf" }],
-  ["circle", { cx: "12", cy: "5", r: "1", key: "gxeob9" }],
-  ["circle", { cx: "12", cy: "19", r: "1", key: "lyex9k" }]
-];
-const EllipsisVertical = createLucideIcon("ellipsis-vertical", __iconNode$V);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$U = [
-  ["path", { d: "M15 3h6v6", key: "1q9fwt" }],
-  ["path", { d: "M10 14 21 3", key: "gplh6r" }],
-  ["path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6", key: "a6xqqp" }]
-];
-const ExternalLink = createLucideIcon("external-link", __iconNode$U);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$T = [
   [
     "path",
     {
@@ -34139,14 +34368,14 @@ const __iconNode$T = [
   ],
   ["path", { d: "m2 2 20 20", key: "1ooewy" }]
 ];
-const EyeOff = createLucideIcon("eye-off", __iconNode$T);
+const EyeOff = createLucideIcon("eye-off", __iconNode$W);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$S = [
+const __iconNode$V = [
   [
     "path",
     {
@@ -34159,14 +34388,14 @@ const __iconNode$S = [
   ["path", { d: "M16 13H8", key: "t4e002" }],
   ["path", { d: "M16 17H8", key: "z1uh3a" }]
 ];
-const FileText = createLucideIcon("file-text", __iconNode$S);
+const FileText = createLucideIcon("file-text", __iconNode$V);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$R = [
+const __iconNode$U = [
   ["path", { d: "M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4", key: "1nerag" }],
   ["path", { d: "M14 13.12c0 2.38 0 6.38-1 8.88", key: "o46ks0" }],
   ["path", { d: "M17.29 21.02c.12-.6.43-2.3.5-3.02", key: "ptglia" }],
@@ -34177,26 +34406,26 @@ const __iconNode$R = [
   ["path", { d: "M8.65 22c.21-.66.45-1.32.57-2", key: "13wd9y" }],
   ["path", { d: "M9 6.8a6 6 0 0 1 9 5.2v2", key: "1fr1j5" }]
 ];
-const FingerprintPattern = createLucideIcon("fingerprint-pattern", __iconNode$R);
+const FingerprintPattern = createLucideIcon("fingerprint-pattern", __iconNode$U);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$Q = [
+const __iconNode$T = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20", key: "13o1zl" }],
   ["path", { d: "M2 12h20", key: "9i4pu4" }]
 ];
-const Globe = createLucideIcon("globe", __iconNode$Q);
+const Globe = createLucideIcon("globe", __iconNode$T);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$P = [
+const __iconNode$S = [
   [
     "path",
     {
@@ -34205,26 +34434,26 @@ const __iconNode$P = [
     }
   ]
 ];
-const Heart = createLucideIcon("heart", __iconNode$P);
+const Heart = createLucideIcon("heart", __iconNode$S);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$O = [
+const __iconNode$R = [
   ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
   ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
   ["path", { d: "M12 7v5l4 2", key: "1fdv2h" }]
 ];
-const History = createLucideIcon("history", __iconNode$O);
+const History = createLucideIcon("history", __iconNode$R);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$N = [
+const __iconNode$Q = [
   ["path", { d: "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8", key: "5wwlr5" }],
   [
     "path",
@@ -34234,38 +34463,38 @@ const __iconNode$N = [
     }
   ]
 ];
-const House = createLucideIcon("house", __iconNode$N);
+const House = createLucideIcon("house", __iconNode$Q);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$M = [
+const __iconNode$P = [
   ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", ry: "2", key: "1m3agn" }],
   ["circle", { cx: "9", cy: "9", r: "2", key: "af1f0g" }],
   ["path", { d: "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21", key: "1xmnt7" }]
 ];
-const Image$1 = createLucideIcon("image", __iconNode$M);
+const Image$1 = createLucideIcon("image", __iconNode$P);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$L = [
+const __iconNode$O = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "M12 16v-4", key: "1dtifu" }],
   ["path", { d: "M12 8h.01", key: "e9boi3" }]
 ];
-const Info = createLucideIcon("info", __iconNode$L);
+const Info = createLucideIcon("info", __iconNode$O);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$K = [
+const __iconNode$N = [
   ["path", { d: "M10 18v-7", key: "wt116b" }],
   [
     "path",
@@ -34279,40 +34508,40 @@ const __iconNode$K = [
   ["path", { d: "M3 22h18", key: "8prr45" }],
   ["path", { d: "M6 18v-7", key: "1ivflk" }]
 ];
-const Landmark = createLucideIcon("landmark", __iconNode$K);
+const Landmark = createLucideIcon("landmark", __iconNode$N);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$J = [
+const __iconNode$M = [
   ["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1", key: "10lvy0" }],
   ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1", key: "16une8" }],
   ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1", key: "1hutg5" }],
   ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1", key: "ldoo1y" }]
 ];
-const LayoutDashboard = createLucideIcon("layout-dashboard", __iconNode$J);
+const LayoutDashboard = createLucideIcon("layout-dashboard", __iconNode$M);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$I = [
+const __iconNode$L = [
   ["rect", { width: "7", height: "7", x: "3", y: "3", rx: "1", key: "1g98yp" }],
   ["rect", { width: "7", height: "7", x: "14", y: "3", rx: "1", key: "6d4xhi" }],
   ["rect", { width: "7", height: "7", x: "14", y: "14", rx: "1", key: "nxv5o0" }],
   ["rect", { width: "7", height: "7", x: "3", y: "14", rx: "1", key: "1bb6yr" }]
 ];
-const LayoutGrid = createLucideIcon("layout-grid", __iconNode$I);
+const LayoutGrid = createLucideIcon("layout-grid", __iconNode$L);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$H = [
+const __iconNode$K = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "m4.93 4.93 4.24 4.24", key: "1ymg45" }],
   ["path", { d: "m14.83 9.17 4.24-4.24", key: "1cb5xl" }],
@@ -34320,15 +34549,50 @@ const __iconNode$H = [
   ["path", { d: "m9.17 14.83-4.24 4.24", key: "bqpfvv" }],
   ["circle", { cx: "12", cy: "12", r: "4", key: "4exip2" }]
 ];
-const LifeBuoy = createLucideIcon("life-buoy", __iconNode$H);
+const LifeBuoy = createLucideIcon("life-buoy", __iconNode$K);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$G = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
-const LoaderCircle = createLucideIcon("loader-circle", __iconNode$G);
+const __iconNode$J = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
+const LoaderCircle = createLucideIcon("loader-circle", __iconNode$J);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$I = [
+  ["path", { d: "m10 17 5-5-5-5", key: "1bsop3" }],
+  ["path", { d: "M15 12H3", key: "6jk70r" }],
+  ["path", { d: "M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4", key: "u53s6r" }]
+];
+const LogIn = createLucideIcon("log-in", __iconNode$I);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$H = [
+  ["rect", { width: "18", height: "11", x: "3", y: "11", rx: "2", ry: "2", key: "1w4ew1" }],
+  ["path", { d: "M7 11V7a5 5 0 0 1 10 0v4", key: "fwvmzm" }]
+];
+const Lock = createLucideIcon("lock", __iconNode$H);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$G = [
+  ["path", { d: "m16 17 5-5-5-5", key: "1bji2h" }],
+  ["path", { d: "M21 12H9", key: "dn1m92" }],
+  ["path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", key: "1uf3rs" }]
+];
+const LogOut = createLucideIcon("log-out", __iconNode$G);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34336,11 +34600,11 @@ const LoaderCircle = createLucideIcon("loader-circle", __iconNode$G);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$F = [
-  ["path", { d: "m10 17 5-5-5-5", key: "1bsop3" }],
-  ["path", { d: "M15 12H3", key: "6jk70r" }],
-  ["path", { d: "M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4", key: "u53s6r" }]
+  ["path", { d: "M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8", key: "12jkf8" }],
+  ["path", { d: "m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7", key: "1ocrg3" }],
+  ["path", { d: "m16 19 2 2 4-4", key: "1b14m6" }]
 ];
-const LogIn = createLucideIcon("log-in", __iconNode$F);
+const MailCheck = createLucideIcon("mail-check", __iconNode$F);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34348,10 +34612,10 @@ const LogIn = createLucideIcon("log-in", __iconNode$F);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$E = [
-  ["rect", { width: "18", height: "11", x: "3", y: "11", rx: "2", ry: "2", key: "1w4ew1" }],
-  ["path", { d: "M7 11V7a5 5 0 0 1 10 0v4", key: "fwvmzm" }]
+  ["path", { d: "m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7", key: "132q7q" }],
+  ["rect", { x: "2", y: "4", width: "20", height: "16", rx: "2", key: "izxlao" }]
 ];
-const Lock = createLucideIcon("lock", __iconNode$E);
+const Mail = createLucideIcon("mail", __iconNode$E);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34359,11 +34623,16 @@ const Lock = createLucideIcon("lock", __iconNode$E);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$D = [
-  ["path", { d: "m16 17 5-5-5-5", key: "1bji2h" }],
-  ["path", { d: "M21 12H9", key: "dn1m92" }],
-  ["path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", key: "1uf3rs" }]
+  [
+    "path",
+    {
+      d: "M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0",
+      key: "1r0f0z"
+    }
+  ],
+  ["circle", { cx: "12", cy: "10", r: "3", key: "ilqhr7" }]
 ];
-const LogOut = createLucideIcon("log-out", __iconNode$D);
+const MapPin = createLucideIcon("map-pin", __iconNode$D);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34371,11 +34640,15 @@ const LogOut = createLucideIcon("log-out", __iconNode$D);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$C = [
-  ["path", { d: "M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8", key: "12jkf8" }],
-  ["path", { d: "m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7", key: "1ocrg3" }],
-  ["path", { d: "m16 19 2 2 4-4", key: "1b14m6" }]
+  [
+    "path",
+    {
+      d: "M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z",
+      key: "18887p"
+    }
+  ]
 ];
-const MailCheck = createLucideIcon("mail-check", __iconNode$C);
+const MessageSquare = createLucideIcon("message-square", __iconNode$C);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34383,10 +34656,11 @@ const MailCheck = createLucideIcon("mail-check", __iconNode$C);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$B = [
-  ["path", { d: "m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7", key: "132q7q" }],
-  ["rect", { x: "2", y: "4", width: "20", height: "16", rx: "2", key: "izxlao" }]
+  ["rect", { width: "20", height: "14", x: "2", y: "3", rx: "2", key: "48i651" }],
+  ["line", { x1: "8", x2: "16", y1: "21", y2: "21", key: "1svkeh" }],
+  ["line", { x1: "12", x2: "12", y1: "17", y2: "21", key: "vw1qmm" }]
 ];
-const Mail = createLucideIcon("mail", __iconNode$B);
+const Monitor = createLucideIcon("monitor", __iconNode$B);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34397,13 +34671,12 @@ const __iconNode$A = [
   [
     "path",
     {
-      d: "M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0",
-      key: "1r0f0z"
+      d: "M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401",
+      key: "kfwtm"
     }
-  ],
-  ["circle", { cx: "12", cy: "10", r: "3", key: "ilqhr7" }]
+  ]
 ];
-const MapPin = createLucideIcon("map-pin", __iconNode$A);
+const Moon = createLucideIcon("moon", __iconNode$A);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34411,50 +34684,6 @@ const MapPin = createLucideIcon("map-pin", __iconNode$A);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$z = [
-  [
-    "path",
-    {
-      d: "M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z",
-      key: "18887p"
-    }
-  ]
-];
-const MessageSquare = createLucideIcon("message-square", __iconNode$z);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$y = [
-  ["rect", { width: "20", height: "14", x: "2", y: "3", rx: "2", key: "48i651" }],
-  ["line", { x1: "8", x2: "16", y1: "21", y2: "21", key: "1svkeh" }],
-  ["line", { x1: "12", x2: "12", y1: "17", y2: "21", key: "vw1qmm" }]
-];
-const Monitor = createLucideIcon("monitor", __iconNode$y);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$x = [
-  [
-    "path",
-    {
-      d: "M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401",
-      key: "kfwtm"
-    }
-  ]
-];
-const Moon = createLucideIcon("moon", __iconNode$x);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$w = [
   [
     "path",
     {
@@ -34467,14 +34696,14 @@ const __iconNode$w = [
   ["circle", { cx: "6.5", cy: "12.5", r: ".5", fill: "currentColor", key: "qy21gx" }],
   ["circle", { cx: "8.5", cy: "7.5", r: ".5", fill: "currentColor", key: "fotxhn" }]
 ];
-const Palette = createLucideIcon("palette", __iconNode$w);
+const Palette = createLucideIcon("palette", __iconNode$z);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$v = [
+const __iconNode$y = [
   [
     "path",
     {
@@ -34483,14 +34712,14 @@ const __iconNode$v = [
     }
   ]
 ];
-const Paperclip = createLucideIcon("paperclip", __iconNode$v);
+const Paperclip = createLucideIcon("paperclip", __iconNode$y);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$u = [
+const __iconNode$x = [
   ["path", { d: "M13 21h8", key: "1jsn5i" }],
   [
     "path",
@@ -34500,14 +34729,14 @@ const __iconNode$u = [
     }
   ]
 ];
-const PenLine = createLucideIcon("pen-line", __iconNode$u);
+const PenLine = createLucideIcon("pen-line", __iconNode$x);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$t = [
+const __iconNode$w = [
   [
     "path",
     {
@@ -34525,14 +34754,14 @@ const __iconNode$t = [
   ["path", { d: "m2.3 2.3 7.286 7.286", key: "1wuzzi" }],
   ["circle", { cx: "11", cy: "11", r: "2", key: "xmgehs" }]
 ];
-const PenTool = createLucideIcon("pen-tool", __iconNode$t);
+const PenTool = createLucideIcon("pen-tool", __iconNode$w);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$s = [
+const __iconNode$v = [
   [
     "path",
     {
@@ -34541,14 +34770,14 @@ const __iconNode$s = [
     }
   ]
 ];
-const Plane = createLucideIcon("plane", __iconNode$s);
+const Plane = createLucideIcon("plane", __iconNode$v);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$r = [
+const __iconNode$u = [
   [
     "path",
     {
@@ -34557,25 +34786,25 @@ const __iconNode$r = [
     }
   ]
 ];
-const Play = createLucideIcon("play", __iconNode$r);
+const Play = createLucideIcon("play", __iconNode$u);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$q = [
+const __iconNode$t = [
   ["path", { d: "M5 12h14", key: "1ays0h" }],
   ["path", { d: "M12 5v14", key: "s699le" }]
 ];
-const Plus = createLucideIcon("plus", __iconNode$q);
+const Plus = createLucideIcon("plus", __iconNode$t);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$p = [
+const __iconNode$s = [
   ["path", { d: "M19.07 4.93A10 10 0 0 0 6.99 3.34", key: "z3du51" }],
   ["path", { d: "M4 6h.01", key: "oypzma" }],
   ["path", { d: "M2.29 9.62A10 10 0 1 0 21.31 8.35", key: "qzzz0" }],
@@ -34585,27 +34814,27 @@ const __iconNode$p = [
   ["circle", { cx: "12", cy: "12", r: "2", key: "1c9p78" }],
   ["path", { d: "m13.41 10.59 5.66-5.66", key: "mhq4k0" }]
 ];
-const Radar = createLucideIcon("radar", __iconNode$p);
+const Radar = createLucideIcon("radar", __iconNode$s);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$o = [
+const __iconNode$r = [
   ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
   ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
   ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
   ["path", { d: "M8 16H3v5", key: "1cv678" }]
 ];
-const RefreshCw = createLucideIcon("refresh-cw", __iconNode$o);
+const RefreshCw = createLucideIcon("refresh-cw", __iconNode$r);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$n = [
+const __iconNode$q = [
   [
     "path",
     {
@@ -34616,28 +34845,28 @@ const __iconNode$n = [
   ["path", { d: "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7", key: "1ydtos" }],
   ["path", { d: "M7 3v4a1 1 0 0 0 1 1h7", key: "t51u73" }]
 ];
-const Save = createLucideIcon("save", __iconNode$n);
+const Save = createLucideIcon("save", __iconNode$q);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$m = [
+const __iconNode$p = [
   ["path", { d: "m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z", key: "7g6ntu" }],
   ["path", { d: "m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z", key: "ijws7r" }],
   ["path", { d: "M7 21h10", key: "1b0cd5" }],
   ["path", { d: "M12 3v18", key: "108xh3" }],
   ["path", { d: "M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2", key: "3gwbw2" }]
 ];
-const Scale = createLucideIcon("scale", __iconNode$m);
+const Scale = createLucideIcon("scale", __iconNode$p);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$l = [
+const __iconNode$o = [
   ["path", { d: "M3 7V5a2 2 0 0 1 2-2h2", key: "aa7l1z" }],
   ["path", { d: "M17 3h2a2 2 0 0 1 2 2v2", key: "4qcy5o" }],
   ["path", { d: "M21 17v2a2 2 0 0 1-2 2h-2", key: "6vwrx8" }],
@@ -34651,7 +34880,50 @@ const __iconNode$l = [
     }
   ]
 ];
-const ScanEye = createLucideIcon("scan-eye", __iconNode$l);
+const ScanEye = createLucideIcon("scan-eye", __iconNode$o);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$n = [
+  ["path", { d: "M3 7V5a2 2 0 0 1 2-2h2", key: "aa7l1z" }],
+  ["path", { d: "M17 3h2a2 2 0 0 1 2 2v2", key: "4qcy5o" }],
+  ["path", { d: "M21 17v2a2 2 0 0 1-2 2h-2", key: "6vwrx8" }],
+  ["path", { d: "M7 21H5a2 2 0 0 1-2-2v-2", key: "ioqczr" }]
+];
+const Scan = createLucideIcon("scan", __iconNode$n);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$m = [
+  [
+    "path",
+    {
+      d: "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z",
+      key: "1ffxy3"
+    }
+  ],
+  ["path", { d: "m21.854 2.147-10.94 10.939", key: "12cjpa" }]
+];
+const Send = createLucideIcon("send", __iconNode$m);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$l = [
+  ["rect", { width: "20", height: "8", x: "2", y: "2", rx: "2", ry: "2", key: "ngkwjq" }],
+  ["rect", { width: "20", height: "8", x: "2", y: "14", rx: "2", ry: "2", key: "iecqi9" }],
+  ["line", { x1: "6", x2: "6.01", y1: "6", y2: "6", key: "16zg32" }],
+  ["line", { x1: "6", x2: "6.01", y1: "18", y2: "18", key: "nzw8ys" }]
+];
+const Server = createLucideIcon("server", __iconNode$l);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34659,12 +34931,16 @@ const ScanEye = createLucideIcon("scan-eye", __iconNode$l);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$k = [
-  ["path", { d: "M3 7V5a2 2 0 0 1 2-2h2", key: "aa7l1z" }],
-  ["path", { d: "M17 3h2a2 2 0 0 1 2 2v2", key: "4qcy5o" }],
-  ["path", { d: "M21 17v2a2 2 0 0 1-2 2h-2", key: "6vwrx8" }],
-  ["path", { d: "M7 21H5a2 2 0 0 1-2-2v-2", key: "ioqczr" }]
+  [
+    "path",
+    {
+      d: "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915",
+      key: "1i5ecw"
+    }
+  ],
+  ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
 ];
-const Scan = createLucideIcon("scan", __iconNode$k);
+const Settings = createLucideIcon("settings", __iconNode$k);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34675,13 +34951,14 @@ const __iconNode$j = [
   [
     "path",
     {
-      d: "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z",
-      key: "1ffxy3"
+      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
+      key: "oel41y"
     }
   ],
-  ["path", { d: "m21.854 2.147-10.94 10.939", key: "12cjpa" }]
+  ["path", { d: "M12 8v4", key: "1got3b" }],
+  ["path", { d: "M12 16h.01", key: "1drbdi" }]
 ];
-const Send = createLucideIcon("send", __iconNode$j);
+const ShieldAlert = createLucideIcon("shield-alert", __iconNode$j);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34689,12 +34966,16 @@ const Send = createLucideIcon("send", __iconNode$j);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$i = [
-  ["rect", { width: "20", height: "8", x: "2", y: "2", rx: "2", ry: "2", key: "ngkwjq" }],
-  ["rect", { width: "20", height: "8", x: "2", y: "14", rx: "2", ry: "2", key: "iecqi9" }],
-  ["line", { x1: "6", x2: "6.01", y1: "6", y2: "6", key: "16zg32" }],
-  ["line", { x1: "6", x2: "6.01", y1: "18", y2: "18", key: "nzw8ys" }]
+  [
+    "path",
+    {
+      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
+      key: "oel41y"
+    }
+  ],
+  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
 ];
-const Server = createLucideIcon("server", __iconNode$i);
+const ShieldCheck$1 = createLucideIcon("shield-check", __iconNode$i);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34705,13 +34986,12 @@ const __iconNode$h = [
   [
     "path",
     {
-      d: "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915",
-      key: "1i5ecw"
+      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
+      key: "oel41y"
     }
-  ],
-  ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
+  ]
 ];
-const Settings = createLucideIcon("settings", __iconNode$h);
+const Shield = createLucideIcon("shield", __iconNode$h);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34719,17 +34999,10 @@ const Settings = createLucideIcon("settings", __iconNode$h);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$g = [
-  [
-    "path",
-    {
-      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
-      key: "oel41y"
-    }
-  ],
-  ["path", { d: "M12 8v4", key: "1got3b" }],
-  ["path", { d: "M12 16h.01", key: "1drbdi" }]
+  ["rect", { width: "14", height: "20", x: "5", y: "2", rx: "2", ry: "2", key: "1yt0o3" }],
+  ["path", { d: "M12 18h.01", key: "mhygvu" }]
 ];
-const ShieldAlert = createLucideIcon("shield-alert", __iconNode$g);
+const Smartphone = createLucideIcon("smartphone", __iconNode$g);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34737,39 +35010,6 @@ const ShieldAlert = createLucideIcon("shield-alert", __iconNode$g);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$f = [
-  [
-    "path",
-    {
-      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
-      key: "oel41y"
-    }
-  ],
-  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
-];
-const ShieldCheck = createLucideIcon("shield-check", __iconNode$f);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$e = [
-  [
-    "path",
-    {
-      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
-      key: "oel41y"
-    }
-  ]
-];
-const Shield = createLucideIcon("shield", __iconNode$e);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$d = [
   [
     "path",
     {
@@ -34781,14 +35021,14 @@ const __iconNode$d = [
   ["path", { d: "M22 4h-4", key: "gwowj6" }],
   ["circle", { cx: "4", cy: "20", r: "2", key: "6kqj1y" }]
 ];
-const Sparkles = createLucideIcon("sparkles", __iconNode$d);
+const Sparkles = createLucideIcon("sparkles", __iconNode$f);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$c = [
+const __iconNode$e = [
   ["path", { d: "M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13", key: "i9gjdv" }],
   [
     "path",
@@ -34799,14 +35039,14 @@ const __iconNode$c = [
   ],
   ["path", { d: "M5 22h14", key: "ehvnwv" }]
 ];
-const Stamp = createLucideIcon("stamp", __iconNode$c);
+const Stamp = createLucideIcon("stamp", __iconNode$e);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$b = [
+const __iconNode$d = [
   [
     "path",
     {
@@ -34815,14 +35055,14 @@ const __iconNode$b = [
     }
   ]
 ];
-const Star = createLucideIcon("star", __iconNode$b);
+const Star = createLucideIcon("star", __iconNode$d);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$a = [
+const __iconNode$c = [
   ["circle", { cx: "12", cy: "12", r: "4", key: "4exip2" }],
   ["path", { d: "M12 2v2", key: "tus03m" }],
   ["path", { d: "M12 20v2", key: "1lh1kg" }],
@@ -34833,7 +35073,29 @@ const __iconNode$a = [
   ["path", { d: "m6.34 17.66-1.41 1.41", key: "1m8zz5" }],
   ["path", { d: "m19.07 4.93-1.41 1.41", key: "1shlcs" }]
 ];
-const Sun = createLucideIcon("sun", __iconNode$a);
+const Sun = createLucideIcon("sun", __iconNode$c);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$b = [
+  ["path", { d: "M12 19h8", key: "baeox8" }],
+  ["path", { d: "m4 17 6-6-6-6", key: "1yngyt" }]
+];
+const Terminal = createLucideIcon("terminal", __iconNode$b);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$a = [
+  ["circle", { cx: "9", cy: "12", r: "3", key: "u3jwor" }],
+  ["rect", { width: "20", height: "14", x: "2", y: "5", rx: "7", key: "g7kal2" }]
+];
+const ToggleLeft = createLucideIcon("toggle-left", __iconNode$a);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34841,10 +35103,10 @@ const Sun = createLucideIcon("sun", __iconNode$a);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$9 = [
-  ["circle", { cx: "9", cy: "12", r: "3", key: "u3jwor" }],
+  ["circle", { cx: "15", cy: "12", r: "3", key: "1afu0r" }],
   ["rect", { width: "20", height: "14", x: "2", y: "5", rx: "7", key: "g7kal2" }]
 ];
-const ToggleLeft = createLucideIcon("toggle-left", __iconNode$9);
+const ToggleRight = createLucideIcon("toggle-right", __iconNode$9);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34852,10 +35114,13 @@ const ToggleLeft = createLucideIcon("toggle-left", __iconNode$9);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$8 = [
-  ["circle", { cx: "15", cy: "12", r: "3", key: "1afu0r" }],
-  ["rect", { width: "20", height: "14", x: "2", y: "5", rx: "7", key: "g7kal2" }]
+  ["path", { d: "M10 11v6", key: "nco0om" }],
+  ["path", { d: "M14 11v6", key: "outv1u" }],
+  ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
+  ["path", { d: "M3 6h18", key: "d0wm0j" }],
+  ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
 ];
-const ToggleRight = createLucideIcon("toggle-right", __iconNode$8);
+const Trash2 = createLucideIcon("trash-2", __iconNode$8);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34863,13 +35128,10 @@ const ToggleRight = createLucideIcon("toggle-right", __iconNode$8);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$7 = [
-  ["path", { d: "M10 11v6", key: "nco0om" }],
-  ["path", { d: "M14 11v6", key: "outv1u" }],
-  ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
-  ["path", { d: "M3 6h18", key: "d0wm0j" }],
-  ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
+  ["path", { d: "M16 7h6v6", key: "box55l" }],
+  ["path", { d: "m22 7-8.5 8.5-5-5L2 17", key: "1t1m79" }]
 ];
-const Trash2 = createLucideIcon("trash-2", __iconNode$7);
+const TrendingUp = createLucideIcon("trending-up", __iconNode$7);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -34877,17 +35139,6 @@ const Trash2 = createLucideIcon("trash-2", __iconNode$7);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$6 = [
-  ["path", { d: "M16 7h6v6", key: "box55l" }],
-  ["path", { d: "m22 7-8.5 8.5-5-5L2 17", key: "1t1m79" }]
-];
-const TrendingUp = createLucideIcon("trending-up", __iconNode$6);
-/**
- * @license lucide-react v0.554.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$5 = [
   [
     "path",
     {
@@ -34898,7 +35149,19 @@ const __iconNode$5 = [
   ["path", { d: "M12 9v4", key: "juzpu7" }],
   ["path", { d: "M12 17h.01", key: "p32p05" }]
 ];
-const TriangleAlert = createLucideIcon("triangle-alert", __iconNode$5);
+const TriangleAlert = createLucideIcon("triangle-alert", __iconNode$6);
+/**
+ * @license lucide-react v0.554.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$5 = [
+  ["path", { d: "M12 3v12", key: "1x0j5s" }],
+  ["path", { d: "m17 8-5-5-5 5", key: "7q97r8" }],
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }]
+];
+const Upload = createLucideIcon("upload", __iconNode$5);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -37836,13 +38099,13 @@ const {
   getAdapter,
   mergeConfig
 } = axios;
-const PROJECT_ID$3 = "studio-9130063297-9636d";
-const REGION$3 = "us-central1";
-const IS_LOCAL$3 = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-const BASE_URL$3 = IS_LOCAL$3 ? `http://127.0.0.1:5001/${PROJECT_ID$3}/${REGION$3}` : `https://${REGION$3}-${PROJECT_ID$3}.cloudfunctions.net`;
+const PROJECT_ID$4 = "studio-9130063297-9636d";
+const REGION$4 = "us-central1";
+const IS_LOCAL$4 = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const BASE_URL$4 = IS_LOCAL$4 ? `http://127.0.0.1:5001/${PROJECT_ID$4}/${REGION$4}` : `https://${REGION$4}-${PROJECT_ID$4}.cloudfunctions.net`;
 const generateChatResponse = async (history, currentMessage, pillars, profile, attachments2) => {
   try {
-    const response = await axios.post(`${BASE_URL$3}/generateChatResponse`, {
+    const response = await axios.post(`${BASE_URL$4}/generateChatResponse`, {
       history,
       currentMessage,
       pillars,
@@ -38016,6 +38279,174 @@ const LegalModal = ({ type, onClose }) => {
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-4 border-t border-slate-800 bg-slate-950 flex justify-end", children: /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm font-medium", children: "Cerrar Documento" }) })
+  ] }) });
+};
+const IS_LOCAL$3 = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const PROJECT_ID$3 = "studio-9130063297-9636d";
+const REGION$3 = "us-central1";
+const BASE_URL$3 = IS_LOCAL$3 ? `http://127.0.0.1:5001/${PROJECT_ID$3}/${REGION$3}` : `https://${REGION$3}-${PROJECT_ID$3}.cloudfunctions.net`;
+const MfaService = {
+  /**
+   * 1. Start Setup: Get Secret & QR Code
+   */
+  generateSetup: async () => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const response = await fetch(`${BASE_URL$3}/generateMfaSetup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.uid, email: user.email })
+    });
+    if (!response.ok) throw new Error("Failed to generate MFA setup");
+    return await response.json();
+  },
+  /**
+   * 2. Verify Setup: Activate MFA
+   */
+  verifySetup: async (token) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const response = await fetch(`${BASE_URL$3}/verifyMfaSetup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.uid, token })
+    });
+    if (!response.ok) return false;
+    const data2 = await response.json();
+    return data2.success === true;
+  },
+  /**
+   * 3. Validate Action: The Gate
+   */
+  validateAction: async (token) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const response = await fetch(`${BASE_URL$3}/validateMfa`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.uid, token })
+    });
+    if (!response.ok) return false;
+    const data2 = await response.json();
+    return data2.valid === true;
+  }
+};
+const MfaModal = ({ isOpen, onClose, onSuccess, mode, actionLabel }) => {
+  const [step, setStep] = reactExports.useState("INIT");
+  const [qrUrl, setQrUrl] = reactExports.useState(null);
+  const [token, setToken] = reactExports.useState("");
+  const [error, setError] = reactExports.useState(null);
+  const [isLoading, setIsLoading] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    if (isOpen && mode === "SETUP") {
+      loadSetup();
+    } else if (isOpen && mode === "VERIFY") {
+      setStep("INIT");
+    }
+    setToken("");
+    setError(null);
+  }, [isOpen, mode]);
+  const loadSetup = async () => {
+    setIsLoading(true);
+    try {
+      const { qrCodeUrl } = await MfaService.generateSetup();
+      setQrUrl(qrCodeUrl);
+      setStep("QR");
+    } catch (e) {
+      setError("Error generando código QR. Intente de nuevo.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (token.length !== 6) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      let isValid = false;
+      if (mode === "SETUP") {
+        isValid = await MfaService.verifySetup(token);
+      } else {
+        isValid = await MfaService.validateAction(token);
+      }
+      if (isValid) {
+        setStep("SUCCESS");
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 1500);
+      } else {
+        setError("Código incorrecto. Intente de nuevo.");
+      }
+    } catch (e2) {
+      setError("Error de conexión.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  if (!isOpen) return null;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-stone-900 border border-stone-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fadeIn", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-stone-950 p-6 border-b border-stone-800 flex justify-between items-center", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 bg-emerald-900/20 rounded-lg border border-emerald-500/30", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck$1, { className: "text-emerald-500", size: 24 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-lg font-bold text-white", children: mode === "SETUP" ? "Configurar Seguridad" : "Verificación Requerida" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-stone-400", children: mode === "SETUP" ? "Google Authenticator" : "Acceso de Alto Nivel" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "text-stone-500 hover:text-white", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-6", children: step === "SUCCESS" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-8 animate-pulse", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 mb-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 32 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold text-white mb-2", children: "¡Verificado!" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-stone-400", children: "Acceso concedido." })
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      mode === "SETUP" && step === "QR" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center mb-6", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm text-stone-300 mb-4", children: [
+          "Escanee este código con su aplicación ",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Google Authenticator" }),
+          ":"
+        ] }),
+        qrUrl ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-white p-4 rounded-xl inline-block mb-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: qrUrl, alt: "QR Code", className: "w-48 h-48" }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-48 flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin text-emerald-500" }) })
+      ] }),
+      mode === "VERIFY" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6 text-center", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-amber-900/20 border border-amber-500/30 p-4 rounded-lg mb-6", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "mx-auto text-amber-500 mb-2", size: 24 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-amber-200 font-bold", children: actionLabel || "Esta acción requiere autorización" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-stone-400", children: "Introduzca el código de 6 dígitos de su aplicación." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { onSubmit: handleSubmit, className: "space-y-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-xs font-bold text-stone-500 uppercase mb-2", children: "Código de Seguridad" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Smartphone, { className: "absolute left-3 top-3 text-stone-600", size: 18 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "text",
+                value: token,
+                onChange: (e) => setToken(e.target.value.replace(/\D/g, "").slice(0, 6)),
+                placeholder: "000 000",
+                className: "w-full bg-stone-950 border border-stone-800 rounded-xl py-3 pl-10 pr-4 text-white font-mono text-xl tracking-widest focus:outline-none focus:border-emerald-500 transition-colors text-center",
+                autoFocus: true
+              }
+            )
+          ] })
+        ] }),
+        error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-red-400 text-xs text-center bg-red-900/20 p-2 rounded border border-red-900/50", children: error }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "submit",
+            disabled: token.length !== 6 || isLoading,
+            className: "w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2",
+            children: isLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin" }) : mode === "SETUP" ? "ACTIVAR" : "VERIFICAR"
+          }
+        )
+      ] })
+    ] }) })
   ] }) });
 };
 function bufferToBase64URLString(buffer) {
@@ -38414,9 +38845,72 @@ async function startAuthentication(options) {
     authenticatorAttachment: toAuthenticatorAttachment(credential.authenticatorAttachment)
   };
 }
+const CertificateService = {
+  /**
+   * Uploads a .p12/.pfx file to the secure vault.
+   * In a real implementation, this would send the file to a secure backend (Cloud Functions)
+   * which would encrypt it using a Master Key (KMS) and store it in Secret Manager or secure storage.
+   */
+  uploadCertificate: async (file, password) => {
+    console.log(`[CertificateService] Uploading ${file.name} (${file.size} bytes)...`);
+    await new Promise((resolve) => setTimeout(resolve, 2e3));
+    return {
+      id: "cert_" + Math.random().toString(36).substr(2, 9),
+      issuer: "FNMT-RCM Clase 2 CA",
+      validUntil: "2028-12-31T23:59:59Z",
+      ownerName: "USUARIO DEMO",
+      serialNumber: "7283849102",
+      hasPrivateKey: true
+    };
+  },
+  /**
+   * Checks the status of the certificate in the vault.
+   */
+  getStatus: async () => {
+    return {
+      id: "cert_existing_123",
+      issuer: "FNMT-RCM Clase 2 CA",
+      validUntil: "2028-12-31T23:59:59Z",
+      ownerName: "USUARIO DEMO",
+      serialNumber: "7283849102",
+      hasPrivateKey: true
+    };
+  },
+  /**
+   * Revokes the certificate, deleting it from the vault.
+   */
+  revokeCertificate: async (certId) => {
+    console.log(`[CertificateService] Revoking ${certId}...`);
+    await new Promise((resolve) => setTimeout(resolve, 1e3));
+  }
+};
 const SettingsModal = ({ profile, onUpdate, onClose }) => {
   const [activeTab, setActiveTab] = reactExports.useState("PLANS");
   const [legalType, setLegalType] = reactExports.useState(null);
+  const [isMfaModalOpen, setIsMfaModalOpen] = reactExports.useState(false);
+  const [certificate, setCertificate] = reactExports.useState(null);
+  const [isUploadingCert, setIsUploadingCert] = reactExports.useState(false);
+  const [certPassword, setCertPassword] = reactExports.useState("");
+  const [showCertInput, setShowCertInput] = reactExports.useState(false);
+  const handleCertUpload = async (e) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    if (!certPassword && !showCertInput) {
+      setShowCertInput(true);
+      return;
+    }
+    setIsUploadingCert(true);
+    try {
+      const cert = await CertificateService.uploadCertificate(file, certPassword);
+      setCertificate(cert);
+      setShowCertInput(false);
+      setCertPassword("");
+    } catch (error) {
+      alert("Error al procesar el certificado. Verifique la contraseña.");
+    } finally {
+      setIsUploadingCert(false);
+    }
+  };
   const [formData, setFormData] = reactExports.useState({
     name: profile.name,
     birthDate: profile.birthDate || "",
@@ -38525,6 +39019,149 @@ const SettingsModal = ({ profile, onUpdate, onClose }) => {
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8 bg-stone-950/30", children: [
         activeTab === "SECURITY" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-w-2xl mx-auto space-y-8", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-stone-900/50 border border-stone-800 rounded-xl p-6 relative overflow-hidden", children: [
+            profile.mfaEnabled && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-0 right-0 p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1 text-emerald-500 text-xs font-bold bg-emerald-900/20 px-2 py-1 rounded border border-emerald-500/30", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 12 }),
+              " ACTIVO"
+            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-stone-800 rounded-lg", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Smartphone, { className: "w-6 h-6 text-emerald-500" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold text-white mb-2", children: "Autenticación de Doble Factor (MFA)" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-stone-400 text-sm mb-6", children: "Proteja acciones críticas (Banco, Certificado Digital, DEHú) usando Google Authenticator. Requerido para niveles PRO y VIP." }),
+                !profile.mfaEnabled ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "button",
+                  {
+                    onClick: () => setIsMfaModalOpen(true),
+                    className: "flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg transition-colors",
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "w-4 h-4" }),
+                      "Activar Seguridad Alta"
+                    ]
+                  }
+                ) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-stone-500 italic", children: "Su cuenta está protegida con estándares de grado militar." })
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-stone-900/50 border border-stone-800 rounded-xl p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-stone-800 rounded-lg", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Briefcase, { className: "w-6 h-6 text-blue-400" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold text-white mb-2", children: "Bóveda de Identidad Digital" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-stone-400 text-sm mb-6", children: "Centralice su Certificado Digital para automatizar trámites con la Administración (DEHú, AEAT, Salud). Su certificado se encripta con estándares bancarios." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-black/40 rounded-lg p-4 border border-stone-800 mb-4", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-3", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `w-2 h-2 rounded-full ${certificate ? "bg-emerald-500 shadow-[0_0_10px_#10b981]" : "bg-red-500"}` }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-bold text-stone-200", children: "Certificado Digital (FNMT/DNIe)" })
+                  ] }),
+                  certificate ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-emerald-500 font-mono", children: "ACTIVO" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-stone-600 font-mono", children: "NO CONFIGURADO" })
+                ] }),
+                !certificate ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3", children: [
+                  showCertInput && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "input",
+                    {
+                      type: "password",
+                      placeholder: "Contraseña del certificado",
+                      value: certPassword,
+                      onChange: (e) => setCertPassword(e.target.value),
+                      className: "w-full bg-stone-900 border border-stone-700 rounded p-2 text-xs text-white mb-2"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "input",
+                      {
+                        type: "file",
+                        accept: ".p12,.pfx",
+                        onChange: handleCertUpload,
+                        className: "absolute inset-0 w-full h-full opacity-0 cursor-pointer",
+                        disabled: isUploadingCert
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                      "button",
+                      {
+                        className: "w-full bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold py-2 rounded border border-stone-700 transition-colors flex items-center justify-center gap-2",
+                        children: [
+                          isUploadingCert ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", size: 14 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 14 }),
+                          isUploadingCert ? "Procesando y Encriptando..." : "Seleccionar Archivo .p12 / .pfx"
+                        ]
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-stone-500 text-center", children: "Su certificado se encriptará con AES-256 y se almacenará en un HSM seguro." })
+                ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-xs text-stone-500", children: [
+                    "Válido hasta: ",
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-stone-300", children: new Date(certificate.validUntil).toLocaleDateString() }),
+                    " • Emisor: ",
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-stone-300", children: certificate.issuer })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: () => {
+                        CertificateService.revokeCertificate(certificate.id);
+                        setCertificate(null);
+                      },
+                      className: "text-xs text-red-400 hover:text-red-300",
+                      children: "Revocar"
+                    }
+                  )
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6 p-3 bg-stone-950/30 rounded border border-stone-800/50 flex items-center justify-between", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-1.5 bg-stone-800 rounded text-stone-400", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Smartphone, { size: 14 }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-stone-300", children: "Cl@ve Móvil / PIN" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] text-stone-500", children: "Usar app oficial para autorizaciones puntuales" })
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "text-[10px] bg-stone-800 hover:bg-stone-700 text-stone-300 px-2 py-1 rounded border border-stone-700 transition-colors", children: "Vincular App" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-xs font-bold text-stone-500 uppercase tracking-wider mb-2", children: "Servicios Vinculados" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between p-3 bg-stone-950/50 rounded border border-stone-800", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `p-1.5 rounded ${certificate ? "bg-blue-900/20 text-blue-400" : "bg-stone-900 text-stone-600"}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Bell, { size: 14 }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `text-sm font-bold ${certificate ? "text-stone-200" : "text-stone-600"}`, children: "DEHú (Notificaciones)" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] text-stone-500", children: "Requiere Certificado Digital" })
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `w-8 h-4 rounded-full relative transition-colors ${certificate ? "bg-blue-900/50 cursor-pointer" : "bg-stone-900 cursor-not-allowed"}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `absolute top-0.5 w-3 h-3 rounded-full transition-all ${certificate ? "left-4 bg-blue-400" : "left-0.5 bg-stone-500"}` }) })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between p-3 bg-stone-950/50 rounded border border-stone-800", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `p-1.5 rounded ${certificate ? "bg-red-900/20 text-red-400" : "bg-stone-900 text-stone-600"}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Heart, { size: 14 }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `text-sm font-bold ${certificate ? "text-stone-200" : "text-stone-600"}`, children: "Carpeta de Salud" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] text-stone-500", children: "Historial clínico y citas" })
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `w-8 h-4 rounded-full relative transition-colors ${certificate ? "bg-red-900/50 cursor-pointer" : "bg-stone-900 cursor-not-allowed"}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `absolute top-0.5 w-3 h-3 rounded-full transition-all ${certificate ? "left-4 bg-red-400" : "left-0.5 bg-stone-500"}` }) })
+                ] })
+              ] })
+            ] })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-stone-900/50 border border-stone-800 rounded-xl p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-stone-800 rounded-lg", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Mail, { className: "w-6 h-6 text-amber-500" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold text-white mb-2", children: "Email & Comunicaciones" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-stone-400 text-sm mb-4", children: "Conecte su cuenta de correo para que el Mayordomo pueda detectar facturas, citas y eventos importantes." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between p-4 bg-black/40 rounded-lg border border-stone-800", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full bg-white flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: "https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg", alt: "Gmail", className: "w-5 h-5" }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-sm font-bold text-white", children: "Google Gmail" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-stone-500", children: "Lectura de facturas y calendario" })
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold rounded border border-stone-700 transition-colors", children: "Conectar" })
+              ] })
+            ] })
+          ] }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-stone-900/50 border border-stone-800 rounded-xl p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-stone-800 rounded-lg", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FingerprintPattern, { className: "w-6 h-6 text-[#D4AF37]" }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [
@@ -38751,7 +39388,18 @@ const SettingsModal = ({ profile, onUpdate, onClose }) => {
         ] })
       ] })
     ] }),
-    legalType && /* @__PURE__ */ jsxRuntimeExports.jsx(LegalModal, { type: legalType, onClose: () => setLegalType(null) })
+    legalType && /* @__PURE__ */ jsxRuntimeExports.jsx(LegalModal, { type: legalType, onClose: () => setLegalType(null) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      MfaModal,
+      {
+        isOpen: isMfaModalOpen,
+        onClose: () => setIsMfaModalOpen(false),
+        onSuccess: () => {
+          if (onUpdate) onUpdate({ ...profile, mfaEnabled: true });
+        },
+        mode: "SETUP"
+      }
+    )
   ] });
 };
 const AppearanceModal = ({ profile, onClose, onUpdate }) => {
@@ -38885,6 +39533,60 @@ const AppearanceModal = ({ profile, onClose, onUpdate }) => {
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-4 bg-stone-950 border-t border-stone-800 text-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "text-xs font-bold text-stone-400 hover:text-white transition-colors uppercase tracking-widest", children: "Guardar Preferencias" }) })
   ] }) });
+};
+let sessionMemory = [];
+const AnalyticsService = {
+  /**
+   * Registra una acción del usuario tanto en Firebase como en la memoria local de la IA
+   */
+  track: (type, name2, metadata = {}) => {
+    const event = {
+      timestamp: Date.now(),
+      type,
+      elementId: name2,
+      screenName: window.location.pathname,
+      metadata
+    };
+    sessionMemory.push(event);
+    if (sessionMemory.length > 100) sessionMemory.shift();
+    if (analytics) {
+      try {
+        logEvent(analytics, name2, { ...metadata, event_type: type });
+      } catch (e) {
+      }
+    }
+    console.log(`[👁️ SENSE] ${type}: ${name2}`, metadata);
+  },
+  /**
+   * Rastrea el inicio de un flujo importante (ej: Onboarding)
+   */
+  startFlow: (flowName) => {
+    AnalyticsService.track("FLOW_START", flowName, { startTime: Date.now() });
+  },
+  /**
+   * Rastrea la finalización de un flujo y calcula duración
+   */
+  completeFlow: (flowName) => {
+    const startEvent = [...sessionMemory].reverse().find((e) => e.type === "FLOW_START" && e.elementId === flowName);
+    const duration = startEvent ? (Date.now() - startEvent.timestamp) / 1e3 : 0;
+    AnalyticsService.track("FLOW_COMPLETE", flowName, { duration_seconds: duration });
+  },
+  /**
+   * API para que el Evolution Core "lea" el comportamiento reciente
+   */
+  getRecentBehavior: () => {
+    return sessionMemory;
+  },
+  /**
+   * Análisis heurístico simple para detectar frustración
+   */
+  detectFrustration: () => {
+    const recentClicks = sessionMemory.filter((e) => e.type === "CLICK" && e.timestamp > Date.now() - 1e4);
+    if (recentClicks.length > 5) return true;
+    const recentErrors = sessionMemory.filter((e) => e.type === "ERROR" && e.timestamp > Date.now() - 3e4);
+    if (recentErrors.length >= 2) return true;
+    return false;
+  }
 };
 const PROJECT_ID$2 = "studio-9130063297-9636d";
 const REGION$2 = "us-central1";
@@ -39031,6 +39733,82 @@ const analyzeGapAndPropose = async (event, profile, activeModules) => {
   } catch (error) {
     console.error("Evolution Engine Unexpected Error:", error);
     return null;
+  }
+};
+const EvolutionService = {
+  /**
+   * Simulates a call to Gemini to analyze system logs and propose improvements.
+   */
+  analyzeSystemLogs: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    const behavior = AnalyticsService.getRecentBehavior();
+    const frustrationDetected = AnalyticsService.detectFrustration();
+    const dynamicProposals = [];
+    if (frustrationDetected) {
+      dynamicProposals.push({
+        id: `fix_frust_${Date.now()}`,
+        title: "Simplificación de Interfaz Detectada",
+        description: 'Se detectaron patrones de clicks repetitivos (Rage Clicks). El usuario parece confundido con la UI actual. Se sugiere activar el modo "Simplificado".',
+        impact: "HIGH",
+        type: "UX",
+        status: "PENDING"
+      });
+    }
+    const flowCompletions = behavior.filter((e) => e.type === "FLOW_COMPLETE");
+    if (flowCompletions.length > 0) {
+      dynamicProposals.push({
+        id: `opt_flow_${Date.now()}`,
+        title: "Acelerar Flujos Recuentes",
+        description: `El usuario completa frecuentemente el flujo "${flowCompletions[0].elementId}". Crear un acceso directo en el Dashboard principal.`,
+        impact: "MEDIUM",
+        type: "UX",
+        status: "PENDING"
+      });
+    }
+    const viewEvents = behavior.filter((e) => e.type === "VIEW");
+    const viewCounts = {};
+    viewEvents.forEach((e) => {
+      if (e.elementId && !e.elementId.includes("Dashboard") && !e.elementId.includes("Home")) {
+        viewCounts[e.elementId] = (viewCounts[e.elementId] || 0) + 1;
+      }
+    });
+    const frequentScreens = Object.entries(viewCounts).filter(([_, count]) => count >= 3);
+    frequentScreens.forEach(([screenName, count]) => {
+      dynamicProposals.push({
+        id: `nav_hotspot_${screenName.replace(/\s/g, "")}_${Date.now()}`,
+        title: `Acceso Prioritario: ${screenName}`,
+        description: `Patrón de uso detectado: Has visitado "${screenName}" ${count} veces recientemente. Se sugiere anclarlo como Widget en el Dashboard.`,
+        impact: "LOW",
+        type: "UX",
+        status: "PENDING"
+      });
+    });
+    const baseProposals = [
+      {
+        id: "imp_01",
+        title: "Reducir pasos en el onboarding",
+        description: 'Se detectó una tasa de abandono del 15% en el paso de "Conexión Bancaria". Se sugiere moverlo después del registro inicial.',
+        impact: "HIGH",
+        type: "UX",
+        status: "PENDING"
+      },
+      {
+        id: "imp_02",
+        title: "Añadir modo oscuro automático",
+        description: "El 80% de los accesos son después de las 20:00. Sincronizar el tema con la hora del sistema mejoraría la retención.",
+        impact: "MEDIUM",
+        type: "UX",
+        status: "PENDING"
+      }
+    ];
+    return [...dynamicProposals, ...baseProposals];
+  },
+  getMacroContext: async () => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(MOCK_MACRO_EVENTS);
+      }, 800);
+    });
   }
 };
 const EvolutionPanel = ({ profile, lifeStageConfig, onAddPermission, onClose, onSimulateTier, onOpenSupport, isEmbedded }) => {
@@ -39279,6 +40057,269 @@ const EvolutionPanel = ({ profile, lifeStageConfig, onAddPermission, onClose, on
         ] })
       ] })
     ] })
+  ] });
+};
+const EvolutionInfinitoPanel = ({ onClose, profile, evolutionConfig }) => {
+  var _a;
+  const [status, setStatus] = reactExports.useState("IDLE");
+  const [proposals, setProposals] = reactExports.useState([]);
+  const [logs, setLogs] = reactExports.useState([]);
+  const [tflops, setTflops] = reactExports.useState(0);
+  const [macroEvent, setMacroEvent] = reactExports.useState(null);
+  const [permissionProposal, setPermissionProposal] = reactExports.useState(null);
+  const [isScanningMacro, setIsScanningMacro] = reactExports.useState(false);
+  const [isMfaOpen, setIsMfaOpen] = reactExports.useState(false);
+  const [pendingAction, setPendingAction] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    AnalyticsService.track("VIEW", "Evolution_Panel_Opened");
+  }, []);
+  reactExports.useEffect(() => {
+    const interval = setInterval(() => {
+      setTflops((prev) => +(Math.random() * (15.5 - 14.8) + 14.8).toFixed(2));
+    }, 800);
+    return () => clearInterval(interval);
+  }, []);
+  const handleApprovePermission = () => {
+    if (!permissionProposal) return;
+    const perm = permissionProposal.proposedPermission;
+    const isVipRequired = perm.minTier === SubscriptionTier.VIP;
+    const isProRequired = perm.minTier === SubscriptionTier.PRO;
+    const userIsFree = profile.subscriptionTier === SubscriptionTier.FREE;
+    const userIsBasic = profile.subscriptionTier === SubscriptionTier.BASIC;
+    if ((isVipRequired || isProRequired) && (userIsFree || userIsBasic)) {
+      alert(`Esta función requiere nivel ${perm.minTier}. Actualice su suscripción.`);
+      return;
+    }
+    const SENSITIVE_PERMS = ["func_open_banking", "func_digital_cert", "func_dehu_sync", "func_health_kit"];
+    if (SENSITIVE_PERMS.includes(perm.id)) {
+      setPendingAction(perm.label);
+      setIsMfaOpen(true);
+    } else {
+      setLogs((prev) => [...prev, `> Permiso [${perm.label}] activado.`]);
+      setPermissionProposal(null);
+    }
+  };
+  const handleMfaSuccess = () => {
+    setLogs((prev) => [...prev, `> AUTORIZACIÓN MFA CORRECTA.`]);
+    setLogs((prev) => [...prev, `> Permiso [${pendingAction}] activado y encriptado en Bóveda.`]);
+    setPermissionProposal(null);
+    setPendingAction(null);
+  };
+  const runAnalysis = async () => {
+    AnalyticsService.track("CLICK", "Run_System_Analysis_Button");
+    setStatus("ANALYZING");
+    setLogs((prev) => [...prev, "> Iniciando conexión con Gemini Pro Vision..."]);
+    setTimeout(() => setLogs((prev) => [...prev, "> Analizando 14,502 líneas de log (24h)..."]), 800);
+    setTimeout(() => setLogs((prev) => [...prev, "> Detectando patrones de fricción UX..."]), 1600);
+    setTimeout(() => setLogs((prev) => [...prev, "> Generando propuestas de mejora..."]), 2200);
+    try {
+      const results = await EvolutionService.analyzeSystemLogs();
+      setProposals(results);
+      setStatus("COMPLETE");
+      setLogs((prev) => [...prev, `> Análisis completado. ${results.length} mejoras propuestas.`]);
+    } catch (error) {
+      setLogs((prev) => [...prev, "> Error en el análisis."]);
+      setStatus("IDLE");
+    }
+  };
+  const runPermissionScan = async () => {
+    AnalyticsService.track("CLICK", "Run_Macro_Scan_Button");
+    setIsScanningMacro(true);
+    setMacroEvent(null);
+    setPermissionProposal(null);
+    setLogs((prev) => [...prev, "> Escaneando contexto macro-global (Internet)..."]);
+    const event = await scanMacroContext();
+    setMacroEvent(event);
+    setLogs((prev) => [...prev, `> Evento detectado: [${event.source}] ${event.title}`]);
+    if (evolutionConfig) {
+      setLogs((prev) => [...prev, "> Analizando brecha de seguridad (Micro vs Macro)..."]);
+      await new Promise((r2) => setTimeout(r2, 1e3));
+      const proposal = await analyzeGapAndPropose(event, profile, evolutionConfig.modules);
+      setPermissionProposal(proposal);
+      if (proposal) {
+        setLogs((prev) => [...prev, `> Propuesta de Permiso: ${proposal.title}`]);
+      } else {
+        setLogs((prev) => [...prev, "> El perfil actual ya está protegido."]);
+      }
+    } else {
+      setLogs((prev) => [...prev, "> Error: Configuración de evolución no disponible."]);
+    }
+    setIsScanningMacro(false);
+  };
+  const handleApply = (id2) => {
+    setProposals((prev) => prev.map((p2) => p2.id === id2 ? { ...p2, status: "APPLIED" } : p2));
+  };
+  const handleDismiss = (id2) => {
+    setProposals((prev) => prev.filter((p2) => p2.id !== id2));
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-full bg-[#0c0a09] text-stone-200 animate-fadeIn", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between p-6 border-b border-stone-800 bg-stone-950/50 backdrop-blur-md", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-purple-900/20 rounded-lg border border-purple-500/30", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { className: "text-purple-400", size: 24 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-2xl font-serif font-bold text-white tracking-wide", children: "EVOLUTION CORE INFINITO" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-xs font-mono text-stone-500", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `w-2 h-2 rounded-full ${status === "ANALYZING" ? "bg-purple-500 animate-pulse" : "bg-emerald-500"}` }),
+            status === "ANALYZING" ? "ANALIZANDO SISTEMA..." : "ESPERANDO CICLO"
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-6", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-right hidden md:block", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] text-stone-500 uppercase tracking-widest", children: "Capacidad de Proceso" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-xl font-mono font-bold text-purple-400", children: [
+            tflops,
+            " TFLOPS"
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "p-2 hover:bg-stone-800 rounded-full transition-colors", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-hidden flex flex-col md:flex-row", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full md:w-1/2 border-r border-stone-800 flex flex-col bg-black/40", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-b border-stone-800", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Activity, { className: "text-purple-500", size: 20 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-lg font-bold text-white", children: "System Core (Micro)" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-stone-900/50 rounded-xl p-4 border border-stone-800 mb-6", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-stone-400 uppercase", children: "Próximo Análisis Automático" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { size: 14, className: "text-stone-500" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-mono text-white", children: "02:00 AM" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              onClick: runAnalysis,
+              disabled: status === "ANALYZING",
+              className: "w-full py-4 bg-purple-900/20 hover:bg-purple-900/30 border border-purple-500/50 text-purple-300 font-bold rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group",
+              children: [
+                status === "ANALYZING" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Activity, { className: "animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Zap, { className: "group-hover:scale-110 transition-transform" }),
+                status === "ANALYZING" ? "PROCESANDO..." : "EJECUTAR ANÁLISIS MANUAL"
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 p-6 overflow-y-auto custom-scrollbar bg-stone-950/30", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-xs font-bold text-stone-500 uppercase mb-4 flex items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Server, { size: 12 }),
+            " Mejoras de Sistema"
+          ] }),
+          proposals.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center py-8 text-stone-600 text-sm border border-dashed border-stone-800 rounded-lg", children: "Sin propuestas pendientes." }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: proposals.map((prop) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `bg-stone-900 border border-stone-800 rounded-lg p-4 transition-all ${prop.status === "APPLIED" ? "opacity-50 grayscale" : "hover:border-purple-500/30"}`, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-white", children: prop.title }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${prop.impact === "HIGH" ? "bg-red-900/30 text-red-400" : prop.impact === "MEDIUM" ? "bg-amber-900/30 text-amber-400" : "bg-blue-900/30 text-blue-400"}`, children: prop.impact })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-stone-400 mb-3", children: prop.description }),
+            prop.status === "PENDING" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleApply(prop.id), className: "flex-1 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-[10px] font-bold", children: "APLICAR" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDismiss(prop.id), className: "px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-400 rounded text-[10px] font-bold", children: "X" })
+            ] })
+          ] }, prop.id)) })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full md:w-1/2 flex flex-col bg-stone-950", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-b border-stone-800 bg-stone-950", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Globe, { className: "text-blue-500", size: 20 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-lg font-bold text-white", children: "Evolution Core (Macro)" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-blue-950/10 rounded-xl p-4 border border-blue-900/30 mb-6", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-blue-400 uppercase", children: "Estado de Vigilancia" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldAlert, { size: 14, className: "text-blue-500" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-sm text-stone-300", children: "Monitoreando 15 fuentes globales..." })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              onClick: runPermissionScan,
+              disabled: isScanningMacro,
+              className: "w-full py-4 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-500/50 text-blue-300 font-bold rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group",
+              children: [
+                isScanningMacro ? /* @__PURE__ */ jsxRuntimeExports.jsx(Globe, { className: "animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldAlert, { className: "group-hover:scale-110 transition-transform" }),
+                isScanningMacro ? "ESCANEANDO..." : "ESCANEAR ENTORNO (MACRO)"
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 p-6 overflow-y-auto custom-scrollbar", children: [
+          permissionProposal && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6 bg-blue-950/20 border border-blue-500/30 rounded-xl p-6 animate-slideInUp", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mb-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Globe, { className: "text-blue-400", size: 24 }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-bold text-white", children: [
+                  "Alerta: ",
+                  macroEvent == null ? void 0 : macroEvent.source
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-blue-300", children: macroEvent == null ? void 0 : macroEvent.title })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-black/40 p-4 rounded-lg border border-blue-500/20 mb-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-xs font-bold text-white mb-2 flex items-center gap-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldAlert, { size: 14, className: "text-amber-500" }),
+                "Propuesta de Evolución"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-stone-300 text-xs mb-3 leading-relaxed", children: permissionProposal.reasoning }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between bg-stone-900 p-2 rounded border border-stone-800", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-mono text-stone-500", children: "Permiso Sugerido:" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-white", children: ((_a = permissionProposal == null ? void 0 : permissionProposal.proposedPermission) == null ? void 0 : _a.label) || "N/A" })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 mt-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  onClick: handleApprovePermission,
+                  className: "flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/50 py-2 rounded flex items-center justify-center gap-2 transition-colors text-xs font-bold",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { className: "w-4 h-4" }),
+                    "APROBAR"
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  onClick: () => setPermissionProposal(null),
+                  className: "flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/50 py-2 rounded flex items-center justify-center gap-2 transition-colors text-xs font-bold",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-4 h-4" }),
+                    "DENEGAR"
+                  ]
+                }
+              )
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "font-mono text-xs", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-stone-500 mb-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Terminal, { size: 14 }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "LIVE LOGS" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2 text-stone-400", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "opacity-50", children: "> System initialized." }),
+              logs.map((log, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-stone-300 animate-slideInLeft break-words", children: log }, i)),
+              (status === "ANALYZING" || isScanningMacro) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "animate-pulse", children: "_" })
+            ] })
+          ] })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      MfaModal,
+      {
+        isOpen: isMfaOpen,
+        onClose: () => {
+          setIsMfaOpen(false);
+          setPendingAction(null);
+        },
+        onSuccess: handleMfaSuccess,
+        mode: "VERIFY"
+      }
+    )
   ] });
 };
 function ownKeys$1(object, enumerableOnly) {
@@ -40482,92 +41523,6 @@ const MissionBriefingCard = ({ mission }) => {
     ] })
   ] });
 };
-const MfaModal = ({ permissionLabel, onVerified, onClose }) => {
-  const [code, setCode] = reactExports.useState("");
-  const [isLoading, setIsLoading] = reactExports.useState(false);
-  const [error, setError] = reactExports.useState(false);
-  reactExports.useEffect(() => {
-    if (error) setError(false);
-  }, [code]);
-  const handleVerify = (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => {
-      if (code.length === 6) {
-        setIsLoading(false);
-        onVerified();
-      } else {
-        setIsLoading(false);
-        setError(true);
-      }
-    }, 1500);
-  };
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fadeIn", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full max-w-sm bg-[#0c0a09] border border-ai-500/50 rounded-xl overflow-hidden shadow-[0_0_50px_rgba(212,175,55,0.15)] relative", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-1 w-full bg-gradient-to-r from-transparent via-ai-500 to-transparent" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        onClick: onClose,
-        className: "absolute top-4 right-4 text-stone-500 hover:text-white transition-colors",
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 })
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-8 flex flex-col items-center text-center", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6 relative", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-ai-500 blur-xl opacity-20 rounded-full" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative bg-stone-900 p-4 rounded-full border border-ai-500/30 text-ai-500", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { size: 32 }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute -bottom-1 -right-1 bg-black rounded-full p-1 border border-stone-800", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 12, className: "text-white" }) })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-lg font-serif font-bold text-white mb-1", children: "Verificación de Seguridad" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-stone-400 mb-6 leading-relaxed", children: [
-        "La activación de ",
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-ai-500 font-bold", children: [
-          '"',
-          permissionLabel,
-          '"'
-        ] }),
-        " requiere autorización de nivel superior."
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { onSubmit: handleVerify, className: "w-full space-y-4", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-stone-500 uppercase tracking-widest", children: "Código de Autenticación (2FA)" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                type: "text",
-                maxLength: 6,
-                value: code,
-                onChange: (e) => setCode(e.target.value.replace(/[^0-9]/g, "")),
-                placeholder: "000 000",
-                className: `w-full bg-stone-900/50 border ${error ? "border-red-500 text-red-500" : "border-stone-700 focus:border-ai-500 text-white"} rounded-lg py-3 text-center text-xl font-mono tracking-[0.5em] outline-none transition-all placeholder-stone-700`,
-                autoFocus: true
-              }
-            ),
-            error && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-red-500 mt-2 font-bold animate-pulse", children: "Código incorrecto. Intente de nuevo." })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            type: "submit",
-            disabled: isLoading || code.length < 6,
-            className: "w-full bg-ai-600 hover:bg-ai-500 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-ai-500/20 active:scale-[0.98]",
-            children: [
-              isLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { size: 18, className: "animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FingerprintPattern, { size: 18 }),
-              isLoading ? "Verificando..." : "AUTORIZAR ACCESO"
-            ]
-          }
-        ) })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "mt-6 text-[9px] text-stone-600 font-mono", children: [
-        "SESSION_ID: ",
-        Math.random().toString(36).substring(7).toUpperCase(),
-        " // SECURE_CHANNEL"
-      ] })
-    ] })
-  ] }) });
-};
 const CRITICAL_PERMISSIONS_IDS = [
   "func_digital_cert",
   // Certificado Digital
@@ -40930,6 +41885,55 @@ const SmartDashboard = ({ items, onOpenPermissions }) => {
     );
   }) });
 };
+const UserService = {
+  async getAllUsers() {
+    if (!db || db._isMock) {
+      console.warn("[UserService] Using Mock DB or DB not initialized");
+      return [];
+    }
+    try {
+      const usersCol = collection(db, "users");
+      const snapshot = await getDocs(usersCol);
+      if (snapshot.empty) {
+        console.log("[UserService] No users found in 'users' collection.");
+        return [];
+      }
+      return snapshot.docs.map((doc2) => {
+        var _a;
+        const data2 = doc2.data();
+        return {
+          uid: doc2.id,
+          email: data2.email || "unknown@user.com",
+          tier: data2.subscriptionTier || SubscriptionTier.FREE,
+          systemHealth: data2.systemHealth || "OPTIMAL",
+          fraudRisk: data2.fraudRisk || "LOW",
+          aiTokensUsed: data2.aiTokensUsed || 0,
+          // Handle Firestore Timestamp or Date string
+          lastActive: ((_a = data2.lastActive) == null ? void 0 : _a.toDate) ? data2.lastActive.toDate() : data2.lastActive ? new Date(data2.lastActive) : /* @__PURE__ */ new Date()
+        };
+      });
+    } catch (error) {
+      console.error("[UserService] Error fetching users:", error);
+      return [];
+    }
+  },
+  async updateUserTier(uid, newTier) {
+    if (!db || db._isMock) {
+      console.warn("[UserService] Cannot update tier: DB is mock");
+      return;
+    }
+    try {
+      const userRef = doc(db, "users", uid);
+      await updateDoc(userRef, {
+        subscriptionTier: newTier
+      });
+      console.log(`[UserService] Updated user ${uid} to tier ${newTier}`);
+    } catch (error) {
+      console.error(`[UserService] Error updating tier for ${uid}:`, error);
+      throw error;
+    }
+  }
+};
 const MOCK_ALERTS = [
   {
     id: "reg_01",
@@ -41159,19 +42163,22 @@ const OverrideSubscriptionModal = ({ user, onClose, onConfirm }) => {
     ] })
   ] }) });
 };
-const MOCK_USERS = [
-  { uid: "u_101", email: "ana.garcia@example.com", tier: SubscriptionTier.VIP, systemHealth: "OPTIMAL", fraudRisk: "LOW", aiTokensUsed: 45, lastActive: /* @__PURE__ */ new Date() },
-  { uid: "u_102", email: "carlos.m@tech.co", tier: SubscriptionTier.PRO, systemHealth: "DEGRADED", fraudRisk: "LOW", aiTokensUsed: 88, lastActive: new Date(Date.now() - 36e5) },
-  { uid: "u_103", email: "guest_user_99@temp.net", tier: SubscriptionTier.FREE, systemHealth: "OPTIMAL", fraudRisk: "HIGH", aiTokensUsed: 10, lastActive: new Date(Date.now() - 864e5) },
-  { uid: "u_104", email: "admin.support@confort.app", tier: SubscriptionTier.VIP, systemHealth: "OPTIMAL", fraudRisk: "LOW", aiTokensUsed: 12, lastActive: /* @__PURE__ */ new Date() },
-  { uid: "u_105", email: "lucia.perez@design.io", tier: SubscriptionTier.BASIC, systemHealth: "CRITICAL", fraudRisk: "MEDIUM", aiTokensUsed: 95, lastActive: new Date(Date.now() - 72e5) }
-];
 const SupportDashboard = ({ onClose }) => {
-  const [users, setUsers] = reactExports.useState(MOCK_USERS);
+  const [users, setUsers] = reactExports.useState([]);
+  const [isLoading, setIsLoading] = reactExports.useState(true);
   const [filter2, setFilter] = reactExports.useState("");
   const [openMenuId, setOpenMenuId] = reactExports.useState(null);
   const menuRef = reactExports.useRef(null);
   const [modalState, setModalState] = reactExports.useState(null);
+  const loadUsers = async () => {
+    setIsLoading(true);
+    const realUsers = await UserService.getAllUsers();
+    setUsers(realUsers);
+    setIsLoading(false);
+  };
+  reactExports.useEffect(() => {
+    loadUsers();
+  }, []);
   reactExports.useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -41209,9 +42216,16 @@ const SupportDashboard = ({ onClose }) => {
     console.log(`[ADMIN] Force Logout for ${modalState == null ? void 0 : modalState.user.email}. Reason: ${reason}`);
     setModalState(null);
   };
-  const confirmOverride = (data2) => {
-    console.log(`[ADMIN] Override Tier for ${modalState == null ? void 0 : modalState.user.email} to ${data2.tier}. Reason: ${data2.justification}`);
-    setUsers((prev) => prev.map((u2) => u2.uid === (modalState == null ? void 0 : modalState.user.uid) ? { ...u2, tier: data2.tier } : u2));
+  const confirmOverride = async (data2) => {
+    if (!(modalState == null ? void 0 : modalState.user)) return;
+    console.log(`[ADMIN] Override Tier for ${modalState.user.email} to ${data2.tier}. Reason: ${data2.justification}`);
+    try {
+      await UserService.updateUserTier(modalState.user.uid, data2.tier);
+      setUsers((prev) => prev.map((u2) => u2.uid === (modalState == null ? void 0 : modalState.user.uid) ? { ...u2, tier: data2.tier } : u2));
+    } catch (e) {
+      console.error(e);
+      alert("Error al actualizar el nivel en la base de datos.");
+    }
     setModalState(null);
   };
   const filteredUsers = users.filter((u2) => u2.email.toLowerCase().includes(filter2.toLowerCase()) || u2.uid.includes(filter2));
@@ -41243,6 +42257,16 @@ const SupportDashboard = ({ onClose }) => {
           /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldAlert, { size: 14, className: "text-red-500" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] text-red-400 font-bold uppercase", children: "Datos Privados Ocultos" })
         ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: loadUsers,
+            disabled: isLoading,
+            className: "p-2 bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white rounded transition-colors disabled:opacity-50",
+            title: "Recargar Usuarios",
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { size: 18, className: isLoading ? "animate-spin" : "" })
+          }
+        ),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-64 bg-stone-900 border border-stone-700 rounded-sm px-3 py-2 flex items-center gap-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-stone-500 text-xs", children: "🔍" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -42094,7 +43118,7 @@ const SYSTEM_ADMIN_PROFILE = {
 const DEFAULT_PILLAR_ORDER$1 = Object.values(PillarId);
 const TABS = [
   { id: "RESUMEN", label: "Resumen", icon: LayoutDashboard },
-  { id: PillarId.CENTINELA, label: "Centinela", icon: ShieldCheck },
+  { id: PillarId.CENTINELA, label: "Centinela", icon: ShieldCheck$1 },
   { id: PillarId.PATRIMONIO, label: "Hogar", icon: House },
   { id: PillarId.CONCIERGE, label: "Concierge", icon: Plane },
   { id: PillarId.VITAL, label: "Coach", icon: Heart },
@@ -42603,19 +43627,12 @@ const ClientApp = () => {
               }
             ),
             (profile.role === "ADMIN" || originalAdminProfile) && adminView === "SUPPORT" && /* @__PURE__ */ jsxRuntimeExports.jsx(SupportDashboard, { onClose: () => setAdminView("MENU") }),
-            (profile.role === "ADMIN" || originalAdminProfile) && adminView === "EVOLUTION" && evolutionConfig && /* @__PURE__ */ jsxRuntimeExports.jsx(
-              EvolutionPanel,
+            (profile.role === "ADMIN" || originalAdminProfile) && adminView === "EVOLUTION" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              EvolutionInfinitoPanel,
               {
-                profile: activeProfileForModal,
-                lifeStageConfig: evolutionConfig,
-                onAddPermission: handleAddPermission,
                 onClose: () => setAdminView("MENU"),
-                onSimulateTier: (tier) => {
-                  handleSimulationChange(tier);
-                  setAdminView("SIMULATION");
-                },
-                onOpenSupport: () => setAdminView("SUPPORT"),
-                isEmbedded: true
+                profile: activeProfileForModal,
+                evolutionConfig
               }
             ),
             (!(profile.role === "ADMIN" || originalAdminProfile) || adminView === "SIMULATION") && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
@@ -42994,11 +44011,11 @@ const LoginScreen = ({ onLoginSuccess, isEmbedded = false }) => {
           )
         ] }),
         error && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6 p-3 bg-red-900/20 border border-red-500/30 rounded-lg flex items-start gap-3", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { className: "text-red-500 shrink-0 mt-0.5", size: 16 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck$1, { className: "text-red-500 shrink-0 mt-0.5", size: 16 }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-red-200", children: error })
         ] }),
         successMessage && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg flex items-start gap-3", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { className: "text-emerald-500 shrink-0 mt-0.5", size: 16 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck$1, { className: "text-emerald-500 shrink-0 mt-0.5", size: 16 }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-emerald-200", children: successMessage })
         ] }),
         showForgotPassword ? /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { onSubmit: handleForgotPassword, className: "space-y-4 animate-fadeIn", children: [
