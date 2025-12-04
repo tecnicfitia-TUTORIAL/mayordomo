@@ -237,129 +237,144 @@ exports.generateAuthenticationOptions = onCall(async (request) => {
  * Call this after frontend signs the challenge
  */
 exports.verifyAuthentication = onCall(async (request) => {
-  const { email, response, rpID, origin } = request.data;
-
-  let userId;
-  let expectedChallenge;
-  let authenticatorDoc;
-  let authenticator;
-
-  if (email) {
-    // --- TARGETED FLOW ---
-    const userRecord = await admin.auth().getUserByEmail(email);
-    userId = userRecord.uid;
-
-    const userDoc = await db.collection('users').doc(userId).get();
-    expectedChallenge = userDoc.data()?.currentChallenge;
-
-    if (!expectedChallenge) {
-      throw new HttpsError('failed-precondition', 'No challenge found');
-    }
-
-    // Find the authenticator used
-    const credentialID = response.id; 
-    const authenticatorsRef = db.collection('users').doc(userId).collection('authenticators');
-    const snapshot = await authenticatorsRef.where('credentialID', '==', credentialID).get();
-
-    if (snapshot.empty) {
-      throw new HttpsError('not-found', 'Authenticator not found');
-    }
-
-    authenticatorDoc = snapshot.docs[0];
-    authenticator = authenticatorDoc.data();
-
-  } else {
-    // --- USERNAMELESS FLOW ---
-    // 1. Retrieve Challenge from Global Collection
-    // We need to extract the challenge from clientDataJSON to look it up
-    const clientDataJSON = Buffer.from(response.response.clientDataJSON, 'base64url').toString('utf-8');
-    const clientData = JSON.parse(clientDataJSON);
-    const challenge = clientData.challenge;
-
-    const challengeRef = db.collection('biometricChallenges').doc(challenge);
-    const challengeSnap = await challengeRef.get();
-
-    if (!challengeSnap.exists) {
-      throw new HttpsError('invalid-argument', 'Challenge expired or invalid');
-    }
-    expectedChallenge = challenge;
-    await challengeRef.delete(); // Consume challenge
-
-    // 2. Find User by Credential ID (Collection Group Query)
-    const credentialID = response.id;
-    const query = db.collectionGroup('authenticators').where('credentialID', '==', credentialID);
-    const querySnap = await query.get();
-
-    if (querySnap.empty) {
-      // Fallback: Try searching by rawId if stored differently or if base64url encoding varies
-      console.warn(`Credential ID ${credentialID} not found. Checking potential encoding mismatches.`);
-      throw new HttpsError('not-found', 'Credencial no reconocida en el sistema.');
-    }
-
-    authenticatorDoc = querySnap.docs[0];
-    authenticator = authenticatorDoc.data();
-    
-    // Parent of authenticator is user (users/{userId}/authenticators/{authId})
-    // Ensure parent exists and is valid
-    if (!authenticatorDoc.ref.parent || !authenticatorDoc.ref.parent.parent) {
-        throw new HttpsError('internal', 'Invalid database structure for authenticator');
-    }
-    userId = authenticatorDoc.ref.parent.parent.id;
-  }
-
-  let verification;
   try {
-    // Robust Buffer conversion for verification
-    let credentialIDBuffer;
-    if (authenticator.credentialID) {
-        credentialIDBuffer = Buffer.from(authenticator.credentialID, 'base64url');
-    }
+    const { email, response, rpID, origin } = request.data;
 
-    let credentialPublicKeyBuffer;
-    if (authenticator.credentialPublicKey) {
-        credentialPublicKeyBuffer = Buffer.from(authenticator.credentialPublicKey, 'base64url');
-    }
-
-    if (!credentialIDBuffer || !credentialPublicKeyBuffer) {
-        throw new Error("Stored authenticator data is incomplete (missing ID or PublicKey)");
-    }
-
-    verification = await verifyAuthenticationResponse({
-      response,
-      expectedChallenge,
-      expectedOrigin: origin,
-      expectedRPID: rpID,
-      authenticator: {
-        credentialID: credentialIDBuffer,
-        credentialPublicKey: credentialPublicKeyBuffer,
-        counter: authenticator.counter,
-      },
-    });
-  } catch (error) {
-    console.error("Auth Verification failed", error);
-    throw new HttpsError('invalid-argument', error.message);
-  }
-
-  const { verified, authenticationInfo } = verification;
-
-  if (verified) {
-    // Update counter
-    await authenticatorDoc.ref.update({
-      counter: authenticationInfo.newCounter
+    console.log("verifyAuthentication Request:", { 
+      hasEmail: !!email, 
+      rpID, 
+      credentialID: response?.id 
     });
 
-    // Clean challenge (only for targeted flow, usernameless already cleaned)
+    let userId;
+    let expectedChallenge;
+    let authenticatorDoc;
+    let authenticator;
+
     if (email) {
-      await db.collection('users').doc(userId).update({
-        currentChallenge: admin.firestore.FieldValue.delete()
-      });
+      // --- TARGETED FLOW ---
+      const userRecord = await admin.auth().getUserByEmail(email);
+      userId = userRecord.uid;
+
+      const userDoc = await db.collection('users').doc(userId).get();
+      expectedChallenge = userDoc.data()?.currentChallenge;
+
+      if (!expectedChallenge) {
+        throw new HttpsError('failed-precondition', 'No challenge found');
+      }
+
+      // Find the authenticator used
+      const credentialID = response.id; 
+      const authenticatorsRef = db.collection('users').doc(userId).collection('authenticators');
+      const snapshot = await authenticatorsRef.where('credentialID', '==', credentialID).get();
+
+      if (snapshot.empty) {
+        throw new HttpsError('not-found', 'Authenticator not found');
+      }
+
+      authenticatorDoc = snapshot.docs[0];
+      authenticator = authenticatorDoc.data();
+
+    } else {
+      // --- USERNAMELESS FLOW ---
+      // 1. Retrieve Challenge from Global Collection
+      // We need to extract the challenge from clientDataJSON to look it up
+      if (!response?.response?.clientDataJSON) {
+         throw new HttpsError('invalid-argument', 'Missing clientDataJSON');
+      }
+
+      const clientDataJSON = Buffer.from(response.response.clientDataJSON, 'base64url').toString('utf-8');
+      const clientData = JSON.parse(clientDataJSON);
+      const challenge = clientData.challenge;
+
+      const challengeRef = db.collection('biometricChallenges').doc(challenge);
+      const challengeSnap = await challengeRef.get();
+
+      if (!challengeSnap.exists) {
+        throw new HttpsError('invalid-argument', 'Challenge expired or invalid');
+      }
+      expectedChallenge = challenge;
+      await challengeRef.delete(); // Consume challenge
+
+      // 2. Find User by Credential ID (Collection Group Query)
+      const credentialID = response.id;
+      const query = db.collectionGroup('authenticators').where('credentialID', '==', credentialID);
+      const querySnap = await query.get();
+
+      if (querySnap.empty) {
+        // Fallback: Try searching by rawId if stored differently or if base64url encoding varies
+        console.warn(`Credential ID ${credentialID} not found. Checking potential encoding mismatches.`);
+        throw new HttpsError('not-found', 'Credencial no reconocida en el sistema.');
+      }
+
+      authenticatorDoc = querySnap.docs[0];
+      authenticator = authenticatorDoc.data();
+      
+      // Parent of authenticator is user (users/{userId}/authenticators/{authId})
+      // Ensure parent exists and is valid
+      if (!authenticatorDoc.ref.parent || !authenticatorDoc.ref.parent.parent) {
+          throw new HttpsError('internal', 'Invalid database structure for authenticator');
+      }
+      userId = authenticatorDoc.ref.parent.parent.id;
     }
 
-    // Generate Firebase Custom Token
-    const customToken = await admin.auth().createCustomToken(userId);
-    
-    return { verified: true, token: customToken };
-  }
+    let verification;
+    try {
+      // Robust Buffer conversion for verification
+      let credentialIDBuffer;
+      if (authenticator.credentialID) {
+          credentialIDBuffer = Buffer.from(authenticator.credentialID, 'base64url');
+      }
 
-  return { verified: false };
+      let credentialPublicKeyBuffer;
+      if (authenticator.credentialPublicKey) {
+          credentialPublicKeyBuffer = Buffer.from(authenticator.credentialPublicKey, 'base64url');
+      }
+
+      if (!credentialIDBuffer || !credentialPublicKeyBuffer) {
+          throw new Error("Stored authenticator data is incomplete (missing ID or PublicKey)");
+      }
+
+      verification = await verifyAuthenticationResponse({
+        response,
+        expectedChallenge,
+        expectedOrigin: origin,
+        expectedRPID: rpID,
+        authenticator: {
+          credentialID: credentialIDBuffer,
+          credentialPublicKey: credentialPublicKeyBuffer,
+          counter: authenticator.counter,
+        },
+      });
+    } catch (error) {
+      console.error("Auth Verification failed", error);
+      throw new HttpsError('invalid-argument', error.message);
+    }
+
+    const { verified, authenticationInfo } = verification;
+
+    if (verified) {
+      // Update counter
+      await authenticatorDoc.ref.update({
+        counter: authenticationInfo.newCounter
+      });
+
+      // Clean challenge (only for targeted flow, usernameless already cleaned)
+      if (email) {
+        await db.collection('users').doc(userId).update({
+          currentChallenge: admin.firestore.FieldValue.delete()
+        });
+      }
+
+      // Generate Firebase Custom Token
+      const customToken = await admin.auth().createCustomToken(userId);
+      
+      return { verified: true, token: customToken };
+    }
+
+    return { verified: false };
+  } catch (error) {
+    console.error("verifyAuthentication Top-Level Error:", error);
+    throw new HttpsError('internal', error.message || "Internal Server Error");
+  }
 });
