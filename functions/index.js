@@ -59,6 +59,13 @@ exports.generateChatResponse = aiService.generateChatResponse;
 exports.inferObligations = aiService.inferObligations;
 exports.analyzeGapAndPropose = aiService.analyzeGapAndPropose;
 
+// Export Auth Services (Biometrics)
+const authService = require('./authService');
+exports.generateRegistrationOptions = authService.generateRegistrationOptions;
+exports.verifyRegistration = authService.verifyRegistration;
+exports.generateAuthenticationOptions = authService.generateAuthenticationOptions;
+exports.verifyAuthentication = authService.verifyAuthentication;
+
 // Secret Keys (Secure Environment)
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
