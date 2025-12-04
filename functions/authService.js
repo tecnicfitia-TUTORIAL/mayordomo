@@ -91,7 +91,7 @@ exports.verifyRegistration = onCall(async (request) => {
     const { verified, registrationInfo } = verification;
 
     if (verified && registrationInfo) {
-      const { credentialPublicKey, credentialID, counter } = registrationInfo;
+      let { credentialPublicKey, credentialID, counter } = registrationInfo;
 
       console.log("Registration Info received:", { 
         hasCredentialID: !!credentialID, 
