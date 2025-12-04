@@ -174,17 +174,34 @@ exports.verifyRegistration = onCall(async (request) => {
 
 /**
  * 3. Generate Authentication Options (Login)
- * Call this when user clicks "Biometric Login" and provides email
+ * Call this when user clicks "Biometric Login".
+ * If email is provided, it targets that user.
+ * If email is NOT provided, it initiates a "Usernameless" (Resident Key) flow.
  */
 exports.generateAuthenticationOptions = onCall(async (request) => {
   const { email, rpID } = request.data;
   
+  // --- USERNAMELESS FLOW (No Email) ---
+  if (!email) {
+    const options = await generateAuthenticationOptions({
+      rpID,
+      userVerification: 'preferred',
+      // No allowCredentials -> Discoverable Credential
+    });
+
+    // Store challenge in a global collection since we don't know the user yet
+    await db.collection('biometricChallenges').doc(options.challenge).set({
+      created: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return options;
+  }
+
+  // --- TARGETED FLOW (With Email) ---
   let userRecord;
   try {
     userRecord = await admin.auth().getUserByEmail(email);
   } catch (e) {
-    // For security, don't reveal if user exists, but for now we need the ID.
-    // In production, use a generic error or dummy options.
     throw new HttpsError('not-found', 'User not found');
   }
 
@@ -222,28 +239,66 @@ exports.generateAuthenticationOptions = onCall(async (request) => {
 exports.verifyAuthentication = onCall(async (request) => {
   const { email, response, rpID, origin } = request.data;
 
-  const userRecord = await admin.auth().getUserByEmail(email);
-  const userId = userRecord.uid;
+  let userId;
+  let expectedChallenge;
+  let authenticatorDoc;
+  let authenticator;
 
-  const userDoc = await db.collection('users').doc(userId).get();
-  const expectedChallenge = userDoc.data()?.currentChallenge;
+  if (email) {
+    // --- TARGETED FLOW ---
+    const userRecord = await admin.auth().getUserByEmail(email);
+    userId = userRecord.uid;
 
-  if (!expectedChallenge) {
-    throw new HttpsError('failed-precondition', 'No challenge found');
+    const userDoc = await db.collection('users').doc(userId).get();
+    expectedChallenge = userDoc.data()?.currentChallenge;
+
+    if (!expectedChallenge) {
+      throw new HttpsError('failed-precondition', 'No challenge found');
+    }
+
+    // Find the authenticator used
+    const credentialID = response.id; 
+    const authenticatorsRef = db.collection('users').doc(userId).collection('authenticators');
+    const snapshot = await authenticatorsRef.where('credentialID', '==', credentialID).get();
+
+    if (snapshot.empty) {
+      throw new HttpsError('not-found', 'Authenticator not found');
+    }
+
+    authenticatorDoc = snapshot.docs[0];
+    authenticator = authenticatorDoc.data();
+
+  } else {
+    // --- USERNAMELESS FLOW ---
+    // 1. Retrieve Challenge from Global Collection
+    // We need to extract the challenge from clientDataJSON to look it up
+    const clientDataJSON = Buffer.from(response.response.clientDataJSON, 'base64url').toString('utf-8');
+    const clientData = JSON.parse(clientDataJSON);
+    const challenge = clientData.challenge;
+
+    const challengeRef = db.collection('biometricChallenges').doc(challenge);
+    const challengeSnap = await challengeRef.get();
+
+    if (!challengeSnap.exists) {
+      throw new HttpsError('invalid-argument', 'Challenge expired or invalid');
+    }
+    expectedChallenge = challenge;
+    await challengeRef.delete(); // Consume challenge
+
+    // 2. Find User by Credential ID (Collection Group Query)
+    const credentialID = response.id;
+    const query = db.collectionGroup('authenticators').where('credentialID', '==', credentialID);
+    const querySnap = await query.get();
+
+    if (querySnap.empty) {
+      throw new HttpsError('not-found', 'Credencial no reconocida en el sistema.');
+    }
+
+    authenticatorDoc = querySnap.docs[0];
+    authenticator = authenticatorDoc.data();
+    // Parent of authenticator is user (users/{userId}/authenticators/{authId})
+    userId = authenticatorDoc.ref.parent.parent.id;
   }
-
-  // Find the authenticator used
-  const credentialID = response.id; // This is base64url string from client
-  
-  const authenticatorsRef = db.collection('users').doc(userId).collection('authenticators');
-  const snapshot = await authenticatorsRef.where('credentialID', '==', credentialID).get();
-
-  if (snapshot.empty) {
-    throw new HttpsError('not-found', 'Authenticator not found');
-  }
-
-  const authenticatorDoc = snapshot.docs[0];
-  const authenticator = authenticatorDoc.data();
 
   let verification;
   try {
@@ -271,10 +326,12 @@ exports.verifyAuthentication = onCall(async (request) => {
       counter: authenticationInfo.newCounter
     });
 
-    // Clean challenge
-    await db.collection('users').doc(userId).update({
-      currentChallenge: admin.firestore.FieldValue.delete()
-    });
+    // Clean challenge (only for targeted flow, usernameless already cleaned)
+    if (email) {
+      await db.collection('users').doc(userId).update({
+        currentChallenge: admin.firestore.FieldValue.delete()
+      });
+    }
 
     // Generate Firebase Custom Token
     const customToken = await admin.auth().createCustomToken(userId);

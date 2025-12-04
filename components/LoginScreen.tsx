@@ -248,16 +248,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, isEmbe
     setIsLoading(true);
     setError(null);
     try {
-      if (!email) {
-        setError("Por favor, introduzca su email para iniciar sesión con biometría.");
-        setIsLoading(false);
-        return;
-      }
+      // Usernameless flow supported: email is optional
+      const emailToUse = email ? email.trim() : '';
 
       // 1. Get Authentication Options
       const generateAuthOptions = httpsCallable(functions, 'generateAuthenticationOptions');
       const optsResponse = await generateAuthOptions({ 
-        email, 
+        email: emailToUse, 
         rpID: window.location.hostname 
       });
       const opts = optsResponse.data as any;
@@ -268,7 +265,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, isEmbe
       // 3. Verify Authentication
       const verifyAuth = httpsCallable(functions, 'verifyAuthentication');
       const verificationResp = await verifyAuth({
-        email,
+        email: emailToUse,
         response: asseResp,
         rpID: window.location.hostname,
         origin: window.location.origin
