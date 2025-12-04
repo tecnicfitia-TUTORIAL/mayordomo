@@ -116,10 +116,15 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
 
       <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
         
-        {/* LEFT: CONSOLE & ACTIONS */}
-        <div className="w-full md:w-1/3 border-r border-stone-800 flex flex-col bg-black/40">
+        {/* LEFT: SYSTEM CORE (MICRO) */}
+        <div className="w-full md:w-1/2 border-r border-stone-800 flex flex-col bg-black/40">
            
            <div className="p-6 border-b border-stone-800">
+              <div className="flex items-center gap-2 mb-4">
+                 <Activity className="text-purple-500" size={20} />
+                 <h2 className="text-lg font-bold text-white">System Core (Micro)</h2>
+              </div>
+
               <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800 mb-6">
                  <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-stone-400 uppercase">Próximo Análisis Automático</span>
@@ -140,11 +145,65 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
                 )}
                 {status === 'ANALYZING' ? 'PROCESANDO...' : 'EJECUTAR ANÁLISIS MANUAL'}
               </button>
+           </div>
+
+           {/* SYSTEM PROPOSALS LIST */}
+           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-stone-950/30">
+               <h3 className="text-xs font-bold text-stone-500 uppercase mb-4 flex items-center gap-2">
+                  <Server size={12} /> Mejoras de Sistema
+               </h3>
+               
+               {proposals.length === 0 ? (
+                  <div className="text-center py-8 text-stone-600 text-sm border border-dashed border-stone-800 rounded-lg">
+                     Sin propuestas pendientes.
+                  </div>
+               ) : (
+                  <div className="space-y-3">
+                     {proposals.map((prop) => (
+                        <div key={prop.id} className={`bg-stone-900 border border-stone-800 rounded-lg p-4 transition-all ${prop.status === 'APPLIED' ? 'opacity-50 grayscale' : 'hover:border-purple-500/30'}`}>
+                           <div className="flex justify-between items-start mb-2">
+                              <h4 className="text-sm font-bold text-white">{prop.title}</h4>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                    prop.impact === 'HIGH' ? 'bg-red-900/30 text-red-400' :
+                                    prop.impact === 'MEDIUM' ? 'bg-amber-900/30 text-amber-400' :
+                                    'bg-blue-900/30 text-blue-400'
+                                }`}>{prop.impact}</span>
+                           </div>
+                           <p className="text-xs text-stone-400 mb-3">{prop.description}</p>
+                           {prop.status === 'PENDING' && (
+                               <div className="flex gap-2">
+                                  <button onClick={() => handleApply(prop.id)} className="flex-1 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-[10px] font-bold">APLICAR</button>
+                                  <button onClick={() => handleDismiss(prop.id)} className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-400 rounded text-[10px] font-bold">X</button>
+                               </div>
+                           )}
+                        </div>
+                     ))}
+                  </div>
+               )}
+           </div>
+        </div>
+
+        {/* RIGHT: EVOLUTION CORE (MACRO) */}
+        <div className="w-full md:w-1/2 flex flex-col bg-stone-950">
+           
+           <div className="p-6 border-b border-stone-800 bg-stone-950">
+              <div className="flex items-center gap-2 mb-4">
+                 <Globe className="text-blue-500" size={20} />
+                 <h2 className="text-lg font-bold text-white">Evolution Core (Macro)</h2>
+              </div>
+
+              <div className="bg-blue-950/10 rounded-xl p-4 border border-blue-900/30 mb-6">
+                 <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-blue-400 uppercase">Estado de Vigilancia</span>
+                    <ShieldAlert size={14} className="text-blue-500" />
+                 </div>
+                 <div className="text-sm text-stone-300">Monitoreando 15 fuentes globales...</div>
+              </div>
 
               <button 
                 onClick={runPermissionScan}
                 disabled={isScanningMacro}
-                className="w-full mt-3 py-4 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-500/50 text-blue-300 font-bold rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="w-full py-4 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-500/50 text-blue-300 font-bold rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 {isScanningMacro ? (
                     <Globe className="animate-spin" />
@@ -155,120 +214,56 @@ export const EvolutionInfinitoPanel: React.FC<Props> = ({ onClose, profile, evol
               </button>
            </div>
 
-           {/* TERMINAL OUTPUT */}
-           <div className="flex-1 p-6 font-mono text-xs overflow-y-auto custom-scrollbar">
-              <div className="flex items-center gap-2 text-stone-500 mb-4">
-                 <Terminal size={14} />
-                 <span>SYSTEM LOGS</span>
-              </div>
-              <div className="space-y-2 text-stone-400">
-                 <div className="opacity-50">&gt; System initialized.</div>
-                 <div className="opacity-50">&gt; Monitoring active.</div>
-                 {logs.map((log, i) => (
-                    <div key={i} className="text-purple-300 animate-slideInLeft">{log}</div>
-                 ))}
-                 {status === 'ANALYZING' && (
-                    <div className="animate-pulse">_</div>
-                 )}
-              </div>
+           {/* MACRO RESULTS & LOGS */}
+           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+               
+               {/* PERMISSION PROPOSAL CARD */}
+               {permissionProposal && (
+                 <div className="mb-6 bg-blue-950/20 border border-blue-500/30 rounded-xl p-6 animate-slideInUp">
+                    <div className="flex items-center gap-3 mb-4">
+                        <Globe className="text-blue-400" size={24} />
+                        <div>
+                            <h3 className="text-sm font-bold text-white">Alerta: {macroEvent?.source}</h3>
+                            <p className="text-[10px] text-blue-300">{macroEvent?.title}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-black/40 p-4 rounded-lg border border-blue-500/20 mb-4">
+                        <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-2">
+                            <ShieldAlert size={14} className="text-amber-500" />
+                            Propuesta de Evolución
+                        </h4>
+                        <p className="text-stone-300 text-xs mb-3 leading-relaxed">{permissionProposal.reasoning}</p>
+                        <div className="flex items-center justify-between bg-stone-900 p-2 rounded border border-stone-800">
+                            <span className="text-[10px] font-mono text-stone-500">Permiso Sugerido:</span>
+                            <span className="text-xs font-bold text-white">{permissionProposal?.proposedPermission?.label || 'N/A'}</span>
+                        </div>
+                    </div>
+
+                    <button className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors">
+                        APROBAR Y ACTIVAR PERMISO
+                    </button>
+                 </div>
+               )}
+
+               {/* SHARED TERMINAL LOGS */}
+               <div className="font-mono text-xs">
+                  <div className="flex items-center gap-2 text-stone-500 mb-4">
+                     <Terminal size={14} />
+                     <span>LIVE LOGS</span>
+                  </div>
+                  <div className="space-y-2 text-stone-400">
+                     <div className="opacity-50">&gt; System initialized.</div>
+                     {logs.map((log, i) => (
+                        <div key={i} className="text-stone-300 animate-slideInLeft break-words">{log}</div>
+                     ))}
+                     {(status === 'ANALYZING' || isScanningMacro) && (
+                        <div className="animate-pulse">_</div>
+                     )}
+                  </div>
+               </div>
+
            </div>
-        </div>
-
-        {/* RIGHT: PROPOSALS */}
-        <div className="flex-1 bg-stone-950 p-8 overflow-y-auto custom-scrollbar">
-           
-           {/* PERMISSION PROPOSAL CARD */}
-           {permissionProposal && (
-             <div className="mb-8 bg-blue-950/20 border border-blue-500/30 rounded-xl p-6 animate-slideInUp">
-                <div className="flex items-center gap-3 mb-4">
-                    <Globe className="text-blue-400" size={24} />
-                    <div>
-                        <h3 className="text-lg font-bold text-white">Alerta de Contexto: {macroEvent?.source}</h3>
-                        <p className="text-xs text-blue-300">Detectado: {macroEvent?.title}</p>
-                    </div>
-                </div>
-                
-                <div className="bg-black/40 p-4 rounded-lg border border-blue-500/20 mb-4">
-                    <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                        <ShieldAlert size={16} className="text-amber-500" />
-                        Propuesta de Evolución
-                    </h4>
-                    <p className="text-stone-300 text-sm mb-3">{permissionProposal.reasoning}</p>
-                    <div className="flex items-center justify-between bg-stone-900 p-3 rounded border border-stone-800">
-                        <span className="text-xs font-mono text-stone-500">Permiso Sugerido:</span>
-                        <span className="text-sm font-bold text-white">{permissionProposal.proposedPermission.label}</span>
-                    </div>
-                </div>
-
-                <button className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors">
-                    APROBAR Y ACTIVAR PERMISO
-                </button>
-             </div>
-           )}
-
-           <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <Server size={20} className="text-stone-500" />
-              Propuestas de Mejora
-              <span className="text-xs font-normal text-stone-500 ml-2 bg-stone-900 px-2 py-1 rounded-full">{proposals.length}</span>
-           </h2>
-
-           {proposals.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-stone-600 border-2 border-dashed border-stone-800 rounded-2xl">
-                 <Activity size={48} className="mb-4 opacity-20" />
-                 <p>No hay propuestas pendientes.</p>
-                 <p className="text-sm">Ejecute un análisis para detectar mejoras.</p>
-              </div>
-           ) : (
-              <div className="grid gap-4">
-                 {proposals.map((prop) => (
-                    <div key={prop.id} className={`bg-stone-900 border border-stone-800 rounded-xl p-6 transition-all ${prop.status === 'APPLIED' ? 'opacity-50 grayscale' : 'hover:border-purple-500/30'}`}>
-                       <div className="flex justify-between items-start mb-4">
-                          <div>
-                             <div className="flex items-center gap-2 mb-2">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                    prop.impact === 'HIGH' ? 'bg-red-900/30 text-red-400 border border-red-500/20' :
-                                    prop.impact === 'MEDIUM' ? 'bg-amber-900/30 text-amber-400 border border-amber-500/20' :
-                                    'bg-blue-900/30 text-blue-400 border border-blue-500/20'
-                                }`}>
-                                    Impacto {prop.impact}
-                                </span>
-                                <span className="text-[10px] font-mono text-stone-500 bg-stone-950 px-2 py-0.5 rounded border border-stone-800">
-                                    {prop.type}
-                                </span>
-                             </div>
-                             <h3 className="text-lg font-bold text-white">{prop.title}</h3>
-                          </div>
-                          {prop.status === 'APPLIED' && (
-                             <div className="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-                                <Check size={14} /> APLICADO
-                             </div>
-                          )}
-                       </div>
-                       
-                       <p className="text-stone-400 text-sm mb-6 leading-relaxed">
-                          {prop.description}
-                       </p>
-
-                       {prop.status === 'PENDING' && (
-                           <div className="flex gap-3">
-                              <button 
-                                onClick={() => handleApply(prop.id)}
-                                className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors"
-                              >
-                                <Check size={14} /> APLICAR MEJORA
-                              </button>
-                              <button 
-                                onClick={() => handleDismiss(prop.id)}
-                                className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white rounded-lg text-xs font-bold transition-colors"
-                              >
-                                DESCARTAR
-                              </button>
-                           </div>
-                       )}
-                    </div>
-                 ))}
-              </div>
-           )}
         </div>
 
       </div>
