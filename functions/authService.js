@@ -32,7 +32,7 @@ exports.generateRegistrationOptions = onCall(async (request) => {
   const options = await generateRegistrationOptions({
     rpName,
     rpID,
-    userID: userId,
+    userID: new Uint8Array(Buffer.from(userId)),
     userName: request.auth.token.email || 'User',
     attestationType: 'none',
     excludeCredentials: userAuthenticators.map(auth => ({
