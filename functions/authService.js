@@ -99,8 +99,19 @@ exports.verifyRegistration = onCall(async (request) => {
         hasPublicKey: !!credentialPublicKey 
       });
 
+      // Fallback: If credentialID is missing in registrationInfo, use the one from the response (client-side ID)
+      if (!credentialID && response.id) {
+        console.warn("credentialID missing in registrationInfo, using response.id fallback");
+        credentialID = response.id;
+      }
+
       if (!credentialID) {
+        console.error("Registration Info keys:", Object.keys(registrationInfo));
         throw new Error("credentialID is missing in registrationInfo");
+      }
+
+      if (!credentialPublicKey) {
+        throw new Error("credentialPublicKey is missing in registrationInfo");
       }
 
       // Robust Buffer conversion
