@@ -314,7 +314,17 @@ export interface UserProfile {
   themePreference?: ThemePreference;
   themeConfig?: AppThemeConfig; // NEW: Visual Atmosphere settings
   dashboardConfig?: DashboardConfig;
-  role?: 'USER' | 'ADMIN'; // Added role field
+  
+  // Security
+  mfaEnabled?: boolean;
+}
+
+export interface VaultItem {
+  id: string;
+  type: 'BANK_TOKEN' | 'DIGITAL_CERT' | 'DEHU_CREDS' | 'HEALTH_TOKEN';
+  encryptedData: string;
+  iv: string; // Initialization Vector
+  updatedAt: Date;
 }
 
 export interface Attachment {

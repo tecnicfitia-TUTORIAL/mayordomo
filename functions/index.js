@@ -8,6 +8,7 @@ const stripe = require('stripe');
 const bankService = require('./bankService');
 const emailService = require('./emailService');
 const aiService = require('./aiService');
+const mfaService = require('./mfaService');
 const https = require('https');
 
 // Inicializar solo si no hay ninguna app ya corriendo
@@ -54,12 +55,18 @@ exports.exchangePublicToken = bankService.exchangePublicToken;
 exports.getBankData = bankService.getBankData;
 exports.disconnectBank = bankService.disconnectBank;
 exports.getGmailAuthUrl = emailService.getGmailAuthUrl;
+exports.validateGmailConnection = emailService.validateGmailConnection;
 exports.scanGmail = emailService.scanGmail;
 
 // Export AI Services
 exports.generateChatResponse = aiService.generateChatResponse;
 exports.inferObligations = aiService.inferObligations;
 exports.analyzeGapAndPropose = aiService.analyzeGapAndPropose;
+
+// Export MFA Services
+exports.generateMfaSetup = mfaService.generateMfaSetup;
+exports.verifyMfaSetup = mfaService.verifyMfaSetup;
+exports.validateMfa = mfaService.validateMfa;
 
 // Export Auth Services (Biometrics)
 const authService = require('./authService');

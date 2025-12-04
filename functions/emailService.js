@@ -57,6 +57,43 @@ exports.getGmailAuthUrl = onRequest({ cors: true, secrets: [gmailClientId, gmail
 });
 
 /**
+ * 1.5 VALIDATE GMAIL CONNECTION
+ * Exchanges code for token and saves it without scanning.
+ */
+exports.validateGmailConnection = onRequest({ cors: true, secrets: [gmailClientId, gmailClientSecret], maxInstances: 10 }, async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    const { code, userId, redirectUri } = req.body;
+
+    if (!userId || !code) {
+        return res.status(400).json({ error: 'Missing userId or code' });
+    }
+
+    try {
+        const oauth2Client = getOAuthClient(redirectUri || 'http://localhost:5173');
+        const { tokens } = await oauth2Client.getToken(code);
+        
+        // Store tokens securely
+        await admin.firestore().collection('users').doc(userId).collection('tokens').doc('gmail').set({
+            ...tokens,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            status: 'ACTIVE'
+        });
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('Gmail Validation Error:', error.message);
+        res.status(500).json({ error: "Failed to validate Gmail connection" });
+    }
+});
+
+/**
  * 2. SCAN GMAIL
  * Exchanges code for token and scans for invoices.
  * SECURE: Validates inputs, sanitizes outputs, handles tokens securely.
