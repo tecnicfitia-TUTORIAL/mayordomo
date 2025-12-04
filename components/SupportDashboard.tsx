@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { SupportUserStatus, SubscriptionTier } from '../types';
-import { ArrowLeft, LifeBuoy, AlertTriangle, CheckCircle2, XCircle, MoreVertical, RefreshCw, PauseCircle, ShieldAlert, History, Lock, PenTool } from 'lucide-react';
+import { UserService } from '../services/userService';
+import { ArrowLeft, LifeBuoy, AlertTriangle, CheckCircle2, XCircle, MoreVertical, RefreshCw, PauseCircle, ShieldAlert, History, Lock, PenTool, Loader2 } from 'lucide-react';
 import { RegulatoryIntelligenceFeed } from './RegulatoryIntelligenceFeed';
 import { AuditLogModal, ForceLogoutModal, OverrideSubscriptionModal } from './AdminModals';
 
@@ -9,17 +10,9 @@ interface Props {
   onClose: () => void;
 }
 
-// MOCK DATA GENERATOR FOR UI DEV
-const MOCK_USERS: SupportUserStatus[] = [
-    { uid: 'u_101', email: 'ana.garcia@example.com', tier: SubscriptionTier.VIP, systemHealth: 'OPTIMAL', fraudRisk: 'LOW', aiTokensUsed: 45, lastActive: new Date() },
-    { uid: 'u_102', email: 'carlos.m@tech.co', tier: SubscriptionTier.PRO, systemHealth: 'DEGRADED', fraudRisk: 'LOW', aiTokensUsed: 88, lastActive: new Date(Date.now() - 3600000) },
-    { uid: 'u_103', email: 'guest_user_99@temp.net', tier: SubscriptionTier.FREE, systemHealth: 'OPTIMAL', fraudRisk: 'HIGH', aiTokensUsed: 10, lastActive: new Date(Date.now() - 86400000) },
-    { uid: 'u_104', email: 'admin.support@confort.app', tier: SubscriptionTier.VIP, systemHealth: 'OPTIMAL', fraudRisk: 'LOW', aiTokensUsed: 12, lastActive: new Date() },
-    { uid: 'u_105', email: 'lucia.perez@design.io', tier: SubscriptionTier.BASIC, systemHealth: 'CRITICAL', fraudRisk: 'MEDIUM', aiTokensUsed: 95, lastActive: new Date(Date.now() - 7200000) },
-];
-
 export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
-  const [users, setUsers] = useState<SupportUserStatus[]>(MOCK_USERS);
+  const [users, setUsers] = useState<SupportUserStatus[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('');
   
   // State for Dropdown Menu
@@ -31,6 +24,18 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
       type: 'AUDIT' | 'LOGOUT' | 'OVERRIDE';
       user: SupportUserStatus;
   } | null>(null);
+
+  // Load Users
+  const loadUsers = async () => {
+      setIsLoading(true);
+      const realUsers = await UserService.getAllUsers();
+      setUsers(realUsers);
+      setIsLoading(false);
+  };
+
+  useEffect(() => {
+      loadUsers();
+  }, []);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -77,11 +82,19 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
       setModalState(null);
   };
 
-  const confirmOverride = (data: { tier: SubscriptionTier, justification: string }) => {
-      console.log(`[ADMIN] Override Tier for ${modalState?.user.email} to ${data.tier}. Reason: ${data.justification}`);
-      // TODO: Call Backend API
-      // Optimistic Update
-      setUsers(prev => prev.map(u => u.uid === modalState?.user.uid ? { ...u, tier: data.tier } : u));
+  const confirmOverride = async (data: { tier: SubscriptionTier, justification: string }) => {
+      if (!modalState?.user) return;
+
+      console.log(`[ADMIN] Override Tier for ${modalState.user.email} to ${data.tier}. Reason: ${data.justification}`);
+      
+      try {
+        await UserService.updateUserTier(modalState.user.uid, data.tier);
+        // Optimistic Update
+        setUsers(prev => prev.map(u => u.uid === modalState?.user.uid ? { ...u, tier: data.tier } : u));
+      } catch (e) {
+        console.error(e);
+        alert("Error al actualizar el nivel en la base de datos.");
+      }
       setModalState(null);
   };
 
@@ -125,6 +138,14 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
                      <ShieldAlert size={14} className="text-red-500" />
                      <span className="text-[10px] text-red-400 font-bold uppercase">Datos Privados Ocultos</span>
                 </div>
+                <button 
+                    onClick={loadUsers}
+                    disabled={isLoading}
+                    className="p-2 bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white rounded transition-colors disabled:opacity-50"
+                    title="Recargar Usuarios"
+                >
+                    <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+                </button>
                 <div className="w-64 bg-stone-900 border border-stone-700 rounded-sm px-3 py-2 flex items-center gap-2">
                      <span className="text-stone-500 text-xs">🔍</span>
                      <input 

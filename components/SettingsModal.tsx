@@ -304,6 +304,22 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
                         )}
                       </div>
 
+                      {/* Cl@ve Option */}
+                      <div className="mb-6 p-3 bg-stone-950/30 rounded border border-stone-800/50 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-1.5 bg-stone-800 rounded text-stone-400">
+                                    <Smartphone size={14} />
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-stone-300">Cl@ve Móvil / PIN</div>
+                                    <div className="text-[10px] text-stone-500">Usar app oficial para autorizaciones puntuales</div>
+                                </div>
+                            </div>
+                            <button className="text-[10px] bg-stone-800 hover:bg-stone-700 text-stone-300 px-2 py-1 rounded border border-stone-700 transition-colors">
+                                Vincular App
+                            </button>
+                      </div>
+
                       {/* CONNECTED SERVICES */}
                       <div className="space-y-2">
                         <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Servicios Vinculados</h4>
