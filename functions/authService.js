@@ -180,14 +180,18 @@ exports.verifyRegistration = onCall(async (request) => {
  */
 exports.generateAuthenticationOptions = onCall(async (request) => {
   const { email, rpID } = request.data;
+  console.log("generateAuthenticationOptions called:", { email, rpID });
   
   // --- USERNAMELESS FLOW (No Email) ---
   if (!email) {
+    // 1. Generate Options with NO allowCredentials (discoverable credentials)
     const options = await generateAuthenticationOptions({
       rpID,
       userVerification: 'preferred',
       // No allowCredentials -> Discoverable Credential
     });
+
+    console.log("Generated Usernameless Options:", JSON.stringify(options));
 
     // Store challenge in a global collection since we don't know the user yet
     await db.collection('biometricChallenges').doc(options.challenge).set({
@@ -224,6 +228,8 @@ exports.generateAuthenticationOptions = onCall(async (request) => {
     userVerification: 'preferred',
   });
 
+  console.log("Generated Targeted Options:", JSON.stringify(options));
+
   // Save challenge
   await db.collection('users').doc(userId).set({
     currentChallenge: options.challenge
@@ -238,7 +244,13 @@ exports.generateAuthenticationOptions = onCall(async (request) => {
  */
 exports.verifyAuthentication = onCall(async (request) => {
   try {
+    console.log("verifyAuthentication called with data:", JSON.stringify(request.data));
     const { email, response, rpID, origin } = request.data;
+
+    if (!response || !response.response) {
+      console.error("Invalid response structure received:", response);
+      throw new HttpsError('invalid-argument', 'Invalid response structure');
+    }
 
     console.log("verifyAuthentication Request:", { 
       hasEmail: !!email, 
