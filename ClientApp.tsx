@@ -13,7 +13,7 @@ import {
   Activity, LayoutDashboard, ShieldCheck, Home, Plane, Heart, Users, 
   Settings, LogOut, MessageSquare, RefreshCw, CloudOff, Check, Edit3, 
   Shield, CreditCard, Palette, HelpCircle, LifeBuoy, ChevronRight, 
-  FileText, Undo2, Eye, X 
+  FileText, Undo2, Eye, X, Lock
 } from 'lucide-react';
 import { PillarCard } from './components/PillarCard';
 import { PillarDetailView } from './components/PillarDetailView';

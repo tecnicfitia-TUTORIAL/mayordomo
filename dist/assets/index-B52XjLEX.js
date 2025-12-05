@@ -34580,7 +34580,7 @@ const __iconNode$H = [
   ["rect", { width: "18", height: "11", x: "3", y: "11", rx: "2", ry: "2", key: "1w4ew1" }],
   ["path", { d: "M7 11V7a5 5 0 0 1 10 0v4", key: "fwvmzm" }]
 ];
-const Lock$1 = createLucideIcon("lock", __iconNode$H);
+const Lock = createLucideIcon("lock", __iconNode$H);
 /**
  * @license lucide-react v0.554.0 - ISC
  *
@@ -35423,7 +35423,7 @@ const Onboarding = ({ onComplete, onOpenAdmin }) => {
         {
           onClick: () => togglePermission(perm.id, isLocked),
           className: `transition-colors ${isLocked ? "cursor-not-allowed text-stone-600" : "text-stone-400 hover:text-white"}`,
-          children: isLocked ? /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 12 }) : grantedPermissions.has(perm.id) ? /* @__PURE__ */ jsxRuntimeExports.jsx(ToggleRight, { size: 24, className: "text-ai-500" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ToggleLeft, { size: 24 })
+          children: isLocked ? /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 12 }) : grantedPermissions.has(perm.id) ? /* @__PURE__ */ jsxRuntimeExports.jsx(ToggleRight, { size: 24, className: "text-ai-500" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ToggleLeft, { size: 24 })
         }
       )
     ] }, perm.id);
@@ -38412,7 +38412,7 @@ const MfaModal = ({ isOpen, onClose, onSuccess, mode, actionLabel }) => {
       ] }),
       mode === "VERIFY" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6 text-center", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-amber-900/20 border border-amber-500/30 p-4 rounded-lg mb-6", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { className: "mx-auto text-amber-500 mb-2", size: 24 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "mx-auto text-amber-500 mb-2", size: 24 }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-amber-200 font-bold", children: actionLabel || "Esta acción requiere autorización" })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-stone-400", children: "Introduzca el código de 6 dígitos de su aplicación." })
@@ -39043,7 +39043,7 @@ const SettingsModal = ({ profile, onUpdate, onClose, isDemoMode = false, initial
                     onClick: () => setIsMfaModalOpen(true),
                     className: "flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg transition-colors",
                     children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { className: "w-4 h-4" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "w-4 h-4" }),
                       "Activar Seguridad Alta"
                     ]
                   }
@@ -40969,7 +40969,7 @@ const UniversalDetailModal = ({ feature, currentTier, mockData, userId, onClose,
           ] })
         ),
         !isExecutionMode && !isBankFeature && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 flex items-center justify-center gap-2 text-[10px] text-stone-500", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 10 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 10 }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Modo Ejecución requiere Nivel Mayordomo" })
         ] })
       ] })
@@ -41219,7 +41219,7 @@ const PillarDetailView = ({ pillarId, status, userProfile, onOpenPermissions, is
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-end z-10", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `flex items-center gap-2 px-4 py-2 rounded-full border ${status.isActive ? status.isDegraded ? "bg-amber-900/20 border-amber-500/50 text-amber-500" : "bg-emerald-900/20 border-emerald-500/50 text-emerald-500" : "bg-red-900/10 border-red-800 text-red-700"}`, children: [
-          status.isActive ? status.isDegraded ? /* @__PURE__ */ jsxRuntimeExports.jsx(TriangleAlert, { size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 16 }),
+          status.isActive ? status.isDegraded ? /* @__PURE__ */ jsxRuntimeExports.jsx(TriangleAlert, { size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 16 }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold uppercase tracking-widest", children: status.isActive ? status.isDegraded ? "Acción Requerida" : "Sistema Seguro" : "Acceso Restringido" })
         ] }),
         status.isActive && status.isDegraded && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] text-amber-500/80 mt-2 font-mono", children: "Faltan permisos técnicos" })
@@ -41250,7 +41250,7 @@ const PillarDetailView = ({ pillarId, status, userProfile, onOpenPermissions, is
           className: `relative rounded-sm border transition-all duration-300 group overflow-hidden cursor-pointer ${isVisible ? "bg-stone-900/40 border-ai-500/20 hover:border-ai-500/50 hover:bg-stone-900/60 active:scale-[0.98]" : "bg-stone-950 border-stone-800 hover:border-stone-700"}`,
           children: [
             !hasTierAccess && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-20 backdrop-blur-sm bg-black/40 flex flex-col items-center justify-center text-center p-4 transition-opacity duration-300 group-hover:bg-black/50", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { className: "text-stone-600 mb-2 group-hover:text-stone-400 transition-colors", size: 24 }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "text-stone-600 mb-2 group-hover:text-stone-400 transition-colors", size: 24 }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-bold text-stone-500 uppercase tracking-widest", children: "Disponible en plan" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-serif font-bold text-stone-400 mt-1", children: requiredTierName })
             ] }),
@@ -41659,7 +41659,7 @@ Esta es una función ejecutiva. Mejora tu plan a ${perm.minTier || "Superior"} p
       /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "bg-stone-950 border border-stone-800 rounded-lg p-6 relative overflow-hidden", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-0 right-0 p-4 opacity-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Database, { size: 64, className: "text-stone-500" }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mb-6", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 bg-stone-900 rounded-full text-stone-400 border border-stone-700", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 18 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 bg-stone-900 rounded-full text-stone-400 border border-stone-700", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 18 }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-bold text-white uppercase tracking-widest", children: "Permisos Generales (Núcleo)" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-stone-500 mt-1", children: "Protocolos base aceptados en el registro. Inmutables para garantizar la seguridad." })
@@ -41729,7 +41729,7 @@ Esta es una función ejecutiva. Mejora tu plan a ${perm.minTier || "Superior"} p
                                         `,
                   children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `p-1.5 rounded-full ${isGranted ? "bg-ai-900/20 text-ai-500" : "bg-stone-800 text-stone-600"}`, children: isLockedByTier ? /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 12 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Zap, { size: 12 }) }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `p-1.5 rounded-full ${isGranted ? "bg-ai-900/20 text-ai-500" : "bg-stone-800 text-stone-600"}`, children: isLockedByTier ? /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 12 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Zap, { size: 12 }) }),
                       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
                         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `text-xs font-bold transition-colors flex items-center gap-2 ${isGranted ? "text-stone-200" : "text-stone-500 group-hover:text-stone-400"}`, children: [
                           perm.label,
@@ -41860,7 +41860,7 @@ const SmartDashboard = ({ items, onOpenPermissions }) => {
                 '"'
               ] }),
               item.requiredPermission && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-3 flex items-center gap-2 text-[10px] text-ai-400 uppercase tracking-wider font-bold animate-pulse", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 10 }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 10 }),
                 " Requiere Permiso: ",
                 item.requiredPermission
               ] })
@@ -41877,18 +41877,18 @@ const SmartDashboard = ({ items, onOpenPermissions }) => {
         className: `col-span-1 md:col-span-2 p-6 rounded-xl border relative overflow-hidden group transition-all duration-300 flex flex-col justify-between ${item.isLocked ? "bg-stone-950 border-stone-800 opacity-70 hover:opacity-100 cursor-pointer" : "bg-stone-900/40 backdrop-blur-sm border-ai-500/20 hover:border-ai-500/50 hover:bg-stone-900/60 shadow-lg"} ${item.requiredPermission ? "cursor-pointer" : ""}`,
         children: [
           item.isLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px] transition-opacity group-hover:bg-black/50", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-stone-900/90 rounded-full border border-stone-700 mb-2 shadow-xl", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { className: "text-stone-500", size: 20 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-stone-900/90 rounded-full border border-stone-700 mb-2 shadow-xl", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "text-stone-500", size: 20 }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-bold text-stone-400 uppercase tracking-widest", children: item.requiredPermission ? "Permiso Requerido" : "Función Premium" })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-between items-start mb-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `text-[9px] font-bold px-2 py-1 rounded-sm uppercase tracking-widest border flex items-center gap-2 ${item.isLocked ? "border-stone-700 text-stone-500 bg-stone-900" : "border-ai-500/30 text-ai-500 bg-ai-500/10 shadow-[0_0_10px_rgba(212,175,55,0.1)]"}`, children: [
-              item.isLocked ? /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 10 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Zap, { size: 10 }),
+              item.isLocked ? /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 10 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Zap, { size: 10 }),
               item.isLocked ? "Restringido" : "Acción Requerida"
             ] }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-serif font-bold text-stone-200 mb-2 leading-tight group-hover:text-white transition-colors", children: item.title }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-stone-400 leading-relaxed mb-6 font-serif", children: item.description }),
             item.requiredPermission && !item.isLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] text-ai-500/70 uppercase tracking-widest mb-2 flex items-center gap-1", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 10 }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 10 }),
               " Permiso vinculado: ",
               item.requiredPermission
             ] })
@@ -42120,7 +42120,7 @@ const ForceLogoutModal = ({ user, onClose, onConfirm }) => {
           disabled: !reason.trim(),
           className: "flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded font-bold text-xs uppercase flex items-center justify-center gap-2",
           children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 14 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 14 }),
             " Desconectar"
           ]
         }
@@ -42379,7 +42379,7 @@ const SupportDashboard = ({ onClose }) => {
                       onClick: () => handleAction("LOGOUT", user),
                       className: "flex items-center gap-3 p-3 hover:bg-red-900/20 text-stone-300 hover:text-red-400 text-left text-xs border-b border-stone-800",
                       children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 14, className: "text-red-500" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 14, className: "text-red-500" }),
                         " Forzar Cierre Sesión"
                       ]
                     }
@@ -42471,7 +42471,7 @@ const DemoModal = ({ onClose }) => {
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-8 text-center", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-16 h-16 bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-[#D4AF37]/30", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { size: 32, className: "text-[#D4AF37]" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-16 h-16 bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-[#D4AF37]/30", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 32, className: "text-[#D4AF37]" }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-2xl font-serif font-bold text-white mb-2", children: "Modo Demostración" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-stone-400 text-sm mb-8 leading-relaxed", children: "Está explorando una simulación con datos ficticios. Para guardar cambios, conectar sus bancos reales y activar el Mayordomo, necesita crear su Identidad Digital." }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
@@ -44242,7 +44242,7 @@ const LoginScreen = ({ onLoginSuccess, isEmbedded = false }) => {
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs font-bold text-stone-500 uppercase tracking-wider ml-1", children: "Contraseña" }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Lock$1, { className: "absolute left-3 top-1/2 -translate-y-1/2 text-stone-500", size: 18 }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "absolute left-3 top-1/2 -translate-y-1/2 text-stone-500", size: 18 }),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "input",
                 {
