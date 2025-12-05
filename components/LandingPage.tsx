@@ -75,8 +75,12 @@ export const LandingPage: React.FC = () => {
                   </p>
 
                   <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 animate-slideInUp delay-200">
-                      <button className="px-8 py-4 bg-transparent border border-stone-700 text-stone-300 rounded-lg font-bold text-sm uppercase tracking-widest hover:border-white hover:text-white transition-colors">
-                        Ver Demo Interactiva
+                      <button 
+                        onClick={() => navigate('/app?mode=demo')}
+                        className="px-8 py-4 bg-transparent border border-stone-700 text-stone-300 rounded-lg font-bold text-sm uppercase tracking-widest hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors flex items-center gap-2 group"
+                      >
+                        <Zap size={16} className="group-hover:text-[#D4AF37] transition-colors" />
+                        Ver Demo En Vivo
                       </button>
                   </div>
               </div>

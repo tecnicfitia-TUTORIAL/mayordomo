@@ -23,6 +23,7 @@ import { SmartDashboard } from './components/SmartDashboard';
 import { SupportDashboard } from './components/SupportDashboard';
 import { SupportModal } from './components/SupportModal';
 import { LegalModal } from './components/LegalModal';
+import { DemoModal } from './components/DemoModal';
 import { Toast } from './components/Toast'; 
 import { Logo } from './components/Logo';
 import { MayordomoCompanion } from './components/MayordomoCompanion';
@@ -106,10 +107,16 @@ const TABS = [
   { id: PillarId.NUCLEO, label: 'Familia', icon: Users }
 ];
 
-const ClientApp: React.FC = () => {
+interface Props {
+  isDemoMode?: boolean;
+}
+
+const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false); // For Demo Restrictions
+
   const [showAppearanceModal, setShowAppearanceModal] = useState(false);
   const [showPermissionsTree, setShowPermissionsTree] = useState(false);
   const [showSupportDashboard, setShowSupportDashboard] = useState(false);
@@ -230,6 +237,26 @@ const ClientApp: React.FC = () => {
   // 1. LOAD PROFILE AND SYNC SUBSCRIPTION
   useEffect(() => {
     const initializeSession = async () => {
+        if (isDemoMode) {
+            const demoProfile: UserProfile = {
+                uid: 'demo_user',
+                email: 'demo@mayordomo.app',
+                name: 'Usuario Demo',
+                role: 'USER',
+                age: 35,
+                gender: 'MALE',
+                occupation: 'CEO',
+                archetype: UserArchetype.CONSTRUCTOR,
+                subscriptionTier: SubscriptionTier.VIP,
+                grantedPermissions: TECHNICAL_PERMISSIONS.map(p => p.id),
+                setupCompleted: true,
+                mfaEnabled: true,
+                dashboardConfig: { pillarOrder: DEFAULT_PILLAR_ORDER, hiddenPillars: [] }
+            };
+            setProfile(demoProfile);
+            return;
+        }
+
         const saved = localStorage.getItem(PROFILE_KEY);
         
         if (saved) {
@@ -611,6 +638,11 @@ const ClientApp: React.FC = () => {
         style={customBackgroundStyle}
     >
       
+      {/* DEMO MODE INDICATOR */}
+      {isDemoMode && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-[#D4AF37] z-[100] shadow-[0_0_20px_#D4AF37]" />
+      )}
+
       {criticalAlert && (
           <Toast message={criticalAlert.body} type="ERROR" onClose={() => setCriticalAlert(null)} />
       )}
@@ -652,10 +684,23 @@ const ClientApp: React.FC = () => {
 
       {showSubscriptionModal && profile && <SettingsModal 
         profile={profile} 
+        isDemoMode={isDemoMode}
         onClose={() => setShowSubscriptionModal(false)}
+        onUpdate={(updatedProfile) => {
+            if (isDemoMode) {
+                setShowDemoModal(true);
+                return;
+            }
+            setProfile(updatedProfile);
+            localStorage.setItem(PROFILE_KEY, JSON.stringify(sanitizeProfileForStorage(updatedProfile)));
+        }}
       />}
 
-      {showAppearanceModal && profile && <AppearanceModal 
+      {showDemoModal && (
+          <DemoModal onClose={() => setShowDemoModal(false)} />
+      )}
+
+      {showAppearanceModal && profile && <AppearanceModal  
         profile={profile} 
         onClose={() => setShowAppearanceModal(false)}
         onUpdate={(p) => { setProfile(p); localStorage.setItem(PROFILE_KEY, JSON.stringify(sanitizeProfileForStorage(p))); }}

@@ -38884,7 +38884,7 @@ const CertificateService = {
     await new Promise((resolve) => setTimeout(resolve, 1e3));
   }
 };
-const SettingsModal = ({ profile, onUpdate, onClose }) => {
+const SettingsModal = ({ profile, onUpdate, onClose, isDemoMode = false }) => {
   const [activeTab, setActiveTab] = reactExports.useState("PLANS");
   const [legalType, setLegalType] = reactExports.useState(null);
   const [isMfaModalOpen, setIsMfaModalOpen] = reactExports.useState(false);
@@ -38948,6 +38948,10 @@ const SettingsModal = ({ profile, onUpdate, onClose }) => {
     }
   };
   const handleOpenCheckout = (tier) => {
+    if (isDemoMode && onUpdate) {
+      onUpdate(profile);
+      return;
+    }
     const url = STRIPE_URLS[tier];
     if (url) {
       window.open(url, "_blank");
@@ -38956,6 +38960,10 @@ const SettingsModal = ({ profile, onUpdate, onClose }) => {
     }
   };
   const handleOpenPortal = () => {
+    if (isDemoMode && onUpdate) {
+      onUpdate(profile);
+      return;
+    }
     window.open(STRIPE_URLS.PORTAL, "_blank");
   };
   const handleSaveProfile = async () => {
@@ -42439,6 +42447,46 @@ const SupportModal = ({ onClose }) => {
     ] })
   ] }) });
 };
+const DemoModal = ({ onClose }) => {
+  useNavigate();
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fadeIn", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-stone-900 border border-[#D4AF37] rounded-2xl w-full max-w-md overflow-hidden shadow-[0_0_50px_rgba(212,175,55,0.2)] relative", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        onClick: onClose,
+        className: "absolute top-4 right-4 text-stone-500 hover:text-white transition-colors",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 })
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-8 text-center", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-16 h-16 bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-[#D4AF37]/30", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 32, className: "text-[#D4AF37]" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-2xl font-serif font-bold text-white mb-2", children: "Modo Demostración" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-stone-400 text-sm mb-8 leading-relaxed", children: "Está explorando una simulación con datos ficticios. Para guardar cambios, conectar sus bancos reales y activar el Mayordomo, necesita crear su Identidad Digital." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: () => window.location.href = "/",
+            className: "w-full py-3 bg-[#D4AF37] hover:bg-[#b68e29] text-black font-bold text-sm uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#D4AF37]/20",
+            children: [
+              "Crear Identidad Digital ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { size: 16 })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: onClose,
+            className: "w-full py-3 bg-transparent hover:bg-stone-800 text-stone-500 hover:text-stone-300 font-bold text-xs uppercase tracking-widest rounded-lg transition-colors",
+            children: "Seguir Explorando"
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-stone-950 p-4 text-center border-t border-stone-800", children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-stone-600 uppercase tracking-widest", children: "Mayordomo Digital v1.0 • Acceso Limitado" }) })
+  ] }) });
+};
 let _simulatedTierOverride = null;
 const SubscriptionService = {
   /**
@@ -43124,11 +43172,12 @@ const TABS = [
   { id: PillarId.VITAL, label: "Coach", icon: Heart },
   { id: PillarId.NUCLEO, label: "Familia", icon: Users }
 ];
-const ClientApp = () => {
+const ClientApp = ({ isDemoMode = false }) => {
   var _a, _b;
   const navigate = useNavigate();
   const [profile, setProfile] = reactExports.useState(null);
   const [showSubscriptionModal, setShowSubscriptionModal] = reactExports.useState(false);
+  const [showDemoModal, setShowDemoModal] = reactExports.useState(false);
   const [showAppearanceModal, setShowAppearanceModal] = reactExports.useState(false);
   const [showPermissionsTree, setShowPermissionsTree] = reactExports.useState(false);
   const [showSupportDashboard, setShowSupportDashboard] = reactExports.useState(false);
@@ -43218,6 +43267,25 @@ const ClientApp = () => {
   }, []);
   reactExports.useEffect(() => {
     const initializeSession = async () => {
+      if (isDemoMode) {
+        const demoProfile = {
+          uid: "demo_user",
+          email: "demo@mayordomo.app",
+          name: "Usuario Demo",
+          role: "USER",
+          age: 35,
+          gender: "MALE",
+          occupation: "CEO",
+          archetype: UserArchetype.CONSTRUCTOR,
+          subscriptionTier: SubscriptionTier.VIP,
+          grantedPermissions: TECHNICAL_PERMISSIONS.map((p2) => p2.id),
+          setupCompleted: true,
+          mfaEnabled: true,
+          dashboardConfig: { pillarOrder: DEFAULT_PILLAR_ORDER$1, hiddenPillars: [] }
+        };
+        setProfile(demoProfile);
+        return;
+      }
       const saved = localStorage.getItem(PROFILE_KEY$1);
       if (saved) {
         let user = JSON.parse(saved);
@@ -43494,6 +43562,7 @@ const ClientApp = () => {
       className: `h-screen text-stone-200 font-sans flex flex-col md:flex-row overflow-hidden relative transition-all duration-500 ${getAppBackgroundStyle()}`,
       style: customBackgroundStyle,
       children: [
+        isDemoMode && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-0 left-0 right-0 h-1 bg-[#D4AF37] z-[100] shadow-[0_0_20px_#D4AF37]" }),
         criticalAlert && /* @__PURE__ */ jsxRuntimeExports.jsx(Toast, { message: criticalAlert.body, type: "ERROR", onClose: () => setCriticalAlert(null) }),
         ingestionToast && /* @__PURE__ */ jsxRuntimeExports.jsx(Toast, { message: ingestionToast.msg, type: ingestionToast.type === "WARNING" ? "WARNING" : "INFO", onClose: () => setIngestionToast(null) }),
         ((_b = profile == null ? void 0 : profile.themeConfig) == null ? void 0 : _b.type) === "CUSTOM" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/70 pointer-events-none z-0" }),
@@ -43522,9 +43591,19 @@ const ClientApp = () => {
           SettingsModal,
           {
             profile,
-            onClose: () => setShowSubscriptionModal(false)
+            isDemoMode,
+            onClose: () => setShowSubscriptionModal(false),
+            onUpdate: (updatedProfile) => {
+              if (isDemoMode) {
+                setShowDemoModal(true);
+                return;
+              }
+              setProfile(updatedProfile);
+              localStorage.setItem(PROFILE_KEY$1, JSON.stringify(sanitizeProfileForStorage$1(updatedProfile)));
+            }
           }
         ),
+        showDemoModal && /* @__PURE__ */ jsxRuntimeExports.jsx(DemoModal, { onClose: () => setShowDemoModal(false) }),
         showAppearanceModal && profile && /* @__PURE__ */ jsxRuntimeExports.jsx(
           AppearanceModal,
           {
@@ -44233,7 +44312,17 @@ const LandingPage = () => {
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-transparent bg-clip-text bg-gradient-to-r from-ai-300 via-ai-500 to-ai-700", children: "más valioso: El Tiempo." })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-lg md:text-xl text-stone-400 max-w-2xl mx-auto lg:mx-0 mb-12 leading-relaxed animate-slideInUp delay-100", children: "Una inteligencia artificial diseñada para gestionar su patrimonio, burocracia y logística vital. Desde trámites legales hasta la gestión de su hogar, todo en un solo lugar." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 animate-slideInUp delay-200", children: /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "px-8 py-4 bg-transparent border border-stone-700 text-stone-300 rounded-lg font-bold text-sm uppercase tracking-widest hover:border-white hover:text-white transition-colors", children: "Ver Demo Interactiva" }) })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 animate-slideInUp delay-200", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: () => navigate("/app?mode=demo"),
+            className: "px-8 py-4 bg-transparent border border-stone-700 text-stone-300 rounded-lg font-bold text-sm uppercase tracking-widest hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors flex items-center gap-2 group",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Zap, { size: 16, className: "group-hover:text-[#D4AF37] transition-colors" }),
+              "Ver Demo En Vivo"
+            ]
+          }
+        ) })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-md animate-slideInUp delay-300", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
         LoginScreen,
@@ -61039,11 +61128,18 @@ const App = () => {
   const location2 = useLocation();
   const [isAuthenticated, setIsAuthenticated] = reactExports.useState(false);
   const [isLoading, setIsLoading] = reactExports.useState(true);
+  const [isDemoMode, setIsDemoMode] = reactExports.useState(false);
   reactExports.useEffect(() => {
     const handleAuthAction = async () => {
       const params = new URLSearchParams(location2.search);
       const mode = params.get("mode");
       const actionCode = params.get("oobCode");
+      if (mode === "demo") {
+        setIsDemoMode(true);
+        setIsAuthenticated(true);
+        setIsLoading(false);
+        return;
+      }
       if (mode === "verifyEmail" && actionCode) {
         try {
           await applyActionCode(auth, actionCode);
@@ -61098,7 +61194,7 @@ const App = () => {
         Route,
         {
           path: "/app/*",
-          element: isAuthenticated ? /* @__PURE__ */ jsxRuntimeExports.jsx(ClientApp, {}) : /* @__PURE__ */ jsxRuntimeExports.jsx(Navigate, { to: "/", replace: true })
+          element: isAuthenticated ? /* @__PURE__ */ jsxRuntimeExports.jsx(ClientApp, { isDemoMode }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Navigate, { to: "/", replace: true })
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(Route, { path: "*", element: /* @__PURE__ */ jsxRuntimeExports.jsx(Navigate, { to: isAuthenticated ? "/app" : "/", replace: true }) })

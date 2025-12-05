@@ -12,6 +12,7 @@ const App: React.FC = () => {
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     // Handle Firebase Auth Action Links (Verify Email, Reset Password)
@@ -19,6 +20,13 @@ const App: React.FC = () => {
       const params = new URLSearchParams(location.search);
       const mode = params.get('mode');
       const actionCode = params.get('oobCode');
+
+      if (mode === 'demo') {
+          setIsDemoMode(true);
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
+      }
 
       if (mode === 'verifyEmail' && actionCode) {
         try {
@@ -91,7 +99,7 @@ const App: React.FC = () => {
         <Route 
             path="/app/*" 
             element={
-                isAuthenticated ? <ClientApp /> : <Navigate to="/" replace />
+                isAuthenticated ? <ClientApp isDemoMode={isDemoMode} /> : <Navigate to="/" replace />
             } 
         />
         {/* Redirect legacy or unknown routes to Login (or App if auth) */}

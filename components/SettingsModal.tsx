@@ -16,11 +16,12 @@ interface Props {
   profile: UserProfile;
   onUpdate?: (profile: UserProfile) => void;
   onClose: () => void;
+  isDemoMode?: boolean;
 }
 
 type SettingsTab = 'PLANS' | 'PROFILE' | 'SECURITY';
 
-export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) => {
+export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isDemoMode = false }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('PLANS');
   const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
@@ -111,6 +112,10 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
   };
   
   const handleOpenCheckout = (tier: SubscriptionTier) => {
+    if (isDemoMode && onUpdate) {
+        onUpdate(profile); // Trigger Demo Modal via parent
+        return;
+    }
     const url = STRIPE_URLS[tier];
     if (url) {
       window.open(url, '_blank');
@@ -120,6 +125,10 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose }) =
   };
 
   const handleOpenPortal = () => {
+    if (isDemoMode && onUpdate) {
+        onUpdate(profile); // Trigger Demo Modal via parent
+        return;
+    }
     window.open(STRIPE_URLS.PORTAL, '_blank');
   };
 
