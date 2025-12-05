@@ -146,7 +146,15 @@ exports.verifyRegistration = onCall({ cors: true }, async (request) => {
       }
 
       // CRITICAL: Ensure counter is a number
-      const safeCounter = typeof counter === 'number' ? counter : 0;
+      // Sometimes the library returns BigInt or string for counter
+      let safeCounter = 0;
+      if (typeof counter === 'number') {
+          safeCounter = counter;
+      } else if (typeof counter === 'bigint') {
+          safeCounter = Number(counter);
+      } else if (typeof counter === 'string') {
+          safeCounter = parseInt(counter, 10) || 0;
+      }
 
       console.log("Saving Authenticator to Firestore:", {
           userId,
@@ -447,6 +455,10 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
       });
 
       try {
+        // WORKAROUND: The library might be crashing if 'counter' is missing in the internal check
+        // We pass the authenticator object directly, but let's ensure the library receives what it expects.
+        // Some versions of SimpleWebAuthn have a bug where they try to read .counter from undefined if the structure isn't perfect.
+        
         verification = await verifyAuthenticationResponse({
             response,
             expectedChallenge,
@@ -457,6 +469,11 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
         });
       } catch (innerError) {
           console.error("CRASH INSIDE verifyAuthenticationResponse:", innerError);
+          
+          // If it's the specific "reading 'counter'" error, it means the library failed to parse the authenticator object internally.
+          if (innerError.message && innerError.message.includes("reading 'counter'")) {
+             throw new Error("Library Error: Internal authenticator parsing failed. Please check server logs for PRE-VERIFY DEBUG.");
+          }
           throw new Error(`Library verification failed: ${innerError.message}`);
       }
     } catch (error) {
