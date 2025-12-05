@@ -776,7 +776,8 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
               <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
                 <div className="flex justify-between items-center relative" ref={settingsMenuRef}>
                   <button 
-                    onClick={() => {
+                    onClick={(e) => {
+                        e.stopPropagation();
                         if (isDemoMode) {
                             setShowDemoModal(true);
                             return;
@@ -823,7 +824,8 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
                   <button 
                     onClick={() => {
                         if (isDemoMode) {
-                            window.location.href = '/';
+                            // Force full reload to clear state and return to Landing Page
+                            window.location.replace('/');
                             return;
                         }
                         handleLogout();

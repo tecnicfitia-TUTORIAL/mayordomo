@@ -43690,7 +43690,8 @@ const ClientApp = ({ isDemoMode = false }) => {
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "button",
                 {
-                  onClick: () => {
+                  onClick: (e) => {
+                    e.stopPropagation();
                     if (isDemoMode) {
                       setShowDemoModal(true);
                       return;
@@ -43740,7 +43741,7 @@ const ClientApp = ({ isDemoMode = false }) => {
                 {
                   onClick: () => {
                     if (isDemoMode) {
-                      window.location.href = "/";
+                      window.location.replace("/");
                       return;
                     }
                     handleLogout();
