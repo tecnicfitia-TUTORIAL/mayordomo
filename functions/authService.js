@@ -339,35 +339,39 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
     let verification;
     try {
       // Robust Buffer conversion for verification
-      let credentialIDBuffer;
+      let credentialIDUint8;
       if (authenticator.credentialID) {
-          credentialIDBuffer = Buffer.from(authenticator.credentialID, 'base64url');
+          const buf = Buffer.from(authenticator.credentialID, 'base64url');
+          // Convert Buffer to pure Uint8Array to avoid library issues
+          credentialIDUint8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
       }
 
-      let credentialPublicKeyBuffer;
+      let credentialPublicKeyUint8;
       if (authenticator.credentialPublicKey) {
-          credentialPublicKeyBuffer = Buffer.from(authenticator.credentialPublicKey, 'base64url');
+          const buf = Buffer.from(authenticator.credentialPublicKey, 'base64url');
+          // Convert Buffer to pure Uint8Array to avoid library issues
+          credentialPublicKeyUint8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
       }
 
-      if (!credentialIDBuffer || !credentialPublicKeyBuffer) {
+      if (!credentialIDUint8 || !credentialPublicKeyUint8) {
           console.error("Incomplete authenticator data", authenticator);
           throw new Error("Stored authenticator data is incomplete (missing ID or PublicKey)");
       }
 
       // Safe counter access
       const currentCounter = (authenticator && typeof authenticator.counter === 'number') ? authenticator.counter : 0;
-      const currentTransports = (authenticator && authenticator.transports) ? authenticator.transports : undefined;
+      const currentTransports = (authenticator && Array.isArray(authenticator.transports)) ? authenticator.transports : undefined;
 
       // Construct the authenticator object exactly as expected by SimpleWebAuthn
       const authenticatorDevice = {
-          credentialID: credentialIDBuffer,
-          credentialPublicKey: credentialPublicKeyBuffer,
+          credentialID: credentialIDUint8,
+          credentialPublicKey: credentialPublicKeyUint8,
           counter: currentCounter,
           transports: currentTransports,
       };
 
       console.log("Calling verifyAuthenticationResponse with:", {
-          credentialID: authenticatorDevice.credentialID.toString('base64'),
+          credentialID_length: authenticatorDevice.credentialID.length,
           counter: authenticatorDevice.counter,
           hasTransports: !!authenticatorDevice.transports
       });
