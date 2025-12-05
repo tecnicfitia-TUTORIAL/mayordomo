@@ -41155,6 +41155,10 @@ const PillarDetailView = ({ pillarId, status, userProfile, onOpenPermissions, is
       }
       return;
     }
+    if (isDemoMode && onDemoAction) {
+      onDemoAction();
+      return;
+    }
     setSelectedFeature(feature);
   };
   const normalizedUserTier = getNormalizedTierKey(userProfile.subscriptionTier);
@@ -43683,7 +43687,20 @@ const ClientApp = ({ isDemoMode = false }) => {
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-stone-500 p-2 text-center opacity-50", children: "Navegación Principal Superior" }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-4 border-t border-stone-800 bg-dark-950 relative", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center relative", ref: settingsMenuRef, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsSettingsMenuOpen(!isSettingsMenuOpen), className: "p-2 text-stone-500 hover:text-white transition-colors", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, { size: 20 }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => {
+                    if (isDemoMode) {
+                      setShowDemoModal(true);
+                      return;
+                    }
+                    setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                  },
+                  className: `p-2 transition-colors ${isDemoMode ? "text-stone-600 cursor-not-allowed" : "text-stone-500 hover:text-white"}`,
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, { size: 20 })
+                }
+              ),
               isSettingsMenuOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute bottom-full left-0 mb-2 w-48 bg-stone-900 border border-stone-800 rounded-lg shadow-xl overflow-hidden animate-fadeIn z-50", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleOpenPermissions, className: "w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, { size: 14 }),
@@ -43718,7 +43735,20 @@ const ClientApp = ({ isDemoMode = false }) => {
                 /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setLegalType("TERMS"), className: "w-full text-left px-4 py-2 text-[10px] text-stone-500 hover:text-stone-300", children: "Términos" })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowChat(!showChat), className: `p-2 transition-colors ${showChat ? "text-ai-500" : "text-stone-500 hover:text-white"}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(MessageSquare, { size: 20 }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleLogout, className: "p-2 text-stone-500 hover:text-red-500 transition-colors", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LogOut, { size: 20 }) })
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => {
+                    if (isDemoMode) {
+                      window.location.href = "/";
+                      return;
+                    }
+                    handleLogout();
+                  },
+                  className: "p-2 text-stone-500 hover:text-red-500 transition-colors",
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(LogOut, { size: 20 })
+                }
+              )
             ] }) })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "flex-1 flex flex-col h-screen overflow-hidden relative bg-stone-950", children: [
@@ -43814,7 +43844,13 @@ const ClientApp = ({ isDemoMode = false }) => {
                       items: dashboardItems.filter(
                         (item) => item.type === "SIXTH_SENSE" || item.priority >= 80 || item.type === "ZEN"
                       ),
-                      onOpenPermissions: handleOpenPermissions
+                      onOpenPermissions: (id2) => {
+                        if (isDemoMode) {
+                          setShowDemoModal(true);
+                          return;
+                        }
+                        handleOpenPermissions(id2);
+                      }
                     }
                   ),
                   !activeMission && dashboardItems.filter((i) => i.priority >= 80).length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center justify-center opacity-20 select-none pointer-events-none gap-4 py-12", children: [

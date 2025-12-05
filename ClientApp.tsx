@@ -775,7 +775,16 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
 
               <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
                 <div className="flex justify-between items-center relative" ref={settingsMenuRef}>
-                  <button onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)} className="p-2 text-stone-500 hover:text-white transition-colors">
+                  <button 
+                    onClick={() => {
+                        if (isDemoMode) {
+                            setShowDemoModal(true);
+                            return;
+                        }
+                        setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                    }} 
+                    className={`p-2 transition-colors ${isDemoMode ? 'text-stone-600 cursor-not-allowed' : 'text-stone-500 hover:text-white'}`}
+                  >
                     <Settings size={20} />
                   </button>
                   
@@ -811,7 +820,16 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
                   <button onClick={() => setShowChat(!showChat)} className={`p-2 transition-colors ${showChat ? 'text-ai-500' : 'text-stone-500 hover:text-white'}`}>
                     <MessageSquare size={20} />
                   </button>
-                  <button onClick={handleLogout} className="p-2 text-stone-500 hover:text-red-500 transition-colors">
+                  <button 
+                    onClick={() => {
+                        if (isDemoMode) {
+                            window.location.href = '/';
+                            return;
+                        }
+                        handleLogout();
+                    }} 
+                    className="p-2 text-stone-500 hover:text-red-500 transition-colors"
+                  >
                     <LogOut size={20} />
                   </button>
                 </div>
@@ -944,7 +962,13 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
                                 item.priority >= 80 || 
                                 item.type === 'ZEN'
                             )} 
-                            onOpenPermissions={handleOpenPermissions}
+                            onOpenPermissions={(id) => {
+                                if (isDemoMode) {
+                                    setShowDemoModal(true);
+                                    return;
+                                }
+                                handleOpenPermissions(id);
+                            }}
                         />
 
                         {/* Empty State for Summary */}

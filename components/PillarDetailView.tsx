@@ -176,6 +176,12 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
           return;
       }
 
+      // CASE 1.C: DEMO MODE INTERCEPTION
+      if (isDemoMode && onDemoAction) {
+          onDemoAction();
+          return;
+      }
+
       // CASE 2 & 3: ACTIVE (Read or Execute)
       // Open Universal Modal (The modal internal logic handles the difference)
       setSelectedFeature(feature);
