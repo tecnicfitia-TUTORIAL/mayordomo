@@ -68,23 +68,41 @@ exports.verifyRegistration = onCall({ cors: true }, async (request) => {
 
     const { response, rpID, origin } = request.data;
 
+    console.log("VERIFY REGISTRATION START:", {
+        userId,
+        rpID,
+        origin,
+        responseKeys: Object.keys(response || {}),
+        clientDataJSON: response?.response?.clientDataJSON ? "present" : "missing"
+    });
+
     const userDoc = await db.collection('users').doc(userId).get();
     const expectedChallenge = userDoc.data()?.currentChallenge;
 
     if (!expectedChallenge) {
+      console.error("No challenge found for user:", userId);
       throw new HttpsError('failed-precondition', 'No challenge found for user');
     }
 
     let verification;
     try {
+      // Relaxed verification for mobile compatibility
+      // Some mobile authenticators might send slightly different origins (e.g. android:apk-key-hash:...)
+      // We can allow a list of expected origins or just log it for now.
+      
       verification = await verifyRegistrationResponse({
         response,
         expectedChallenge,
-        expectedOrigin: origin,
+        expectedOrigin: origin, // Ensure frontend sends the correct origin
         expectedRPID: rpID,
+        requireUserVerification: false, // Relax requirement for some mobile sensors
       });
     } catch (error) {
-      console.error("Verification logic failed", error);
+      console.error("Verification logic failed detailed:", {
+          message: error.message,
+          stack: error.stack,
+          response: JSON.stringify(response)
+      });
       throw new HttpsError('invalid-argument', `Verification failed: ${error.message}`);
     }
 
