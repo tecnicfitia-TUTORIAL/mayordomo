@@ -38927,7 +38927,7 @@ const SettingsModal = ({ profile, onUpdate, onClose, isDemoMode = false, initial
       const generateRegOptions = httpsCallable(functions, "generateRegistrationOptions");
       const optsResponse = await generateRegOptions({ rpID: window.location.hostname });
       const opts = optsResponse.data;
-      const attResp = await startRegistration(opts);
+      const attResp = await startRegistration({ optionsJSON: opts });
       const verifyReg = httpsCallable(functions, "verifyRegistration");
       const verificationResp = await verifyReg({
         response: attResp,
@@ -44104,7 +44104,7 @@ const LoginScreen = ({ onLoginSuccess, isEmbedded = false }) => {
         rpID: window.location.hostname
       });
       const opts = optsResponse.data;
-      const asseResp = await startAuthentication(opts);
+      const asseResp = await startAuthentication({ optionsJSON: opts });
       const verifyAuth = httpsCallable(functions, "verifyAuthentication");
       const verificationResp = await verifyAuth({
         email: emailToUse,
