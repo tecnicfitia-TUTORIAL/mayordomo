@@ -260,7 +260,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, isEmbe
       const opts = optsResponse.data as any;
 
       // 2. Start Authentication in Browser
-      const asseResp = await startAuthentication(opts);
+      // SimpleWebAuthn v13+ expects { optionsJSON: ... }
+      const asseResp = await startAuthentication({ optionsJSON: opts });
 
       // 3. Verify Authentication
       const verifyAuth = httpsCallable(functions, 'verifyAuthentication');
