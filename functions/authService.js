@@ -317,14 +317,13 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
 
       // 2. Find User by Credential ID (Collection Group Query)
       const credentialID = response.id;
+      
+      // Try exact match first (Base64URL)
       let query = db.collectionGroup('authenticators').where('credentialID', '==', credentialID);
       let querySnap = await query.get();
 
-      // FALLBACK: Try standard Base64 if Base64URL failed (common mismatch)
+      // FALLBACK 1: Try Base64 (standard)
       if (querySnap.empty) {
-          console.warn(`[Auth] Credential ID ${credentialID} not found via direct match. Trying fallback encodings.`);
-          
-          // Convert Base64URL to Base64 (replace -_ with +/ and add padding)
           const base64 = credentialID.replace(/-/g, '+').replace(/_/g, '/');
           const pad = base64.length % 4;
           const paddedBase64 = pad ? base64 + '='.repeat(4 - pad) : base64;
@@ -333,11 +332,18 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
               console.log(`[Auth] Trying fallback query with Base64: ${paddedBase64}`);
               const fallbackQuery = db.collectionGroup('authenticators').where('credentialID', '==', paddedBase64);
               const fallbackSnap = await fallbackQuery.get();
-              
-              if (!fallbackSnap.empty) {
-                  console.log("[Auth] Match found using Base64 fallback!");
-                  querySnap = fallbackSnap;
-              }
+              if (!fallbackSnap.empty) querySnap = fallbackSnap;
+          }
+      }
+
+      // FALLBACK 2: Try Base64URL without padding (just in case)
+      if (querySnap.empty) {
+          const unpadded = credentialID.replace(/=/g, '');
+          if (unpadded !== credentialID) {
+             console.log(`[Auth] Trying fallback query with Unpadded Base64URL: ${unpadded}`);
+             const fallbackQuery2 = db.collectionGroup('authenticators').where('credentialID', '==', unpadded);
+             const fallbackSnap2 = await fallbackQuery2.get();
+             if (!fallbackSnap2.empty) querySnap = fallbackSnap2;
           }
       }
 
@@ -365,25 +371,30 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
 
     let verification;
     try {
-      // COPIA PROFUNDA: Crear nuevos Uint8Array independientes para evitar problemas de memoria compartida
+      // 1. Prepare Credential ID (Uint8Array)
       let credentialIDUint8;
-      if (authenticator.credentialID) {
-          const buf = Buffer.from(authenticator.credentialID, 'base64url');
-          credentialIDUint8 = Uint8Array.from(buf);
-      }
+      try {
+          if (authenticator.credentialID) {
+             // Try base64url first (standard)
+             credentialIDUint8 = new Uint8Array(Buffer.from(authenticator.credentialID, 'base64url'));
+          }
+      } catch (e) { console.warn("Error decoding credentialID", e); }
 
+      // 2. Prepare Public Key (Uint8Array)
       let credentialPublicKeyUint8;
-      if (authenticator.credentialPublicKey) {
-          const buf = Buffer.from(authenticator.credentialPublicKey, 'base64url');
-          credentialPublicKeyUint8 = Uint8Array.from(buf);
-      }
+      try {
+          if (authenticator.credentialPublicKey) {
+              // Try base64url first (standard)
+              credentialPublicKeyUint8 = new Uint8Array(Buffer.from(authenticator.credentialPublicKey, 'base64url'));
+          }
+      } catch (e) { console.warn("Error decoding credentialPublicKey", e); }
 
       if (!credentialIDUint8 || !credentialPublicKeyUint8) {
           console.error("Incomplete authenticator data", authenticator);
           throw new Error("Stored authenticator data is incomplete (missing ID or PublicKey)");
       }
 
-      // Safe counter access
+      // 3. Prepare Counter (Number)
       let currentCounter = 0;
       if (authenticator && authenticator.counter !== undefined) {
           const parsed = parseInt(authenticator.counter, 10);
@@ -392,6 +403,7 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
           }
       }
 
+      // 4. Prepare Transports (Array or undefined)
       const currentTransports = (authenticator && Array.isArray(authenticator.transports)) ? authenticator.transports : undefined;
 
       // Construct the authenticator object exactly as expected by SimpleWebAuthn
