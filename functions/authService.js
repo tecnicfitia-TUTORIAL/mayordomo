@@ -355,7 +355,7 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
         authenticator: {
           credentialID: credentialIDBuffer,
           credentialPublicKey: credentialPublicKeyBuffer,
-          counter: authenticator.counter,
+          counter: authenticator.counter || 0, // FIX: Default to 0 if undefined
         },
       });
     } catch (error) {
