@@ -41905,17 +41905,29 @@ const SmartDashboard = ({ items, onOpenPermissions }) => {
     );
   }) });
 };
+const COLLECTIONS = {
+  USERS: "users",
+  USER_CONTEXT: "user_context",
+  LIFE_OBLIGATIONS: "life_obligations",
+  ASSETS: "assets",
+  AUDIT_LOGS: "audit_logs",
+  LEGAL_MANDATES: "legal_mandates"
+};
 const UserService = {
   async getAllUsers() {
-    if (!db || db._isMock) {
-      console.warn("[UserService] Using Mock DB or DB not initialized");
+    if (!db) {
+      console.error("[UserService] DB not initialized");
       return [];
     }
+    if (db._isMock) {
+      console.warn("[UserService] DB is in Mock Mode. This may return empty results if no mock data is provided.");
+    }
     try {
-      const usersCol = collection(db, "users");
+      const usersCol = collection(db, COLLECTIONS.USERS);
       const snapshot = await getDocs(usersCol);
+      console.log(`[UserService] Found ${snapshot.size} users in '${COLLECTIONS.USERS}' collection.`);
       if (snapshot.empty) {
-        console.log("[UserService] No users found in 'users' collection.");
+        console.warn("[UserService] Collection is empty. Ensure users have logged in at least once to create their profile.");
         return [];
       }
       return snapshot.docs.map((doc2) => {

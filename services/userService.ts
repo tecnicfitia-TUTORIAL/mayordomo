@@ -1,21 +1,29 @@
 import { db } from './firebaseConfig';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { SupportUserStatus, SubscriptionTier } from '../types';
+import { COLLECTIONS } from './firestoreSchema';
 
 export const UserService = {
   async getAllUsers(): Promise<SupportUserStatus[]> {
-    // Check if DB is initialized and not a mock
-    if (!db || (db as any)._isMock) {
-      console.warn("[UserService] Using Mock DB or DB not initialized");
+    // Check if DB is initialized
+    if (!db) {
+      console.error("[UserService] DB not initialized");
       return []; 
     }
 
+    // Allow execution even if _isMock is true, but warn.
+    if ((db as any)._isMock) {
+        console.warn("[UserService] DB is in Mock Mode. This may return empty results if no mock data is provided.");
+    }
+
     try {
-      const usersCol = collection(db, 'users');
+      const usersCol = collection(db, COLLECTIONS.USERS);
       const snapshot = await getDocs(usersCol);
       
+      console.log(`[UserService] Found ${snapshot.size} users in '${COLLECTIONS.USERS}' collection.`);
+
       if (snapshot.empty) {
-          console.log("[UserService] No users found in 'users' collection.");
+          console.warn("[UserService] Collection is empty. Ensure users have logged in at least once to create their profile.");
           return [];
       }
 
