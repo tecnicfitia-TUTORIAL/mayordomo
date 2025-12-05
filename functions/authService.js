@@ -118,13 +118,20 @@ exports.verifyRegistration = onCall({ cors: true }, async (request) => {
       }
 
       // Robust Conversion to Base64URL for Storage
-      let credentialIDBase64;
-      try {
-          const buf = Buffer.from(credentialID); // Handles Uint8Array or Buffer
-          credentialIDBase64 = buf.toString('base64url');
-      } catch (e) {
-          console.error("Error converting credentialID to base64url", e);
-          credentialIDBase64 = String(credentialID);
+      // CRITICAL FIX: Use the ID exactly as sent by the frontend (response.id) to ensure consistency
+      // The frontend sends Base64URL. We must store Base64URL.
+      // Re-encoding from the buffer can sometimes cause mismatches if not handled perfectly.
+      let credentialIDBase64 = response.id; 
+      
+      // Sanity check: if response.id is missing (unlikely), fall back to buffer conversion
+      if (!credentialIDBase64) {
+          console.warn("response.id missing, falling back to buffer conversion");
+          try {
+              const buf = Buffer.from(credentialID); 
+              credentialIDBase64 = buf.toString('base64url');
+          } catch (e) {
+              credentialIDBase64 = String(credentialID);
+          }
       }
 
       let credentialPublicKeyBase64;
