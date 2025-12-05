@@ -12,6 +12,8 @@ interface Props {
   status: PillarStatus;
   userProfile: UserProfile;
   onOpenPermissions?: (permissionId?: string) => void;
+  isDemoMode?: boolean;
+  onDemoAction?: () => void;
 }
 
 // Datos simulados para la demo visual
@@ -52,7 +54,7 @@ const MOCK_DATA_VALUES: Record<string, { value: string; label: string; source: s
   'nuc_home_maint': { value: 'Caldera Rev.', label: 'Mantenimiento', source: 'LOGS' },
 };
 
-export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfile, onOpenPermissions }) => {
+export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfile, onOpenPermissions, isDemoMode = false, onDemoAction }) => {
   const def = PILLAR_DEFINITIONS[pillarId];
   const features = PERMISSIONS_MATRIX.filter(f => f.pillarId === pillarId);
   // DEFENSIVE CODING: Handle undefined permissions
@@ -343,7 +345,14 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
                     {showBankConnect && (
                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-stone-900/80 p-4">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); setSelectedFeature(feature); }}
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    if (isDemoMode && onDemoAction) {
+                                        onDemoAction();
+                                        return;
+                                    }
+                                    setSelectedFeature(feature); 
+                                }}
                                 className="flex flex-col items-center gap-2 group/btn"
                             >
                                 <ExternalLink className="text-ai-500 group-hover/btn:scale-110 transition-transform" />
@@ -357,7 +366,14 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
                     {showEmailConnect && (
                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-stone-900/80 p-4">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); handleConnectGmail(); }}
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    if (isDemoMode && onDemoAction) {
+                                        onDemoAction();
+                                        return;
+                                    }
+                                    handleConnectGmail(); 
+                                }}
                                 disabled={isLoadingEmail}
                                 className="flex flex-col items-center gap-2 group/btn"
                             >

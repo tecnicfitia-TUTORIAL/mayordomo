@@ -115,6 +115,7 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'PLANS' | 'PROFILE' | 'SECURITY'>('PLANS');
   const [showDemoModal, setShowDemoModal] = useState(false); // For Demo Restrictions
 
   const [showAppearanceModal, setShowAppearanceModal] = useState(false);
@@ -584,7 +585,9 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
       }
       setShowPermissionsTree(true); 
   };
-  const handleOpenSubscription = () => { setIsSettingsMenuOpen(false); setShowSubscriptionModal(true); };
+  const handleOpenSubscription = () => { setIsSettingsMenuOpen(false); setSettingsInitialTab('PLANS'); setShowSubscriptionModal(true); };
+  const handleOpenProfile = () => { setIsSettingsMenuOpen(false); setSettingsInitialTab('PROFILE'); setShowSubscriptionModal(true); };
+  const handleOpenSecurity = () => { setIsSettingsMenuOpen(false); setSettingsInitialTab('SECURITY'); setShowSubscriptionModal(true); };
   const handleOpenAppearance = () => { setIsSettingsMenuOpen(false); setShowAppearanceModal(true); };
   const handleOpenSupport = () => { setIsSettingsMenuOpen(false); setShowSupportDashboard(true); }
   const handleOpenHelp = () => { setIsSettingsMenuOpen(false); setShowSupportModal(true); }
@@ -685,6 +688,7 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
       {showSubscriptionModal && profile && <SettingsModal 
         profile={profile} 
         isDemoMode={isDemoMode}
+        initialTab={settingsInitialTab}
         onClose={() => setShowSubscriptionModal(false)}
         onUpdate={(updatedProfile) => {
             if (isDemoMode) {
@@ -779,6 +783,12 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
                     <div className="absolute bottom-full left-0 mb-2 w-48 bg-stone-900 border border-stone-800 rounded-lg shadow-xl overflow-hidden animate-fadeIn z-50">
                       <button onClick={handleOpenPermissions} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
                         <Shield size={14} /> Permisos
+                      </button>
+                      <button onClick={handleOpenProfile} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
+                        <Users size={14} /> Perfil
+                      </button>
+                      <button onClick={handleOpenSecurity} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
+                        <Lock size={14} /> Seguridad
                       </button>
                       <button onClick={handleOpenSubscription} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
                         <CreditCard size={14} /> Suscripción
@@ -962,6 +972,8 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
                                     userProfile={profile} 
                                     status={pillarStatus} 
                                     onOpenPermissions={handleOpenPermissions}
+                                    isDemoMode={isDemoMode}
+                                    onDemoAction={() => setShowDemoModal(true)}
                                 />
                             );
                         })()}

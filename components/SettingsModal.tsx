@@ -17,12 +17,13 @@ interface Props {
   onUpdate?: (profile: UserProfile) => void;
   onClose: () => void;
   isDemoMode?: boolean;
+  initialTab?: SettingsTab;
 }
 
 type SettingsTab = 'PLANS' | 'PROFILE' | 'SECURITY';
 
-export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isDemoMode = false }) => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('PLANS');
+export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isDemoMode = false, initialTab = 'PLANS' }) => {
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
   
