@@ -43692,11 +43692,12 @@ const ClientApp = ({ isDemoMode = false }) => {
                 {
                   onClick: (e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     if (isDemoMode) {
                       setShowDemoModal(true);
                       return;
                     }
-                    setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                    setIsSettingsMenuOpen((prev) => !prev);
                   },
                   className: `p-2 transition-colors ${isDemoMode ? "text-stone-600 cursor-not-allowed" : "text-stone-500 hover:text-white"}`,
                   children: /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, { size: 20 })

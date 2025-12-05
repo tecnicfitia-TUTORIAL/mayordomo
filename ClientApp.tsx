@@ -778,11 +778,12 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
                   <button 
                     onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault(); // Prevent default behavior
                         if (isDemoMode) {
                             setShowDemoModal(true);
                             return;
                         }
-                        setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                        setIsSettingsMenuOpen(prev => !prev); // Use functional update
                     }} 
                     className={`p-2 transition-colors ${isDemoMode ? 'text-stone-600 cursor-not-allowed' : 'text-stone-500 hover:text-white'}`}
                   >
