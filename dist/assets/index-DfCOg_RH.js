@@ -38952,7 +38952,11 @@ const SettingsModal = ({ profile, onUpdate, onClose, isDemoMode = false, initial
       if (verification.verified) {
         console.log("[Biometrics] Registration Successful. Credential ID:", attResp.id);
         alert(`Biometría activada correctamente.
-ID: ${attResp.id.substring(0, 10)}...`);
+
+Para iniciar sesión, use su email:
+${profile.email}
+
+O use el botón de huella directamente (QR).`);
         setHasBiometrics(true);
       } else {
         alert("Error al activar biometría. Inténtelo de nuevo.");
