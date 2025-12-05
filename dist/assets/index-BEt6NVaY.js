@@ -43012,9 +43012,9 @@ const AdminSidebar = ({ onOpenMenu, onOpenSettings, onOpenChat, onLogout, active
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
-          onClick: onOpenSettings,
-          className: "p-3 rounded-xl text-stone-500 hover:text-stone-300 hover:bg-stone-900 transition-all flex justify-center",
-          title: "Ajustes",
+          onClick: (e) => e.preventDefault(),
+          className: "p-3 rounded-xl text-stone-800 cursor-not-allowed flex justify-center",
+          title: "Ajustes (No disponible)",
           children: /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, { size: 24 })
         }
       ),

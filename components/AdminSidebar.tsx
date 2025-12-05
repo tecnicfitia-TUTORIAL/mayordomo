@@ -28,9 +28,9 @@ export const AdminSidebar: React.FC<Props> = ({ onOpenMenu, onOpenSettings, onOp
         </button>
 
         <button 
-          onClick={onOpenSettings}
-          className="p-3 rounded-xl text-stone-500 hover:text-stone-300 hover:bg-stone-900 transition-all flex justify-center"
-          title="Ajustes"
+          onClick={(e) => e.preventDefault()}
+          className="p-3 rounded-xl text-stone-800 cursor-not-allowed flex justify-center"
+          title="Ajustes (No disponible)"
         >
           <Settings size={24} />
         </button>
