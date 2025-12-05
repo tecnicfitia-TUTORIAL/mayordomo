@@ -7,8 +7,9 @@ import { LegalModal } from './LegalModal';
 import { MfaModal } from './MfaModal';
 import { startRegistration } from '@simplewebauthn/browser';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../services/firebaseConfig';
+import { functions, db } from '../services/firebaseConfig';
 import { getAuth } from 'firebase/auth';
+import { collection, getDocs } from 'firebase/firestore';
 
 import { CertificateService, DigitalCertificate } from '../services/certificateService';
 
@@ -26,6 +27,22 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isD
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
+  const [hasBiometrics, setHasBiometrics] = useState(false);
+  
+  // Check Biometrics Status
+  React.useEffect(() => {
+    const checkBiometrics = async () => {
+      if (!profile.uid) return;
+      try {
+        const authCol = collection(db, 'users', profile.uid, 'authenticators');
+        const snapshot = await getDocs(authCol);
+        setHasBiometrics(!snapshot.empty);
+      } catch (err) {
+        console.error("Error checking biometrics:", err);
+      }
+    };
+    checkBiometrics();
+  }, [profile.uid]);
   
   // Certificate State
   const [certificate, setCertificate] = useState<DigitalCertificate | null>(null);
@@ -99,6 +116,7 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isD
       const verification = verificationResp.data as any;
       if (verification.verified) {
         alert("Biometría activada correctamente. Ahora puede iniciar sesión con su huella o rostro.");
+        setHasBiometrics(true);
       } else {
         alert("Error al activar biometría. Inténtelo de nuevo.");
       }
@@ -400,7 +418,14 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isD
                 </div>
 
                 {/* BIOMETRICS SECTION */}
-                <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6">
+                <div className="bg-stone-900/50 border border-stone-800 rounded-xl p-6 relative overflow-hidden">
+                  {hasBiometrics && (
+                    <div className="absolute top-0 right-0 p-4">
+                      <div className="flex items-center gap-1 text-emerald-500 text-xs font-bold bg-emerald-900/20 px-2 py-1 rounded border border-emerald-500/30">
+                        <Check size={12} /> ACTIVO
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-start gap-4">
                     <div className="p-3 bg-stone-800 rounded-lg">
                       <Fingerprint className="w-6 h-6 text-[#D4AF37]" />
@@ -411,14 +436,30 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isD
                         Active el acceso mediante huella dactilar, reconocimiento facial o llave de seguridad (Passkeys) para iniciar sesión de forma rápida y segura sin contraseña.
                       </p>
                       
-                      <button
-                        onClick={handleRegisterBiometrics}
-                        disabled={isSaving}
-                        className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#b68e29] text-black font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {isSaving ? <Loader2 className="animate-spin w-4 h-4" /> : <Fingerprint className="w-4 h-4" />}
-                        Configurar Biometría
-                      </button>
+                      {!hasBiometrics ? (
+                        <button
+                          onClick={handleRegisterBiometrics}
+                          disabled={isSaving}
+                          className="flex items-center gap-2 bg-[#D4AF37] hover:bg-[#b68e29] text-black font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {isSaving ? <Loader2 className="animate-spin w-4 h-4" /> : <Fingerprint className="w-4 h-4" />}
+                          Configurar Biometría
+                        </button>
+                      ) : (
+                        <div className="flex gap-3">
+                            <button
+                              onClick={handleRegisterBiometrics}
+                              disabled={isSaving}
+                              className="flex items-center gap-2 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold px-4 py-2 rounded-lg transition-colors text-xs border border-stone-700"
+                            >
+                              {isSaving ? <Loader2 className="animate-spin w-3 h-3" /> : <Fingerprint className="w-3 h-3" />}
+                              Añadir otro dispositivo
+                            </button>
+                            <p className="text-xs text-stone-500 italic self-center">
+                                Su dispositivo actual o llave de seguridad está configurado.
+                            </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
