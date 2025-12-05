@@ -32,7 +32,7 @@ exports.generateRegistrationOptions = onCall({ cors: true }, async (request) => 
   const options = await generateRegistrationOptions({
     rpName,
     rpID,
-    userID: new Uint8Array(Buffer.from(userId)),
+    userID: userId, // v9 expects string for userID, not Buffer
     userName: request.auth.token.email || 'User',
     attestationType: 'none',
     excludeCredentials: userAuthenticators.map(auth => ({
@@ -43,7 +43,6 @@ exports.generateRegistrationOptions = onCall({ cors: true }, async (request) => 
     authenticatorSelection: {
       residentKey: 'preferred',
       userVerification: 'preferred',
-      // authenticatorAttachment: 'platform', // Removed to allow cross-platform (QR/Mobile)
     },
   });
 
@@ -110,13 +109,13 @@ exports.verifyRegistration = onCall({ cors: true }, async (request) => {
 
     if (verified && registrationInfo) {
       // Extract credential info robustly
-      // SimpleWebAuthn v10+ puts these directly in registrationInfo
+      // SimpleWebAuthn v9 puts these in registrationInfo.credential
       let credentialID = registrationInfo.credentialID;
       let credentialPublicKey = registrationInfo.credentialPublicKey;
       let counter = registrationInfo.counter;
 
-      // Fallback check for nested structure (rare but possible in some versions/configs)
-      if (!credentialID && registrationInfo.credential && registrationInfo.credential.id) {
+      // v9 specific structure check
+      if (!credentialID && registrationInfo.credential) {
           credentialID = registrationInfo.credential.id;
           credentialPublicKey = registrationInfo.credential.publicKey;
           counter = registrationInfo.credential.counter;
@@ -448,12 +447,13 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
       // 4. Prepare Transports (Array or undefined)
       const currentTransports = (authenticator && Array.isArray(authenticator.transports)) ? authenticator.transports : undefined;
 
-      // Construct the authenticator object exactly as expected by SimpleWebAuthn
-      // CRITICAL FIX: Ensure counter is a number, not undefined or string
+      // Construct the authenticator object exactly as expected by SimpleWebAuthn v9
+      // v9 expects 'credentialID' and 'credentialPublicKey' as Buffers, not Uint8Arrays (though Uint8Array usually works)
+      // It also expects the object to be passed as 'authenticator' property.
       const authenticatorDevice = {
-          credentialID: credentialIDUint8,
-          credentialPublicKey: credentialPublicKeyUint8,
-          counter: currentCounter, // Already ensured to be a number above
+          credentialID: Buffer.from(credentialIDUint8),
+          credentialPublicKey: Buffer.from(credentialPublicKeyUint8),
+          counter: currentCounter,
           transports: currentTransports,
       };
 
