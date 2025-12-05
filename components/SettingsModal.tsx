@@ -115,7 +115,8 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isD
 
       const verification = verificationResp.data as any;
       if (verification.verified) {
-        alert("Biometría activada correctamente. Ahora puede iniciar sesión con su huella o rostro.");
+        console.log("[Biometrics] Registration Successful. Credential ID:", attResp.id);
+        alert(`Biometría activada correctamente.\nID: ${attResp.id.substring(0, 10)}...`);
         setHasBiometrics(true);
       } else {
         alert("Error al activar biometría. Inténtelo de nuevo.");
