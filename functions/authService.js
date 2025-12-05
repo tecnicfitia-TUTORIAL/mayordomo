@@ -421,7 +421,7 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
         });
       } catch (innerError) {
           console.error("CRASH INSIDE verifyAuthenticationResponse:", innerError);
-          throw innerError;
+          throw new Error(`Library verification failed: ${innerError.message}`);
       }
     } catch (error) {
       console.error("Auth Verification failed", error);
@@ -432,9 +432,13 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
 
     if (verified) {
       // Update counter
-      await authenticatorDoc.ref.update({
-        counter: authenticationInfo.newCounter
-      });
+      if (authenticationInfo && authenticationInfo.newCounter !== undefined) {
+          await authenticatorDoc.ref.update({
+            counter: authenticationInfo.newCounter
+          });
+      } else {
+          console.warn("Warning: authenticationInfo.newCounter is undefined. Not updating counter.");
+      }
 
       // Clean challenge (only for targeted flow, usernameless already cleaned)
       if (email) {
