@@ -38888,6 +38888,20 @@ const SettingsModal = ({ profile, onUpdate, onClose, isDemoMode = false, initial
   const [activeTab, setActiveTab] = reactExports.useState(initialTab);
   const [legalType, setLegalType] = reactExports.useState(null);
   const [isMfaModalOpen, setIsMfaModalOpen] = reactExports.useState(false);
+  const [hasBiometrics, setHasBiometrics] = reactExports.useState(false);
+  React.useEffect(() => {
+    const checkBiometrics = async () => {
+      if (!profile.uid) return;
+      try {
+        const authCol = collection(db, "users", profile.uid, "authenticators");
+        const snapshot = await getDocs(authCol);
+        setHasBiometrics(!snapshot.empty);
+      } catch (err) {
+        console.error("Error checking biometrics:", err);
+      }
+    };
+    checkBiometrics();
+  }, [profile.uid]);
   const [certificate, setCertificate] = reactExports.useState(null);
   const [isUploadingCert, setIsUploadingCert] = reactExports.useState(false);
   const [certPassword, setCertPassword] = reactExports.useState("");
@@ -38937,6 +38951,7 @@ const SettingsModal = ({ profile, onUpdate, onClose, isDemoMode = false, initial
       const verification = verificationResp.data;
       if (verification.verified) {
         alert("Biometría activada correctamente. Ahora puede iniciar sesión con su huella o rostro.");
+        setHasBiometrics(true);
       } else {
         alert("Error al activar biometría. Inténtelo de nuevo.");
       }
@@ -39170,25 +39185,45 @@ const SettingsModal = ({ profile, onUpdate, onClose, isDemoMode = false, initial
               ] })
             ] })
           ] }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-stone-900/50 border border-stone-800 rounded-xl p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-stone-800 rounded-lg", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FingerprintPattern, { className: "w-6 h-6 text-[#D4AF37]" }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold text-white mb-2", children: "Autenticación Biométrica" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-stone-400 text-sm mb-6", children: "Active el acceso mediante huella dactilar, reconocimiento facial o llave de seguridad (Passkeys) para iniciar sesión de forma rápida y segura sin contraseña." }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "button",
-                {
-                  onClick: handleRegisterBiometrics,
-                  disabled: isSaving,
-                  className: "flex items-center gap-2 bg-[#D4AF37] hover:bg-[#b68e29] text-black font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50",
-                  children: [
-                    isSaving ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FingerprintPattern, { className: "w-4 h-4" }),
-                    "Configurar Biometría"
-                  ]
-                }
-              )
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-stone-900/50 border border-stone-800 rounded-xl p-6 relative overflow-hidden", children: [
+            hasBiometrics && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-0 right-0 p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1 text-emerald-500 text-xs font-bold bg-emerald-900/20 px-2 py-1 rounded border border-emerald-500/30", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 12 }),
+              " ACTIVO"
+            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-stone-800 rounded-lg", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FingerprintPattern, { className: "w-6 h-6 text-[#D4AF37]" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold text-white mb-2", children: "Autenticación Biométrica" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-stone-400 text-sm mb-6", children: "Active el acceso mediante huella dactilar, reconocimiento facial o llave de seguridad (Passkeys) para iniciar sesión de forma rápida y segura sin contraseña." }),
+                !hasBiometrics ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "button",
+                  {
+                    onClick: handleRegisterBiometrics,
+                    disabled: isSaving,
+                    className: "flex items-center gap-2 bg-[#D4AF37] hover:bg-[#b68e29] text-black font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50",
+                    children: [
+                      isSaving ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FingerprintPattern, { className: "w-4 h-4" }),
+                      "Configurar Biometría"
+                    ]
+                  }
+                ) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "button",
+                    {
+                      onClick: handleRegisterBiometrics,
+                      disabled: isSaving,
+                      className: "flex items-center gap-2 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold px-4 py-2 rounded-lg transition-colors text-xs border border-stone-700",
+                      children: [
+                        isSaving ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin w-3 h-3" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FingerprintPattern, { className: "w-3 h-3" }),
+                        "Añadir otro dispositivo"
+                      ]
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-stone-500 italic self-center", children: "Su dispositivo actual o llave de seguridad está configurado." })
+                ] })
+              ] })
             ] })
-          ] }) }),
+          ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-stone-900/50 border border-stone-800 rounded-xl p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-stone-800 rounded-lg", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, { className: "w-6 h-6 text-stone-400" }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [

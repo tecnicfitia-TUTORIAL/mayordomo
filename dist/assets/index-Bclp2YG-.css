@@ -1333,6 +1333,9 @@ video {
   --tw-divide-opacity: 1;
   border-color: rgb(var(--color-stone-800) / var(--tw-divide-opacity, 1));
 }
+.self-center {
+  align-self: center;
+}
 .overflow-auto {
   overflow: auto;
 }
