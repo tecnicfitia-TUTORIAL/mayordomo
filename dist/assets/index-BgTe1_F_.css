@@ -1008,6 +1008,9 @@ video {
 .shrink-0 {
   flex-shrink: 0;
 }
+.origin-bottom-right {
+  transform-origin: bottom right;
+}
 .origin-top-right {
   transform-origin: top right;
 }

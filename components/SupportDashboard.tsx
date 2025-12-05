@@ -17,6 +17,7 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
   
   // State for Dropdown Menu
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<'top' | 'bottom'>('bottom');
   const menuRef = useRef<HTMLDivElement>(null);
 
   // State for Modals
@@ -237,7 +238,16 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
                                 <button 
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        setOpenMenuId(openMenuId === user.uid ? null : user.uid);
+                                        if (openMenuId === user.uid) {
+                                            setOpenMenuId(null);
+                                        } else {
+                                            // Smart Positioning
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const spaceBelow = window.innerHeight - rect.bottom;
+                                            // If less than 220px (approx menu height), show upwards
+                                            setMenuPosition(spaceBelow < 220 ? 'top' : 'bottom');
+                                            setOpenMenuId(user.uid);
+                                        }
                                     }}
                                     className={`p-1.5 rounded transition-colors ${openMenuId === user.uid ? 'bg-ai-500 text-black' : 'text-stone-400 hover:text-white hover:bg-stone-700'}`}
                                 >
@@ -248,7 +258,7 @@ export const SupportDashboard: React.FC<Props> = ({ onClose }) => {
                                 {openMenuId === user.uid && (
                                     <div 
                                         ref={menuRef}
-                                        className="absolute right-0 top-full mt-2 w-48 bg-stone-900 border border-stone-700 rounded shadow-xl z-20 flex flex-col overflow-hidden animate-fadeIn origin-top-right"
+                                        className={`absolute right-0 ${menuPosition === 'top' ? 'bottom-full mb-2 origin-bottom-right' : 'top-full mt-2 origin-top-right'} w-48 bg-stone-900 border border-stone-700 rounded shadow-xl z-20 flex flex-col overflow-hidden animate-fadeIn`}
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         <button 

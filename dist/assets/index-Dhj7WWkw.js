@@ -42200,6 +42200,7 @@ const SupportDashboard = ({ onClose }) => {
   const [isLoading, setIsLoading] = reactExports.useState(true);
   const [filter2, setFilter] = reactExports.useState("");
   const [openMenuId, setOpenMenuId] = reactExports.useState(null);
+  const [menuPosition, setMenuPosition] = reactExports.useState("bottom");
   const menuRef = reactExports.useRef(null);
   const [modalState, setModalState] = reactExports.useState(null);
   const loadUsers = async () => {
@@ -42361,7 +42362,14 @@ const SupportDashboard = ({ onClose }) => {
               {
                 onClick: (e) => {
                   e.stopPropagation();
-                  setOpenMenuId(openMenuId === user.uid ? null : user.uid);
+                  if (openMenuId === user.uid) {
+                    setOpenMenuId(null);
+                  } else {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    setMenuPosition(spaceBelow < 220 ? "top" : "bottom");
+                    setOpenMenuId(user.uid);
+                  }
                 },
                 className: `p-1.5 rounded transition-colors ${openMenuId === user.uid ? "bg-ai-500 text-black" : "text-stone-400 hover:text-white hover:bg-stone-700"}`,
                 children: /* @__PURE__ */ jsxRuntimeExports.jsx(EllipsisVertical, { size: 16 })
@@ -42371,7 +42379,7 @@ const SupportDashboard = ({ onClose }) => {
               "div",
               {
                 ref: menuRef,
-                className: "absolute right-0 top-full mt-2 w-48 bg-stone-900 border border-stone-700 rounded shadow-xl z-20 flex flex-col overflow-hidden animate-fadeIn origin-top-right",
+                className: `absolute right-0 ${menuPosition === "top" ? "bottom-full mb-2 origin-bottom-right" : "top-full mt-2 origin-top-right"} w-48 bg-stone-900 border border-stone-700 rounded shadow-xl z-20 flex flex-col overflow-hidden animate-fadeIn`,
                 onClick: (e) => e.stopPropagation(),
                 children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsxs(
