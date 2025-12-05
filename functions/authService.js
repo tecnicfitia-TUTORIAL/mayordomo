@@ -392,6 +392,8 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
           }
       }
 
+      const currentTransports = (authenticator && Array.isArray(authenticator.transports)) ? authenticator.transports : undefined;
+
       // Construct the authenticator object exactly as expected by SimpleWebAuthn
       const authenticatorDevice = {
           credentialID: credentialIDUint8,
