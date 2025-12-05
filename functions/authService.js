@@ -201,9 +201,12 @@ exports.generateAuthenticationOptions = onCall({ cors: true }, async (request) =
   // --- TARGETED FLOW (With Email) ---
   let userRecord;
   try {
-    userRecord = await admin.auth().getUserByEmail(email);
+    // Normalize email
+    const normalizedEmail = email.trim().toLowerCase();
+    userRecord = await admin.auth().getUserByEmail(normalizedEmail);
   } catch (e) {
-    throw new HttpsError('not-found', 'User not found');
+    console.warn(`User not found for email: ${email}`);
+    throw new HttpsError('not-found', 'No existe una cuenta con este correo electrónico.');
   }
 
   const userId = userRecord.uid;
@@ -212,7 +215,7 @@ exports.generateAuthenticationOptions = onCall({ cors: true }, async (request) =
   const userAuthenticators = snapshot.docs.map(doc => doc.data());
 
   if (userAuthenticators.length === 0) {
-      throw new HttpsError('failed-precondition', 'No passkeys registered for this user');
+      throw new HttpsError('failed-precondition', 'Este usuario no tiene biometría configurada.');
   }
 
   const options = await generateAuthenticationOptions({
