@@ -43,7 +43,7 @@ exports.generateRegistrationOptions = onCall({ cors: true }, async (request) => 
     authenticatorSelection: {
       residentKey: 'preferred',
       userVerification: 'preferred',
-      authenticatorAttachment: 'platform',
+      // authenticatorAttachment: 'platform', // Removed to allow cross-platform (QR/Mobile)
     },
   });
 
