@@ -155,3 +155,5 @@ exports.stripeWebhook = onRequest(
     }
   }
 );
+
+exports.debugGetUserAuthenticators = authService.debugGetUserAuthenticators;

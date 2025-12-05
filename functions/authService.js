@@ -435,3 +435,32 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
     throw new HttpsError('internal', error.message || "Internal Server Error");
   }
 });
+
+/**
+ * DEBUG TOOL: List Authenticators for an Email
+ * (Remove this in production)
+ */
+exports.debugGetUserAuthenticators = onCall({ cors: true }, async (request) => {
+    const email = request.data.email;
+    if (!email) return { error: "Email required" };
+
+    try {
+        const userRecord = await admin.auth().getUserByEmail(email);
+        const userId = userRecord.uid;
+        
+        const snapshot = await db.collection('users').doc(userId).collection('authenticators').get();
+        
+        return {
+            userId,
+            count: snapshot.size,
+            authenticators: snapshot.docs.map(doc => ({
+                id: doc.id,
+                credentialID: doc.data().credentialID,
+                credentialID_Type: typeof doc.data().credentialID,
+                created: doc.data().created?.toDate().toISOString()
+            }))
+        };
+    } catch (error) {
+        return { error: error.message };
+    }
+});
