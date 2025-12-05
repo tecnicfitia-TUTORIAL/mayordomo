@@ -227,11 +227,21 @@ exports.generateAuthenticationOptions = onCall({ cors: true }, async (request) =
 
   const options = await generateAuthenticationOptions({
     rpID,
-    allowCredentials: userAuthenticators.map(auth => ({
-      id: Buffer.from(auth.credentialID, 'base64url'), // Convert back to Buffer for library
-      type: 'public-key',
-      transports: auth.transports,
-    })),
+    allowCredentials: userAuthenticators.map(auth => {
+        // Robust conversion for allowCredentials
+        let idBuffer;
+        try {
+            idBuffer = Buffer.from(auth.credentialID, 'base64url');
+        } catch (e) {
+            // Fallback if stored as base64 standard
+            idBuffer = Buffer.from(auth.credentialID, 'base64');
+        }
+        return {
+            id: idBuffer, 
+            type: 'public-key',
+            transports: auth.transports,
+        };
+    }),
     userVerification: 'preferred',
   });
 
@@ -407,10 +417,11 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
       const currentTransports = (authenticator && Array.isArray(authenticator.transports)) ? authenticator.transports : undefined;
 
       // Construct the authenticator object exactly as expected by SimpleWebAuthn
+      // CRITICAL FIX: Ensure counter is a number, not undefined or string
       const authenticatorDevice = {
           credentialID: credentialIDUint8,
           credentialPublicKey: credentialPublicKeyUint8,
-          counter: currentCounter,
+          counter: Number(currentCounter), // Force number type
           transports: currentTransports,
       };
 
