@@ -411,8 +411,9 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
 
       // 3. Prepare Counter (Number)
       let currentCounter = 0;
-      if (authenticator && authenticator.counter !== undefined) {
-          const parsed = parseInt(authenticator.counter, 10);
+      // Ensure we handle 0 correctly and parse strings
+      if (authenticator && authenticator.counter !== undefined && authenticator.counter !== null) {
+          const parsed = Number(authenticator.counter);
           if (!isNaN(parsed)) {
               currentCounter = parsed;
           }
@@ -426,7 +427,7 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
       const authenticatorDevice = {
           credentialID: credentialIDUint8,
           credentialPublicKey: credentialPublicKeyUint8,
-          counter: Number(currentCounter), // Force number type
+          counter: currentCounter, // Already ensured to be a number above
           transports: currentTransports,
       };
 
