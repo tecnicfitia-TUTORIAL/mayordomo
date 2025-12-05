@@ -307,13 +307,33 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
 
       // 2. Find User by Credential ID (Collection Group Query)
       const credentialID = response.id;
-      const query = db.collectionGroup('authenticators').where('credentialID', '==', credentialID);
-      const querySnap = await query.get();
+      let query = db.collectionGroup('authenticators').where('credentialID', '==', credentialID);
+      let querySnap = await query.get();
+
+      // FALLBACK: Try standard Base64 if Base64URL failed (common mismatch)
+      if (querySnap.empty) {
+          console.warn(`[Auth] Credential ID ${credentialID} not found via direct match. Trying fallback encodings.`);
+          
+          // Convert Base64URL to Base64 (replace -_ with +/ and add padding)
+          const base64 = credentialID.replace(/-/g, '+').replace(/_/g, '/');
+          const pad = base64.length % 4;
+          const paddedBase64 = pad ? base64 + '='.repeat(4 - pad) : base64;
+
+          if (paddedBase64 !== credentialID) {
+              console.log(`[Auth] Trying fallback query with Base64: ${paddedBase64}`);
+              const fallbackQuery = db.collectionGroup('authenticators').where('credentialID', '==', paddedBase64);
+              const fallbackSnap = await fallbackQuery.get();
+              
+              if (!fallbackSnap.empty) {
+                  console.log("[Auth] Match found using Base64 fallback!");
+                  querySnap = fallbackSnap;
+              }
+          }
+      }
 
       if (querySnap.empty) {
-        // Fallback: Try searching by rawId if stored differently or if base64url encoding varies
-        console.warn(`Credential ID ${credentialID} not found. Checking potential encoding mismatches.`);
-        throw new HttpsError('not-found', 'Credencial no reconocida en el sistema.');
+        console.warn(`Credential ID ${credentialID} not found in any user authenticators.`);
+        throw new HttpsError('not-found', `Credencial no reconocida en el sistema. ID: ${credentialID.substring(0, 10)}...`);
       }
 
       authenticatorDoc = querySnap.docs[0];
