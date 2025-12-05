@@ -357,16 +357,23 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
       // Safe counter access
       const currentCounter = (authenticator && typeof authenticator.counter === 'number') ? authenticator.counter : 0;
 
+      // Construct the authenticator object exactly as expected by SimpleWebAuthn
+      // It expects an object with credentialID (Buffer), credentialPublicKey (Buffer), and counter (number)
+      // We also include transports if available, as it's part of the AuthenticatorDevice interface
+      const authenticatorDevice = {
+          credentialID: credentialIDBuffer,
+          credentialPublicKey: credentialPublicKeyBuffer,
+          counter: currentCounter,
+          transports: authenticator.transports, // Optional but recommended
+      };
+
       verification = await verifyAuthenticationResponse({
         response,
         expectedChallenge,
         expectedOrigin: origin,
         expectedRPID: rpID,
-        authenticator: {
-          credentialID: credentialIDBuffer,
-          credentialPublicKey: credentialPublicKeyBuffer,
-          counter: currentCounter,
-        },
+        authenticator: authenticatorDevice,
+        requireUserVerification: false, // Allow if UV is not strictly enforced by device
       });
     } catch (error) {
       console.error("Auth Verification failed", error);
