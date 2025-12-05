@@ -330,6 +330,12 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
       userId = authenticatorDoc.ref.parent.parent.id;
     }
 
+    // CRITICAL DEBUG: Ensure authenticator exists before verification
+    if (!authenticator) {
+        console.error("CRITICAL: Authenticator object is undefined before verification", { userId, email });
+        throw new HttpsError('internal', 'Error interno: No se pudieron recuperar los datos del autenticador.');
+    }
+
     let verification;
     try {
       // Robust Buffer conversion for verification
@@ -344,8 +350,12 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
       }
 
       if (!credentialIDBuffer || !credentialPublicKeyBuffer) {
+          console.error("Incomplete authenticator data", authenticator);
           throw new Error("Stored authenticator data is incomplete (missing ID or PublicKey)");
       }
+
+      // Safe counter access
+      const currentCounter = (authenticator && typeof authenticator.counter === 'number') ? authenticator.counter : 0;
 
       verification = await verifyAuthenticationResponse({
         response,
@@ -355,7 +365,7 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
         authenticator: {
           credentialID: credentialIDBuffer,
           credentialPublicKey: credentialPublicKeyBuffer,
-          counter: authenticator.counter || 0, // FIX: Default to 0 if undefined
+          counter: currentCounter,
         },
       });
     } catch (error) {

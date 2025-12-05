@@ -134,8 +134,10 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const [settingsMenuPosition, setSettingsMenuPosition] = useState<'top' | 'bottom'>('top');
   const [adminView, setAdminView] = useState<'MENU' | 'SIMULATION' | 'SUPPORT' | 'EVOLUTION'>('MENU');
   const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
 
   const [activeTab, setActiveTab] = useState<string>('RESUMEN');
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
@@ -776,11 +778,25 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
               <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
                 <div className="flex justify-between items-center relative" ref={settingsMenuRef}>
                   <button 
+                    ref={settingsButtonRef}
                     onClick={() => {
                         if (isDemoMode) {
                             setShowDemoModal(true);
                             return;
                         }
+                        
+                        // Dynamic Positioning Logic
+                        if (!isSettingsMenuOpen && settingsButtonRef.current) {
+                            const rect = settingsButtonRef.current.getBoundingClientRect();
+                            const spaceBelow = window.innerHeight - rect.bottom;
+                            // If less than 350px below, show upwards (top), else downwards (bottom)
+                            if (spaceBelow < 350) {
+                                setSettingsMenuPosition('top');
+                            } else {
+                                setSettingsMenuPosition('bottom');
+                            }
+                        }
+                        
                         setIsSettingsMenuOpen(prev => !prev);
                     }} 
                     className={`p-2 transition-colors ${isDemoMode ? 'text-stone-600 cursor-not-allowed' : 'text-stone-500 hover:text-white'}`}
@@ -789,7 +805,7 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
                   </button>
                   
                   {isSettingsMenuOpen && (
-                    <div className="absolute bottom-full left-0 mb-2 w-48 bg-stone-900 border border-stone-800 rounded-lg shadow-xl overflow-hidden animate-fadeIn z-50">
+                    <div className={`absolute ${settingsMenuPosition === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} left-0 w-48 bg-stone-900 border border-stone-800 rounded-lg shadow-xl overflow-hidden animate-fadeIn z-50`}>
                       <button onClick={handleOpenPermissions} className="w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2">
                         <Shield size={14} /> Permisos
                       </button>

@@ -43216,8 +43216,10 @@ const ClientApp = ({ isDemoMode = false }) => {
   const [isEditMode, setIsEditMode] = reactExports.useState(false);
   const [isRefreshing, setIsRefreshing] = reactExports.useState(false);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = reactExports.useState(false);
+  const [settingsMenuPosition, setSettingsMenuPosition] = reactExports.useState("top");
   const [adminView, setAdminView] = reactExports.useState("MENU");
   const settingsMenuRef = reactExports.useRef(null);
+  const settingsButtonRef = reactExports.useRef(null);
   const [activeTab, setActiveTab] = reactExports.useState("RESUMEN");
   const [activeMission, setActiveMission] = reactExports.useState(null);
   const [isSimulating, setIsSimulating] = reactExports.useState(false);
@@ -43702,10 +43704,20 @@ const ClientApp = ({ isDemoMode = false }) => {
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "button",
                 {
+                  ref: settingsButtonRef,
                   onClick: () => {
                     if (isDemoMode) {
                       setShowDemoModal(true);
                       return;
+                    }
+                    if (!isSettingsMenuOpen && settingsButtonRef.current) {
+                      const rect = settingsButtonRef.current.getBoundingClientRect();
+                      const spaceBelow = window.innerHeight - rect.bottom;
+                      if (spaceBelow < 350) {
+                        setSettingsMenuPosition("top");
+                      } else {
+                        setSettingsMenuPosition("bottom");
+                      }
                     }
                     setIsSettingsMenuOpen((prev) => !prev);
                   },
@@ -43713,7 +43725,7 @@ const ClientApp = ({ isDemoMode = false }) => {
                   children: /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, { size: 20 })
                 }
               ),
-              isSettingsMenuOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute bottom-full left-0 mb-2 w-48 bg-stone-900 border border-stone-800 rounded-lg shadow-xl overflow-hidden animate-fadeIn z-50", children: [
+              isSettingsMenuOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `absolute ${settingsMenuPosition === "top" ? "bottom-full mb-2" : "top-full mt-2"} left-0 w-48 bg-stone-900 border border-stone-800 rounded-lg shadow-xl overflow-hidden animate-fadeIn z-50`, children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleOpenPermissions, className: "w-full text-left px-4 py-3 text-xs text-stone-300 hover:bg-stone-800 hover:text-white border-b border-stone-800 flex items-center gap-2", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, { size: 14 }),
                   " Permisos"
