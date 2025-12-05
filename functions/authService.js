@@ -338,19 +338,17 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
 
     let verification;
     try {
-      // Robust Buffer conversion for verification
+      // COPIA PROFUNDA: Crear nuevos Uint8Array independientes para evitar problemas de memoria compartida
       let credentialIDUint8;
       if (authenticator.credentialID) {
           const buf = Buffer.from(authenticator.credentialID, 'base64url');
-          // Convert Buffer to pure Uint8Array to avoid library issues
-          credentialIDUint8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+          credentialIDUint8 = Uint8Array.from(buf);
       }
 
       let credentialPublicKeyUint8;
       if (authenticator.credentialPublicKey) {
           const buf = Buffer.from(authenticator.credentialPublicKey, 'base64url');
-          // Convert Buffer to pure Uint8Array to avoid library issues
-          credentialPublicKeyUint8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+          credentialPublicKeyUint8 = Uint8Array.from(buf);
       }
 
       if (!credentialIDUint8 || !credentialPublicKeyUint8) {
