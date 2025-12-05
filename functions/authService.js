@@ -91,69 +91,65 @@ exports.verifyRegistration = onCall({ cors: true }, async (request) => {
     const { verified, registrationInfo } = verification;
 
     if (verified && registrationInfo) {
-      // FIX: In @simplewebauthn/server v13+, credential info is nested in 'credential' object
-      const { credential } = registrationInfo;
-      let credentialID = credential?.id;
-      let credentialPublicKey = credential?.publicKey;
-      let counter = credential?.counter;
+      // Extract credential info robustly
+      // SimpleWebAuthn v10+ puts these directly in registrationInfo
+      let credentialID = registrationInfo.credentialID;
+      let credentialPublicKey = registrationInfo.credentialPublicKey;
+      let counter = registrationInfo.counter;
 
-      // Fallback for older versions or different structures (just in case)
-      if (!credentialID) credentialID = registrationInfo.credentialID;
-      if (!credentialPublicKey) credentialPublicKey = registrationInfo.credentialPublicKey;
-      if (counter === undefined) counter = registrationInfo.counter;
+      // Fallback check for nested structure (rare but possible in some versions/configs)
+      if (!credentialID && registrationInfo.credential && registrationInfo.credential.id) {
+          credentialID = registrationInfo.credential.id;
+          credentialPublicKey = registrationInfo.credential.publicKey;
+          counter = registrationInfo.credential.counter;
+      }
 
-      console.log("Registration Info received:", { 
+      console.log("Registration Info Extracted:", { 
         hasCredentialID: !!credentialID, 
-        credentialIDType: typeof credentialID,
+        credentialIDType: credentialID ? credentialID.constructor.name : 'undefined',
+        credentialIDLength: credentialID ? credentialID.length : 0,
         hasPublicKey: !!credentialPublicKey,
-        keys: Object.keys(registrationInfo)
+        counter
       });
 
-      // Fallback: If credentialID is missing in registrationInfo, use the one from the response (client-side ID)
-      if (!credentialID && response.id) {
-        console.warn("credentialID missing in registrationInfo, using response.id fallback");
-        credentialID = response.id;
+      if (!credentialID || !credentialPublicKey) {
+        console.error("CRITICAL: Missing credential data after verification", registrationInfo);
+        throw new Error("Credential data missing from verification result");
       }
 
-      if (!credentialID) {
-        console.error("Registration Info keys:", Object.keys(registrationInfo));
-        throw new Error("credentialID is missing in registrationInfo");
-      }
-
-      if (!credentialPublicKey) {
-        console.error("Full Registration Info:", JSON.stringify(registrationInfo, (k, v) => (v instanceof Uint8Array || (v && v.type === 'Buffer') ? '[Buffer]' : v)));
-        throw new Error("credentialPublicKey is missing in registrationInfo");
-      }
-
-      // Robust Buffer conversion
-      // If it's already a string, assume it's base64url and use it directly or convert if needed.
-      // SimpleWebAuthn v13 usually returns Uint8Array for these fields in registrationInfo.
-      
+      // Robust Conversion to Base64URL for Storage
       let credentialIDBase64;
-      if (Buffer.isBuffer(credentialID) || credentialID instanceof Uint8Array) {
-         credentialIDBase64 = Buffer.from(credentialID).toString('base64url');
-      } else if (typeof credentialID === 'string') {
-         credentialIDBase64 = credentialID;
-      } else {
-         // Fallback or error
-         credentialIDBase64 = String(credentialID);
+      try {
+          const buf = Buffer.from(credentialID); // Handles Uint8Array or Buffer
+          credentialIDBase64 = buf.toString('base64url');
+      } catch (e) {
+          console.error("Error converting credentialID to base64url", e);
+          credentialIDBase64 = String(credentialID);
       }
 
       let credentialPublicKeyBase64;
-      if (Buffer.isBuffer(credentialPublicKey) || credentialPublicKey instanceof Uint8Array) {
-        credentialPublicKeyBase64 = Buffer.from(credentialPublicKey).toString('base64url');
-      } else if (typeof credentialPublicKey === 'string') {
-        credentialPublicKeyBase64 = credentialPublicKey;
-      } else {
-        credentialPublicKeyBase64 = String(credentialPublicKey);
+      try {
+          const buf = Buffer.from(credentialPublicKey);
+          credentialPublicKeyBase64 = buf.toString('base64url');
+      } catch (e) {
+          console.error("Error converting credentialPublicKey to base64url", e);
+          credentialPublicKeyBase64 = String(credentialPublicKey);
       }
+
+      console.log("Saving Authenticator to Firestore:", {
+          userId,
+          credentialIDBase64,
+          counter,
+          transports: response.response.transports || []
+      });
 
       await db.collection('users').doc(userId).collection('authenticators').add({
         credentialID: credentialIDBase64,
         credentialPublicKey: credentialPublicKeyBase64,
         counter,
         transports: response.response.transports || [],
-        created: admin.firestore.FieldValue.serverTimestamp()
+        created: admin.firestore.FieldValue.serverTimestamp(),
+        userAgent: request.rawRequest ? request.rawRequest.headers['user-agent'] : 'unknown'
       });
 
       // Clean up challenge
@@ -161,6 +157,7 @@ exports.verifyRegistration = onCall({ cors: true }, async (request) => {
         currentChallenge: admin.firestore.FieldValue.delete()
       });
 
+      console.log("Authenticator saved successfully.");
       return { verified: true };
     }
 
