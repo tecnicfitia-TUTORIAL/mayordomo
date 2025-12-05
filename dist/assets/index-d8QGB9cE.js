@@ -43690,9 +43690,7 @@ const ClientApp = ({ isDemoMode = false }) => {
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "button",
                 {
-                  onClick: (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
+                  onClick: () => {
                     if (isDemoMode) {
                       setShowDemoModal(true);
                       return;

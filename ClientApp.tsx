@@ -776,14 +776,12 @@ const ClientApp: React.FC<Props> = ({ isDemoMode = false }) => {
               <div className="p-4 border-t border-stone-800 bg-dark-950 relative">
                 <div className="flex justify-between items-center relative" ref={settingsMenuRef}>
                   <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault(); // Prevent default behavior
+                    onClick={() => {
                         if (isDemoMode) {
                             setShowDemoModal(true);
                             return;
                         }
-                        setIsSettingsMenuOpen(prev => !prev); // Use functional update
+                        setIsSettingsMenuOpen(prev => !prev);
                     }} 
                     className={`p-2 transition-colors ${isDemoMode ? 'text-stone-600 cursor-not-allowed' : 'text-stone-500 hover:text-white'}`}
                   >
