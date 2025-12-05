@@ -384,8 +384,13 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
       }
 
       // Safe counter access
-      const currentCounter = (authenticator && typeof authenticator.counter === 'number') ? authenticator.counter : 0;
-      const currentTransports = (authenticator && Array.isArray(authenticator.transports)) ? authenticator.transports : undefined;
+      let currentCounter = 0;
+      if (authenticator && authenticator.counter !== undefined) {
+          const parsed = parseInt(authenticator.counter, 10);
+          if (!isNaN(parsed)) {
+              currentCounter = parsed;
+          }
+      }
 
       // Construct the authenticator object exactly as expected by SimpleWebAuthn
       const authenticatorDevice = {
@@ -395,20 +400,27 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
           transports: currentTransports,
       };
 
-      console.log("Calling verifyAuthenticationResponse with:", {
+      console.log("PRE-VERIFY DEBUG:", {
           credentialID_length: authenticatorDevice.credentialID.length,
           counter: authenticatorDevice.counter,
-          hasTransports: !!authenticatorDevice.transports
+          hasTransports: !!authenticatorDevice.transports,
+          rpID,
+          origin
       });
 
-      verification = await verifyAuthenticationResponse({
-        response,
-        expectedChallenge,
-        expectedOrigin: origin,
-        expectedRPID: rpID,
-        authenticator: authenticatorDevice,
-        requireUserVerification: false, 
-      });
+      try {
+        verification = await verifyAuthenticationResponse({
+            response,
+            expectedChallenge,
+            expectedOrigin: origin,
+            expectedRPID: rpID,
+            authenticator: authenticatorDevice,
+            requireUserVerification: false, 
+        });
+      } catch (innerError) {
+          console.error("CRASH INSIDE verifyAuthenticationResponse:", innerError);
+          throw innerError;
+      }
     } catch (error) {
       console.error("Auth Verification failed", error);
       throw new HttpsError('invalid-argument', error.message);
