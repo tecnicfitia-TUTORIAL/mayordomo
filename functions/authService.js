@@ -136,24 +136,29 @@ exports.verifyRegistration = onCall({ cors: true }, async (request) => {
 
       let credentialPublicKeyBase64;
       try {
+          // Ensure we are converting a Buffer/Uint8Array to Base64URL string
           const buf = Buffer.from(credentialPublicKey);
           credentialPublicKeyBase64 = buf.toString('base64url');
       } catch (e) {
           console.error("Error converting credentialPublicKey to base64url", e);
+          // Fallback: if it's already a string or something else, try to save it safely
           credentialPublicKeyBase64 = String(credentialPublicKey);
       }
+
+      // CRITICAL: Ensure counter is a number
+      const safeCounter = typeof counter === 'number' ? counter : 0;
 
       console.log("Saving Authenticator to Firestore:", {
           userId,
           credentialIDBase64,
-          counter,
+          counter: safeCounter,
           transports: response.response.transports || []
       });
 
       await db.collection('users').doc(userId).collection('authenticators').add({
         credentialID: credentialIDBase64,
         credentialPublicKey: credentialPublicKeyBase64,
-        counter,
+        counter: safeCounter,
         transports: response.response.transports || [],
         created: admin.firestore.FieldValue.serverTimestamp(),
         userAgent: request.rawRequest ? request.rawRequest.headers['user-agent'] : 'unknown'
@@ -425,8 +430,15 @@ exports.verifyAuthentication = onCall({ cors: true }, async (request) => {
           transports: currentTransports,
       };
 
+      // CRITICAL DEBUG: Check if credentialPublicKeyUint8 is valid
+      if (credentialPublicKeyUint8.length === 0) {
+          console.error("CRITICAL: credentialPublicKey is empty!");
+          throw new Error("Stored credentialPublicKey is empty.");
+      }
+
       console.log("PRE-VERIFY DEBUG:", {
           credentialID_length: authenticatorDevice.credentialID.length,
+          credentialPublicKey_length: authenticatorDevice.credentialPublicKey.length,
           counter: authenticatorDevice.counter,
           hasTransports: !!authenticatorDevice.transports,
           rpID,
