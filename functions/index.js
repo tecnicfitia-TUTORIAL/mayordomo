@@ -91,11 +91,12 @@ exports.verifyAuthentication = authService.verifyAuthentication;
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 
-// Map Stripe Product IDs to Internal Subscription Tiers
+// Map Stripe Price IDs to Internal Subscription Tiers
+// These match the Price IDs from your Payment Links
 const TIER_MAPPING = {
-  'prod_BasicId123': 'ASISTENTE',
-  'prod_ProId456':   'MAYORDOMO',
-  'prod_VipId789':   'GOBERNANTE'
+  'price_1SYTOfRWeo9ZzuM69Z0q69sY': 'BASIC',  // Asistente Digital
+  'price_1SYTQRRWeo9ZzuM6RshKCwIk': 'PRO',     // Mayordomo Digital
+  'price_1SYTRxRWeo9ZzuM6oZHTQlNM': 'VIP'      // Gobernante
 };
 
 /**
@@ -122,20 +123,60 @@ exports.stripeWebhook = onRequest(
     }
 
     try {
-        if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.created') {
+        // Handle Payment Link checkout completion
+        if (event.type === 'checkout.session.completed') {
+            const session = event.data.object;
+            const customerEmail = session.customer_details?.email;
+            const customerId = session.customer;
+            const priceId = session.line_items?.data?.[0]?.price?.id || session.metadata?.price_id;
+            
+            console.log(`[Stripe] Checkout completed for customer: ${customerEmail || customerId}, price: ${priceId}`);
+            
+            // Find user by email (since Payment Links don't require pre-existing customer)
+            let userRef = null;
+            if (customerEmail) {
+                const emailSnapshot = await db.collection('users').where('email', '==', customerEmail).limit(1).get();
+                if (!emailSnapshot.empty) {
+                    userRef = emailSnapshot.docs[0].ref;
+                }
+            }
+            
+            // Also try by Stripe Customer ID if exists
+            if (!userRef && customerId) {
+                const customerSnapshot = await db.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
+                if (!customerSnapshot.empty) {
+                    userRef = customerSnapshot.docs[0].ref;
+                }
+            }
+            
+            if (userRef) {
+                const newTier = TIER_MAPPING[priceId] || 'FREE';
+                await userRef.update({
+                    subscriptionTier: newTier,
+                    subscriptionStatus: 'active',
+                    stripeCustomerId: customerId || admin.firestore.FieldValue.delete(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+                console.log(`[Stripe] User ${userRef.id} updated to ${newTier} via Payment Link`);
+            } else {
+                console.warn(`[Stripe] No user found for email: ${customerEmail} or customer: ${customerId}`);
+            }
+        }
+        // Handle subscription updates (for recurring subscriptions)
+        else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.created') {
             const subscription = event.data.object;
             const customerId = subscription.customer;
-            const priceId = subscription.items.data[0].price.product;
+            const priceId = subscription.items.data[0].price.id; // Use price.id, not price.product
             const status = subscription.status;
 
-            // Find user by Stripe ID
+            // Find user by Stripe Customer ID
             const snapshot = await db.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
             
             if (!snapshot.empty) {
                 const doc = snapshot.docs[0];
                 const newTier = (status === 'active' || status === 'trialing') 
-                    ? (TIER_MAPPING[priceId] || 'INVITADO') 
-                    : 'INVITADO';
+                    ? (TIER_MAPPING[priceId] || 'FREE') 
+                    : 'FREE';
                 
                 await doc.ref.update({
                     subscriptionTier: newTier,
@@ -152,7 +193,7 @@ exports.stripeWebhook = onRequest(
             const snapshot = await db.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
             if (!snapshot.empty) {
                 await snapshot.docs[0].ref.update({
-                    subscriptionTier: 'INVITADO',
+                    subscriptionTier: 'FREE',
                     subscriptionStatus: 'canceled',
                     updatedAt: admin.firestore.FieldValue.serverTimestamp()
                 });
