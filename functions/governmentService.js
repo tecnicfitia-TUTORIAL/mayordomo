@@ -119,7 +119,7 @@ async function getHttpsAgent(userId) {
  * Endpoint real: https://sede.gob.es/...
  */
 exports.getDEHUNotifications = onRequest(
-  { cors: true, secrets: [encryptionKey], maxInstances: 10 },
+  { cors: true, secrets: [encryptionKey], maxInstances: 10, invoker: 'public' },
   async (req, res) => {
     // MANUAL CORS FIX
     res.set('Access-Control-Allow-Origin', '*');
@@ -231,7 +231,7 @@ exports.getDEHUNotifications = onRequest(
  * Endpoint real: https://www.agenciatributaria.gob.es/...
  */
 exports.getAEATStatus = onRequest(
-  { cors: true, secrets: [encryptionKey], maxInstances: 10 },
+  { cors: true, secrets: [encryptionKey], maxInstances: 10, invoker: 'public' },
   async (req, res) => {
     // MANUAL CORS FIX
     res.set('Access-Control-Allow-Origin', '*');
@@ -336,7 +336,7 @@ exports.getAEATStatus = onRequest(
  * Endpoint real: https://sede.dgt.gob.es/...
  */
 exports.getDGTPoints = onRequest(
-  { cors: true, secrets: [encryptionKey], maxInstances: 10 },
+  { cors: true, secrets: [encryptionKey], maxInstances: 10, invoker: 'public' },
   async (req, res) => {
     // MANUAL CORS FIX
     res.set('Access-Control-Allow-Origin', '*');
