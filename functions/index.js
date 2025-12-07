@@ -168,4 +168,180 @@ exports.stripeWebhook = onRequest(
   }
 );
 
+/**
+ * CREATE CHECKOUT SESSION (Dynamic)
+ * Creates a Stripe Checkout Session for a specific subscription tier.
+ * Requires authentication via Firebase Auth token.
+ */
+exports.createCheckoutSession = onRequest(
+  { cors: true, secrets: [stripeSecretKey] },
+  async (req, res) => {
+    try {
+      // 1. Verify Firebase Auth token
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+      }
+
+      const idToken = authHeader.split('Bearer ')[1];
+      let decodedToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(idToken);
+      } catch (error) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+      }
+
+      const userId = decodedToken.uid;
+      const { tier } = req.body;
+
+      if (!tier) {
+        return res.status(400).json({ error: 'Missing tier parameter' });
+      }
+
+      // 2. Map internal tier to Stripe Price ID
+      // TODO: Replace these with your actual Stripe Price IDs from Stripe Dashboard
+      const PRICE_ID_MAPPING = {
+        'BASIC': process.env.STRIPE_PRICE_ID_BASIC || 'price_xxxxx_basic',  // Replace with real Price ID
+        'PRO': process.env.STRIPE_PRICE_ID_PRO || 'price_xxxxx_pro',        // Replace with real Price ID
+        'VIP': process.env.STRIPE_PRICE_ID_VIP || 'price_xxxxx_vip'          // Replace with real Price ID
+      };
+
+      const priceId = PRICE_ID_MAPPING[tier.toUpperCase()];
+      if (!priceId || priceId.startsWith('price_xxxxx')) {
+        return res.status(400).json({ 
+          error: 'Invalid tier or Price ID not configured',
+          message: 'Please configure STRIPE_PRICE_ID_BASIC, STRIPE_PRICE_ID_PRO, and STRIPE_PRICE_ID_VIP in your environment variables'
+        });
+      }
+
+      // 3. Get or create Stripe Customer
+      const userDoc = await db.collection('users').doc(userId).get();
+      const userData = userDoc.data();
+      let customerId = userData?.stripeCustomerId;
+
+      const stripeClient = stripe(stripeSecretKey.value());
+
+      if (!customerId) {
+        // Create new Stripe customer
+        const customer = await stripeClient.customers.create({
+          email: decodedToken.email,
+          metadata: {
+            firebase_uid: userId
+          }
+        });
+        customerId = customer.id;
+
+        // Save customer ID to Firestore
+        await db.collection('users').doc(userId).update({
+          stripeCustomerId: customerId
+        });
+      }
+
+      // 4. Create Checkout Session
+      const session = await stripeClient.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: `${req.headers.origin || 'https://mayordomo.app'}/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${req.headers.origin || 'https://mayordomo.app'}/app?checkout=cancelled`,
+        metadata: {
+          firebase_uid: userId,
+          tier: tier.toUpperCase()
+        }
+      });
+
+      res.json({ 
+        success: true, 
+        sessionId: session.id,
+        url: session.url 
+      });
+
+    } catch (error) {
+      console.error("[createCheckoutSession] Error:", error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message 
+      });
+    }
+  }
+);
+
 exports.debugGetUserAuthenticators = authService.debugGetUserAuthenticators;
+
+/**
+ * PROCESS EMAIL WITH AI
+ * Processes an email using Gemini AI to extract structured data.
+ */
+exports.processEmailWithAI = onRequest(
+  { cors: true, secrets: [aiService.googleGenAIKey] },
+  async (req, res) => {
+    try {
+      // Verify Firebase Auth token
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+      }
+
+      const idToken = authHeader.split('Bearer ')[1];
+      let decodedToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(idToken);
+      } catch (error) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+      }
+
+      const { emailId, sender, subject, snippet, detectedType, targetPillar } = req.body;
+
+      if (!subject || !snippet) {
+        return res.status(400).json({ error: 'Missing required fields: subject, snippet' });
+      }
+
+      // Use AI Service to extract structured data
+      const prompt = `Analiza este email y extrae información estructurada:
+      
+De: ${sender}
+Asunto: ${subject}
+Contenido: ${snippet}
+
+Tipo detectado: ${detectedType}
+Pilar objetivo: ${targetPillar}
+
+Extrae:
+- Monto (si es factura/pago)
+- Fecha de vencimiento
+- Referencia/número de documento
+- Acción requerida
+- Datos relevantes según el tipo
+
+Responde en JSON.`;
+
+      const aiResponse = await aiService.generateChatResponse(
+        [{ role: 'user', content: prompt }],
+        decodedToken.uid
+      );
+
+      res.json({
+        success: true,
+        extractedData: {
+          type: detectedType,
+          pillar: targetPillar,
+          summary: aiResponse || 'Email procesado',
+          rawAIResponse: aiResponse
+        }
+      });
+
+    } catch (error) {
+      console.error("[processEmailWithAI] Error:", error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error.message
+      });
+    }
+  }
+);

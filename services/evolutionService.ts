@@ -135,9 +135,36 @@ const MOCK_MACRO_EVENTS: MacroContextEvent[] = [
   }
 ];
 
-// 1. Scan Macro Context (Simulated)
+// 1. Scan Macro Context (Real or Fallback)
 export const scanMacroContext = async (): Promise<MacroContextEvent> => {
-  // In a real app, this would search Google. Here we pick a random mock event.
+  // Try to fetch real data from Cloud Function (if configured)
+  try {
+    const { getAuth } = await import('firebase/auth');
+    const auth = getAuth();
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      const env = (import.meta as any).env || {};
+      const functionsBaseUrl = env.VITE_FIREBASE_FUNCTIONS_URL || `https://${REGION}-${PROJECT_ID}.cloudfunctions.net`;
+      
+      const response = await fetch(`${functionsBaseUrl}/scanMacroContext`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.event) {
+          return data.event;
+        }
+      }
+    }
+  } catch (error) {
+    console.log("[EvolutionService] Real data source not available, using fallback");
+  }
+
+  // Fallback: Use mock data (for now, until real API is configured)
   const randomIndex = Math.floor(Math.random() * MOCK_MACRO_EVENTS.length);
   return new Promise((resolve) => {
     setTimeout(() => {

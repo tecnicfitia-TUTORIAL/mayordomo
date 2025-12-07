@@ -6,6 +6,7 @@ import { Shield, Home, Coffee, Activity, Users, Lock, CheckCircle2, AlertTriangl
 import { UniversalDetailModal } from './UniversalDetailModal';
 import { BankService } from '../services/bankService';
 import { EmailService } from '../services/emailService';
+import { GovernmentService } from '../services/governmentService';
 
 interface Props {
   pillarId: PillarId;
@@ -68,6 +69,7 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
   const [realData, setRealData] = useState<Record<string, any>>({});
   const [isLoadingBank, setIsLoadingBank] = useState(false);
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
+  const [isLoadingGovernment, setIsLoadingGovernment] = useState(false);
 
   // --- FETCH REAL DATA ---
   const fetchData = async () => {
@@ -91,7 +93,7 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
           setIsLoadingBank(false);
       }
 
-      // 2. GMAIL CONNECTION (Pending Implementation)
+      // 2. GMAIL CONNECTION
       const urlParams = new URLSearchParams(window.location.search);
       const gmailCode = urlParams.get('code');
       if (gmailCode) {
@@ -111,6 +113,84 @@ export const PillarDetailView: React.FC<Props> = ({ pillarId, status, userProfil
               console.error("Failed to scan gmail", e);
           } finally {
               setIsLoadingEmail(false);
+          }
+      }
+
+      // 3. GOVERNMENT DATA (DEHú, AEAT, DGT)
+      if (pillarId === PillarId.CENTINELA) {
+          setIsLoadingGovernment(true);
+          try {
+              // DEHú Notifications
+              const dehuResponse = await GovernmentService.getDEHUNotifications();
+              if (dehuResponse.success && dehuResponse.notifications) {
+                  setRealData(prev => ({
+                      ...prev,
+                      'cent_official_notif': {
+                          value: `${dehuResponse.count || dehuResponse.notifications.length} Pendientes`,
+                          label: 'Buzón DEHú',
+                          source: 'DEHÚ API'
+                      }
+                  }));
+              } else if (dehuResponse.error === 'CERT_MISSING' || dehuResponse.error === 'CERTIFICATE_EXPIRED') {
+                  setRealData(prev => ({
+                      ...prev,
+                      'cent_official_notif': {
+                          value: 'Certificado Requerido',
+                          label: 'Buzón DEHú',
+                          source: 'CONFIGURAR'
+                      }
+                  }));
+              }
+
+              // AEAT Status
+              const aeatResponse = await GovernmentService.getAEATStatus();
+              if (aeatResponse.success && aeatResponse.status) {
+                  const status = aeatResponse.status as any;
+                  setRealData(prev => ({
+                      ...prev,
+                      'cent_taxes': {
+                          value: status.status || 'Consultando...',
+                          label: 'Estado Fiscal',
+                          source: 'AEAT API'
+                      }
+                  }));
+              } else if (aeatResponse.error === 'CERT_MISSING' || aeatResponse.error === 'CERTIFICATE_EXPIRED') {
+                  setRealData(prev => ({
+                      ...prev,
+                      'cent_taxes': {
+                          value: 'Certificado Requerido',
+                          label: 'Estado Fiscal',
+                          source: 'CONFIGURAR'
+                      }
+                  }));
+              }
+
+              // DGT Points
+              const dgtResponse = await GovernmentService.getDGTPoints();
+              if (dgtResponse.success && dgtResponse.points) {
+                  const points = dgtResponse.points as any;
+                  setRealData(prev => ({
+                      ...prev,
+                      'cent_traffic_fine': {
+                          value: `${points.current || 0} / ${points.max || 15}`,
+                          label: 'Puntos DGT',
+                          source: 'DGT API'
+                      }
+                  }));
+              } else if (dgtResponse.error === 'CERT_MISSING' || dgtResponse.error === 'CERTIFICATE_EXPIRED') {
+                  setRealData(prev => ({
+                      ...prev,
+                      'cent_traffic_fine': {
+                          value: 'Certificado Requerido',
+                          label: 'Puntos DGT',
+                          source: 'CONFIGURAR'
+                      }
+                  }));
+              }
+          } catch (e) {
+              console.error("Failed to fetch government data", e);
+          } finally {
+              setIsLoadingGovernment(false);
           }
       }
   };

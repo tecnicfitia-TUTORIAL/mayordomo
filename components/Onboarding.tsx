@@ -61,13 +61,19 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onOpenAdmin }) => {
   const handleNext = () => setStep(prev => prev + 1);
   const handleBack = () => setStep(prev => Math.max(2, prev - 1)); // Min step 2
 
-  const handleManageSubscription = () => {
+  const handleManageSubscription = async () => {
     setIsLoadingPayment(true);
-    StripeService.openCheckout(selectedPlan);
-    setTimeout(() => {
+    try {
+      await StripeService.openCheckout(selectedPlan);
+      // Note: openCheckout redirects to Stripe, so handleNext may not execute
+      // If redirect fails, reset loading state
+      setTimeout(() => {
         setIsLoadingPayment(false);
-        handleNext();
-    }, 5000);
+      }, 3000);
+    } catch (error) {
+      console.error("Error opening checkout:", error);
+      setIsLoadingPayment(false);
+    }
   };
 
   const handleContinueAsGuest = () => {

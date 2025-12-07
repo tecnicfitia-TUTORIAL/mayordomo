@@ -50,16 +50,62 @@ export const StripeService = {
 
   /**
    * Redirects to the Checkout page for a specific plan.
+   * Now uses dynamic Cloud Function to create checkout session.
    */
-  openCheckout: (tier: SubscriptionTier): void => {
-      // Default to Basic if not found, or handle error
-      const url = STRIPE_URLS[tier];
-      if (url) {
-          console.log(`[Stripe] Redirecting to Checkout for tier: ${tier}`);
-          window.location.href = url;
-      } else {
-          console.warn(`[Stripe] No checkout URL found for tier: ${tier}`);
-          alert("Enlace de pago no disponible para este plan.");
+  openCheckout: async (tier: SubscriptionTier, userId?: string): Promise<void> => {
+      try {
+          console.log(`[Stripe] Creating checkout session for tier: ${tier}`);
+          
+          // Get Firebase Auth token
+          const { getAuth } = await import('firebase/auth');
+          const auth = getAuth();
+          if (!auth.currentUser) {
+              alert("Debe iniciar sesión para continuar.");
+              return;
+          }
+
+          const token = await auth.currentUser.getIdToken();
+          
+          // Get Cloud Functions base URL
+          const functionsBaseUrl = env.VITE_FIREBASE_FUNCTIONS_URL || 'https://us-central1-mayordomo-ai.cloudfunctions.net';
+          const response = await fetch(`${functionsBaseUrl}/createCheckoutSession`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ tier })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+              throw new Error(data.error || 'Error creating checkout session');
+          }
+
+          if (data.url) {
+              console.log(`[Stripe] Redirecting to checkout session: ${data.sessionId}`);
+              window.location.href = data.url;
+          } else {
+              // Fallback to hardcoded URL if dynamic session creation fails
+              console.warn(`[Stripe] No URL returned, falling back to hardcoded URL`);
+              const url = STRIPE_URLS[tier];
+              if (url) {
+                  window.location.href = url;
+              } else {
+                  throw new Error("No checkout URL available");
+              }
+          }
+      } catch (error: any) {
+          console.error("[Stripe] Failed to create checkout session:", error);
+          // Fallback to hardcoded URL on error
+          const url = STRIPE_URLS[tier];
+          if (url) {
+              console.log(`[Stripe] Using fallback URL for tier: ${tier}`);
+              window.location.href = url;
+          } else {
+              alert("No se pudo crear la sesión de pago. Inténtelo más tarde.");
+          }
       }
   },
 

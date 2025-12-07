@@ -55,8 +55,77 @@ export const EmailIngestionService = {
     }
 
     // --- FASE 3: EXTRACCIÓN Y ALMACENAMIENTO ---
-    // (Simulada: Aquí se llamaría a Gemini para extraer JSON estructurado)
     console.log(`[EmailIngestion] 🚀 PROCESSING: Extracting data to ${relevance.targetPillar}...`);
+    
+    // Call AI Service to extract structured data
+    try {
+      const { db } = await import('./firebaseConfig');
+      const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+      
+      if (db && !(db as any)._isMock) {
+        // Call Cloud Function to process email with AI (Gemini)
+        const { getAuth } = await import('firebase/auth');
+        const auth = getAuth();
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          const env = (import.meta as any).env || {};
+          const functionsBaseUrl = env.VITE_FIREBASE_FUNCTIONS_URL || 'https://us-central1-mayordomo-ai.cloudfunctions.net';
+          
+          try {
+            const aiResponse = await fetch(`${functionsBaseUrl}/processEmailWithAI`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                emailId: email.id,
+                sender: email.sender,
+                subject: email.subject,
+                snippet: email.snippet,
+                detectedType: relevance.detectedType,
+                targetPillar: relevance.targetPillar
+              })
+            });
+
+            const aiData = await aiResponse.json();
+            
+            // Save processed email to Firestore
+            const processedEmailRef = collection(db, 'users', profile.uid, 'processed_emails');
+            await addDoc(processedEmailRef, {
+              emailId: email.id,
+              sender: email.sender,
+              subject: email.subject,
+              snippet: email.snippet,
+              detectedType: relevance.detectedType,
+              targetPillar: relevance.targetPillar,
+              extractedData: aiData.extractedData || null,
+              processedAt: serverTimestamp(),
+              status: 'PROCESSED'
+            });
+
+            console.log(`[EmailIngestion] ✅ Saved to Firestore: ${email.id}`);
+          } catch (aiError) {
+            console.error("[EmailIngestion] AI processing failed, saving without extraction:", aiError);
+            // Save anyway, but without AI extraction
+            const processedEmailRef = collection(db, 'users', profile.uid, 'processed_emails');
+            await addDoc(processedEmailRef, {
+              emailId: email.id,
+              sender: email.sender,
+              subject: email.subject,
+              snippet: email.snippet,
+              detectedType: relevance.detectedType,
+              targetPillar: relevance.targetPillar,
+              processedAt: serverTimestamp(),
+              status: 'PROCESSED_NO_AI'
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[EmailIngestion] Error saving to Firestore:", error);
+      // Continue even if save fails
+    }
     
     return { 
       status: 'PROCESSED', 

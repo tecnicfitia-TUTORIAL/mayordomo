@@ -1,6 +1,8 @@
 
 import { SubscriptionTier } from '../types';
 import { STRIPE_URLS } from '../constants';
+import { db } from './firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 /**
  * SUBSCRIPTION SERVICE (Single Source of Truth)
@@ -16,6 +18,7 @@ export const SubscriptionService = {
   /**
    * Obtiene el nivel de suscripción actual del usuario.
    * Si hay una simulación activa, devuelve ese valor.
+   * Lee directamente de Firestore donde el webhook de Stripe actualiza el tier.
    */
   getCurrentUserTier: async (userId?: string): Promise<SubscriptionTier> => {
     
@@ -25,21 +28,44 @@ export const SubscriptionService = {
         return _simulatedTierOverride;
     }
 
-    // =================================================================================
-    // TODO: BACKEND INTEGRATION
-    // =================================================================================
-    // Aquí se debe llamar al endpoint GET /user/subscription del Backend
-    // =================================================================================
+    // 2. Read from Firestore (Real Backend Integration)
+    if (!userId) {
+        console.warn(`[SubscriptionService] No userId provided, returning FREE`);
+        return SubscriptionTier.FREE;
+    }
 
-    console.log(`[SubscriptionService] Verifying real tier for user: ${userId || 'Anonymous'}`);
-    
-    // SAFETY: Default fallback is FREE to enforce Zero Trust until backend is ready.
-    const DEFAULT_TIER = SubscriptionTier.FREE; 
+    try {
+        // Check if DB is initialized
+        if (!db || (db as any)._isMock) {
+            console.warn(`[SubscriptionService] DB not initialized or in mock mode, returning FREE`);
+            return SubscriptionTier.FREE;
+        }
 
-    // Simula latencia
-    await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[SubscriptionService] Reading tier from Firestore for user: ${userId}`);
+        
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
 
-    return DEFAULT_TIER;
+        if (!userSnap.exists()) {
+            console.warn(`[SubscriptionService] User document not found, returning FREE`);
+            return SubscriptionTier.FREE;
+        }
+
+        const userData = userSnap.data();
+        const tier = userData.subscriptionTier as SubscriptionTier;
+
+        if (tier && Object.values(SubscriptionTier).includes(tier)) {
+            console.log(`[SubscriptionService] Tier from Firestore: ${tier}`);
+            return tier;
+        } else {
+            console.warn(`[SubscriptionService] Invalid tier in Firestore: ${tier}, returning FREE`);
+            return SubscriptionTier.FREE;
+        }
+    } catch (error) {
+        console.error(`[SubscriptionService] Error reading tier from Firestore:`, error);
+        // Fallback to FREE on error
+        return SubscriptionTier.FREE;
+    }
   },
 
   /**
