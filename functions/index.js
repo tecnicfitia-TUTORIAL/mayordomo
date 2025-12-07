@@ -75,6 +75,9 @@ exports.generateChatResponse = aiService.generateChatResponse;
 exports.inferObligations = aiService.inferObligations;
 exports.analyzeGapAndPropose = aiService.analyzeGapAndPropose;
 
+// AI Secret for processEmailWithAI
+const googleGenAIKey = defineSecret("GOOGLE_GEN_AI_KEY");
+
 // Export MFA Services
 exports.generateMfaSetup = mfaService.generateMfaSetup;
 exports.verifyMfaSetup = mfaService.verifyMfaSetup;
@@ -320,7 +323,7 @@ exports.debugGetUserAuthenticators = authService.debugGetUserAuthenticators;
  * Processes an email using Gemini AI to extract structured data.
  */
 exports.processEmailWithAI = onRequest(
-  { cors: true, secrets: [aiService.googleGenAIKey] },
+  { cors: true, secrets: [googleGenAIKey] },
   async (req, res) => {
     try {
       // Verify Firebase Auth token
