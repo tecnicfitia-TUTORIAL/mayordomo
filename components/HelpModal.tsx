@@ -26,6 +26,26 @@ export const HelpModal: React.FC<Props> = ({ onClose }) => {
       )
     },
     {
+      title: "Configuración Inicial",
+      icon: <Layout className="text-blue-400" size={48} />,
+      content: (
+        <div className="space-y-4 text-sm">
+          <p><strong className="text-white">Para que la aplicación funcione al 100%:</strong></p>
+          <ol className="list-decimal pl-5 space-y-2 text-stone-300">
+            <li><strong className="text-white">Conecta tu Banco:</strong> Ve a "Hogar y Finanzas" → Conecta con Plaid para ver tus saldos y transacciones.</li>
+            <li><strong className="text-white">Conecta Gmail:</strong> Ve a "Hogar y Finanzas" → Conecta Gmail para escanear facturas automáticamente.</li>
+            <li><strong className="text-white">Sube Certificado Digital:</strong> Ve a "El Centinela" → Configuración → Certificado Digital. Necesario para consultar DEHú, AEAT y DGT.</li>
+            <li><strong className="text-white">Activa Permisos:</strong> Ve a Configuración → Permisos y activa los que necesites (Banca, Email, Certificado).</li>
+          </ol>
+          <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-500/20 mt-4">
+            <p className="text-xs text-blue-300">
+              💡 <strong>Tip:</strong> Los permisos críticos (Banca, Certificado) requieren verificación MFA para activarlos.
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
       title: "Niveles de Autonomía",
       icon: <Shield className="text-purple-400" size={48} />,
       content: (
@@ -41,18 +61,27 @@ export const HelpModal: React.FC<Props> = ({ onClose }) => {
     },
     {
       title: "Permisos y Seguridad",
-      icon: <Layout className="text-green-400" size={48} />,
+      icon: <Shield className="text-green-400" size={48} />,
       content: (
         <div className="space-y-4">
           <p>
             El sistema funciona mediante <strong>Módulos de Permisos</strong>.
           </p>
           <p>
-            Puedes encender o apagar el acceso a tu calendario, correo, ubicación o finanzas en cualquier momento desde la configuración.
+            Puedes encender o apagar el acceso a tu banco, correo, certificado digital o ubicación en cualquier momento desde Configuración → Permisos.
           </p>
+          <div className="space-y-2 text-sm">
+            <p><strong className="text-white">Permisos Críticos (requieren MFA):</strong></p>
+            <ul className="list-disc pl-5 text-stone-300 space-y-1">
+              <li>Certificado Digital</li>
+              <li>Conexión DEHú</li>
+              <li>Banca (PSD2)</li>
+              <li>Datos de Salud</li>
+            </ul>
+          </div>
           <div className="bg-red-900/20 p-3 rounded-lg border border-red-500/20">
             <p className="text-xs text-red-300">
-              Nota: Si bajas de nivel de suscripción, los permisos avanzados (como gestión financiera) se desactivarán automáticamente por seguridad.
+              ⚠️ Nota: Si bajas de nivel de suscripción, los permisos avanzados se desactivarán automáticamente por seguridad.
             </p>
           </div>
         </div>

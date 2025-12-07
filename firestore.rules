@@ -55,6 +55,17 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
         allow list: if request.auth != null && request.auth.uid == userId;
       }
+      
+      // Bóveda de certificados digitales (encriptados)
+      match /vault/certificate {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Emails procesados por IA
+      match /processed_emails/{emailId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow list: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // ============================================

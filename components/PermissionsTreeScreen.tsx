@@ -20,6 +20,18 @@ const CRITICAL_PERMISSIONS_IDS = [
     'func_health_kit'     // Datos de Salud
 ];
 
+// PERMISOS SIN FUNCIONALIDAD REAL (Mostrar como "Próximamente")
+const UPCOMING_PERMISSIONS_IDS = [
+    'sys_notifications',        // Push notifications
+    'func_camera_ocr',          // OCR
+    'func_location',            // Geolocalización
+    'func_calendar_write',      // Calendario
+    'func_health_kit',          // HealthKit
+    'func_linkedin_sync',       // LinkedIn
+    'func_contacts',            // Contactos
+    'func_calendar_read_shared' // Calendarios compartidos
+];
+
 export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onClose, highlightPermissionId }) => {
   const [expandedPillars, setExpandedPillars] = useState<Set<PillarId>>(new Set([PillarId.CENTINELA]));
   
@@ -60,6 +72,11 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
   };
 
   const handlePermissionClick = (perm: { id: string, label: string, minTier?: SubscriptionTier }) => {
+      // 0. FILTRO: Permisos "Próximamente" no son clickeables
+      if (UPCOMING_PERMISSIONS_IDS.includes(perm.id)) {
+          return; // No hacer nada si es un permiso sin funcionalidad
+      }
+      
       // 1. FILTRO DE SUSCRIPCIÓN (Tier Check)
       const userLevel = getTierLevel(profile.subscriptionTier);
       const reqLevel = getTierLevel(perm.minTier || SubscriptionTier.FREE);
@@ -239,6 +256,7 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
                                   // DEFENSIVE CODING: Handle undefined permissions
                                   const isGranted = safePermissions.includes(perm.id);
                                   const isCritical = CRITICAL_PERMISSIONS_IDS.includes(perm.id);
+                                  const isUpcoming = UPCOMING_PERMISSIONS_IDS.includes(perm.id);
                                   
                                   // LOGIC: Check Tier Lock
                                   const userLevel = getTierLevel(profile.subscriptionTier);
@@ -271,18 +289,24 @@ export const PermissionsTreeScreen: React.FC<Props> = ({ profile, onUpdate, onCl
                                                  )}
                                               </div>
                                               <div className="text-[10px] text-stone-600 italic">
-                                                 {isLockedByTier ? `Requiere ${perm.minTier}` : perm.description}
+                                                 {isLockedByTier ? `Requiere ${perm.minTier}` : isUpcoming ? 'Próximamente' : perm.description}
                                               </div>
                                            </div>
                                         </div>
                                         
-                                        {/* Toggle Switch */}
-                                        <button 
-                                           onClick={() => handlePermissionClick(perm)}
-                                           className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${isLockedByTier ? 'bg-stone-900 cursor-not-allowed' : (isGranted ? 'bg-ai-600' : 'bg-stone-800')}`}
-                                        >
-                                           <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform duration-300 ${isGranted ? 'translate-x-5' : 'translate-x-0'} ${isLockedByTier ? 'opacity-20' : ''}`}></div>
-                                        </button>
+                                        {/* Toggle Switch / Status */}
+                                        {isUpcoming ? (
+                                           <span className="text-[10px] text-amber-500/70 font-mono px-2 py-1 bg-amber-900/10 rounded border border-amber-500/20">
+                                              Próximamente
+                                           </span>
+                                        ) : (
+                                           <button 
+                                              onClick={() => handlePermissionClick(perm)}
+                                              className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${isLockedByTier ? 'bg-stone-900 cursor-not-allowed' : (isGranted ? 'bg-ai-600' : 'bg-stone-800')}`}
+                                           >
+                                              <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform duration-300 ${isGranted ? 'translate-x-5' : 'translate-x-0'} ${isLockedByTier ? 'opacity-20' : ''}`}></div>
+                                           </button>
+                                        )}
                                      </div>
                                   );
                                })}
