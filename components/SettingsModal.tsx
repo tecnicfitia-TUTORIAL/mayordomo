@@ -12,6 +12,7 @@ import { getAuth } from 'firebase/auth';
 import { collection, getDocs } from 'firebase/firestore';
 
 import { CertificateService, DigitalCertificate } from '../services/certificateService';
+import { CertificateManager } from './CertificateManager';
 
 interface Props {
   profile: UserProfile;
@@ -28,6 +29,7 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isD
   const [legalType, setLegalType] = useState<'PRIVACY' | 'TERMS' | 'NOTICE' | null>(null);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
   const [hasBiometrics, setHasBiometrics] = useState(false);
+  const [showCertManager, setShowCertManager] = useState(false);
   
   // Check Biometrics Status
   React.useEffect(() => {
@@ -283,52 +285,13 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isD
                             )}
                         </div>
                         
-                        {!certificate ? (
-                            <div className="flex flex-col gap-3">
-                                {showCertInput && (
-                                    <input 
-                                        type="password" 
-                                        placeholder="Contraseña del certificado"
-                                        value={certPassword}
-                                        onChange={(e) => setCertPassword(e.target.value)}
-                                        className="w-full bg-stone-900 border border-stone-700 rounded p-2 text-xs text-white mb-2"
-                                    />
-                                )}
-                                <div className="relative">
-                                    <input 
-                                        type="file" 
-                                        accept=".p12,.pfx"
-                                        onChange={handleCertUpload}
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                        disabled={isUploadingCert}
-                                    />
-                                    <button 
-                                        className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold py-2 rounded border border-stone-700 transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        {isUploadingCert ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-                                        {isUploadingCert ? 'Procesando y Encriptando...' : 'Seleccionar Archivo .p12 / .pfx'}
-                                    </button>
-                                </div>
-                                <p className="text-[10px] text-stone-500 text-center">
-                                    Su certificado se encriptará con AES-256 y se almacenará en un HSM seguro.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="flex justify-between items-center">
-                                <div className="text-xs text-stone-500">
-                                    Válido hasta: <span className="text-stone-300">{new Date(certificate.validUntil).toLocaleDateString()}</span> • Emisor: <span className="text-stone-300">{certificate.issuer}</span>
-                                </div>
-                                <button 
-                                    onClick={() => {
-                                        CertificateService.revokeCertificate(certificate.id);
-                                        setCertificate(null);
-                                    }} 
-                                    className="text-xs text-red-400 hover:text-red-300"
-                                >
-                                    Revocar
-                                </button>
-                            </div>
-                        )}
+                        <button
+                          onClick={() => setShowCertManager(true)}
+                          className="w-full bg-ai-500 hover:bg-ai-600 text-black font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                        >
+                          <Shield size={16} />
+                          {certificate ? 'Gestionar Certificado' : 'Configurar Certificado Digital'}
+                        </button>
                       </div>
 
                       {/* Cl@ve Option */}
@@ -743,6 +706,17 @@ export const SettingsModal: React.FC<Props> = ({ profile, onUpdate, onClose, isD
         }}
         mode="SETUP"
       />
+
+      {/* Certificate Manager Modal */}
+      {showCertManager && (
+        <CertificateManager 
+          onClose={() => {
+            setShowCertManager(false);
+            // Recargar estado del certificado
+            CertificateService.getStatus().then(setCertificate).catch(() => setCertificate(null));
+          }} 
+        />
+      )}
     </div>
   );
 };

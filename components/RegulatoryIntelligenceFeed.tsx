@@ -1,6 +1,8 @@
 
-import React, { useState } from 'react';
-import { Scale, FileText, ExternalLink, Check, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Scale, FileText, ExternalLink, Check, AlertCircle, Loader2, Shield } from 'lucide-react';
+import { GovernmentService, GovernmentNotification } from '../services/governmentService';
+import { CertificateManager } from './CertificateManager';
 
 interface RegulatoryAlert {
   id: string;
@@ -12,39 +14,59 @@ interface RegulatoryAlert {
   documentUrl?: string;
 }
 
-const MOCK_ALERTS: RegulatoryAlert[] = [
-  {
-    id: 'reg_01',
-    title: 'Refuerzo LOPD 2025: Responsabilidad Activa',
-    impact: 'Obligatorio revalidar consentimientos cada 2 años para perfiles biométricos.',
-    date: 'Q2 2026',
-    severity: 'HIGH',
-    status: 'ACTIVE',
-    documentUrl: 'https://google.com/search?q=normativa+lopd+2025'
-  },
-  {
-    id: 'reg_02',
-    title: 'Ley de Servicios Digitales (DSA)',
-    impact: 'Necesario clarificar el uso de Gemini en la política de privacidad y términos.',
-    date: 'En vigor (Nov 2025)',
-    severity: 'MEDIUM',
-    status: 'ACTIVE',
-    documentUrl: 'https://google.com/search?q=ley+servicios+digitales'
-  },
-  {
-    id: 'reg_03',
-    title: 'Nueva Orden TDF/149/2025',
-    impact: 'Verificar si el módulo de notificaciones push cumple con el bloqueo de alias.',
-    date: 'Enero 2026',
-    severity: 'LOW',
-    status: 'ACTIVE',
-    documentUrl: 'https://google.com/search?q=orden+tdf+149+2025'
-  }
-];
-
 export const RegulatoryIntelligenceFeed: React.FC = () => {
-  const [alerts, setAlerts] = useState<RegulatoryAlert[]>(MOCK_ALERTS);
+  const [alerts, setAlerts] = useState<RegulatoryAlert[]>([]);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showCertManager, setShowCertManager] = useState(false);
+
+  // Cargar notificaciones al montar
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const loadNotifications = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await GovernmentService.getDEHUNotifications();
+      
+      if (!response.success) {
+        // Manejar errores específicos
+        if (response.error === 'CERT_MISSING' || response.error === 'CERTIFICATE_EXPIRED') {
+          setError(response.error);
+        } else {
+          setError(response.message || 'Error al cargar notificaciones');
+        }
+        setAlerts([]);
+        return;
+      }
+
+      // Convertir notificaciones del backend a formato de alertas
+      if (response.notifications && response.notifications.length > 0) {
+        const convertedAlerts: RegulatoryAlert[] = response.notifications.map((notif, index) => ({
+          id: notif.id || `dehu_${index}`,
+          title: notif.title || 'Notificación DEHú',
+          impact: notif.body || 'Nueva notificación disponible',
+          date: new Date(notif.date).toLocaleDateString('es-ES'),
+          severity: 'HIGH' as const,
+          status: (notif.status === 'READ' ? 'ARCHIVED' : 'ACTIVE') as 'ACTIVE' | 'ARCHIVED',
+          documentUrl: undefined
+        }));
+        setAlerts(convertedAlerts);
+      } else {
+        setAlerts([]);
+      }
+    } catch (err: any) {
+      console.error('Error loading notifications:', err);
+      setError(err.message || 'Error al cargar notificaciones');
+      setAlerts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Funcionalidad 1: Abrir Documento Externo
   const handleOpenDoc = (url?: string) => {
@@ -65,7 +87,109 @@ export const RegulatoryIntelligenceFeed: React.FC = () => {
     setArchivingId(null);
   };
 
-  if (alerts.length === 0) return null;
+  // Renderizar estados de error
+  if (error === 'CERT_MISSING' || error === 'CERTIFICATE_EXPIRED') {
+    return (
+      <>
+        <div className="mb-8 animate-fadeIn">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-ai-900/20 rounded-full border border-ai-500/30 text-ai-500">
+              <Scale size={20} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest">Inteligencia Regulatoria & Legal</h2>
+              <p className="text-[10px] text-stone-500">Monitorización de normativas activas</p>
+            </div>
+          </div>
+
+          <div className="bg-amber-950/30 border border-amber-800/50 rounded-lg p-6 flex flex-col items-center gap-4">
+            <div className="p-3 bg-amber-900/20 rounded-full">
+              <Shield className="text-amber-500" size={32} />
+            </div>
+            <div className="text-center">
+              <h3 className="text-sm font-bold text-amber-400 mb-2">
+                {error === 'CERTIFICATE_EXPIRED' ? 'Certificado Expirado' : 'Certificado No Configurado'}
+              </h3>
+              <p className="text-xs text-amber-500/80 mb-4">
+                {error === 'CERTIFICATE_EXPIRED' 
+                  ? 'Su certificado digital ha expirado. Renueve su certificado para continuar recibiendo notificaciones gubernamentales.'
+                  : 'Configure su certificado digital para acceder a las notificaciones de DEHú y otros servicios gubernamentales.'}
+              </p>
+              <button
+                onClick={() => setShowCertManager(true)}
+                className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Shield size={16} />
+                ⚠️ Configurar Certificado Digital
+              </button>
+            </div>
+          </div>
+        </div>
+        {showCertManager && <CertificateManager onClose={() => { setShowCertManager(false); loadNotifications(); }} />}
+      </>
+    );
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="mb-8 animate-fadeIn">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-ai-900/20 rounded-full border border-ai-500/30 text-ai-500">
+            <Scale size={20} />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest">Inteligencia Regulatoria & Legal</h2>
+            <p className="text-[10px] text-stone-500">Monitorización de normativas activas</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12 bg-stone-900/50 border border-stone-800 rounded-lg">
+          <Loader2 className="animate-spin text-ai-500" size={32} />
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (alerts.length === 0 && !error) {
+    return (
+      <div className="mb-8 animate-fadeIn">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-ai-900/20 rounded-full border border-ai-500/30 text-ai-500">
+            <Scale size={20} />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest">Inteligencia Regulatoria & Legal</h2>
+            <p className="text-[10px] text-stone-500">Monitorización de normativas activas</p>
+          </div>
+        </div>
+        <div className="bg-stone-900/50 border border-stone-800 rounded-lg p-6 text-center">
+          <p className="text-sm text-stone-400">No hay notificaciones nuevas en la DEHú</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state (genérico)
+  if (error && error !== 'CERT_MISSING' && error !== 'CERTIFICATE_EXPIRED') {
+    return (
+      <div className="mb-8 animate-fadeIn">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-ai-900/20 rounded-full border border-ai-500/30 text-ai-500">
+            <Scale size={20} />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest">Inteligencia Regulatoria & Legal</h2>
+            <p className="text-[10px] text-stone-500">Monitorización de normativas activas</p>
+          </div>
+        </div>
+        <div className="bg-red-950/30 border border-red-800/50 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="text-red-500" size={20} />
+          <p className="text-xs text-red-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-8 animate-fadeIn">

@@ -65,15 +65,28 @@ export const CertificateManager: React.FC<Props> = ({ onClose }) => {
       setCertificate(cert);
       setSuccess('Certificado subido y encriptado correctamente');
       setSelectedFile(null);
+      
+      // SEGURIDAD: Limpiar contraseña de memoria inmediatamente después de enviar
       setPassword('');
+      // Forzar limpieza adicional del input
+      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+      if (passwordInput) passwordInput.value = '';
+      
       setShowPasswordInput(false);
       
       // Limpiar input file
       const fileInput = document.getElementById('cert-file-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
+      
+      // Limpiar contraseña del estado después de un delay para asegurar limpieza
+      setTimeout(() => {
+        setPassword('');
+      }, 100);
     } catch (err: any) {
       console.error('Error uploading certificate:', err);
       setError(err.message || 'Error al subir el certificado');
+      // Limpiar contraseña incluso en caso de error
+      setPassword('');
     } finally {
       setIsUploading(false);
     }
@@ -258,7 +271,7 @@ export const CertificateManager: React.FC<Props> = ({ onClose }) => {
                     {isUploading ? (
                       <>
                         <Loader2 className="animate-spin" size={18} />
-                        <span>Procesando y Encriptando...</span>
+                        <span>Encriptando y Guardando...</span>
                       </>
                     ) : selectedFile ? (
                       <>
