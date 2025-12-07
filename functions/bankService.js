@@ -2,6 +2,7 @@ const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require('firebase-admin');
+const crypto = require('crypto');
 
 // Inicializar Firestore si no está inicializado
 if (admin.apps.length === 0) {
@@ -12,6 +13,82 @@ const db = admin.firestore();
 // SECRETS
 const plaidClientId = defineSecret('PLAID_CLIENT_ID');
 const plaidSecret = defineSecret('PLAID_SECRET');
+const encryptionKey = defineSecret('PLAID_ENCRYPTION_KEY'); // Clave de 32 bytes (256 bits) para AES-256
+
+// ============================================
+// ENCRYPTION UTILITIES
+// ============================================
+/**
+ * Encripta un access token de Plaid usando AES-256-GCM
+ * @param {string} plaintext - Token en texto plano
+ * @returns {string} - Token encriptado en formato base64 (iv:encryptedData:authTag)
+ */
+function encryptToken(plaintext) {
+  if (!plaintext) return null;
+  
+  try {
+    const key = Buffer.from(encryptionKey.value(), 'hex');
+    if (key.length !== 32) {
+      throw new Error('Encryption key must be 32 bytes (64 hex characters)');
+    }
+    
+    const iv = crypto.randomBytes(16); // Initialization Vector
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    
+    let encrypted = cipher.update(plaintext, 'utf8', 'base64');
+    encrypted += cipher.final('base64');
+    const authTag = cipher.getAuthTag();
+    
+    // Formato: iv:encryptedData:authTag (todo en base64)
+    return `${iv.toString('base64')}:${encrypted}:${authTag.toString('base64')}`;
+  } catch (error) {
+    console.error('[Encryption] Error encrypting token:', error);
+    throw new Error('Failed to encrypt access token');
+  }
+}
+
+/**
+ * Desencripta un access token de Plaid
+ * @param {string} encryptedData - Token encriptado en formato base64 (iv:encryptedData:authTag)
+ * @returns {string} - Token en texto plano
+ */
+function decryptToken(encryptedData) {
+  if (!encryptedData) return null;
+  
+  try {
+    // Si el token no está encriptado (formato legacy), devolverlo tal cual
+    // Esto permite migración gradual
+    if (!encryptedData.includes(':')) {
+      console.warn('[Decryption] Token appears to be unencrypted (legacy format)');
+      return encryptedData;
+    }
+    
+    const key = Buffer.from(encryptionKey.value(), 'hex');
+    if (key.length !== 32) {
+      throw new Error('Encryption key must be 32 bytes (64 hex characters)');
+    }
+    
+    const parts = encryptedData.split(':');
+    if (parts.length !== 3) {
+      throw new Error('Invalid encrypted token format');
+    }
+    
+    const iv = Buffer.from(parts[0], 'base64');
+    const encrypted = parts[1];
+    const authTag = Buffer.from(parts[2], 'base64');
+    
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+    
+    let decrypted = decipher.update(encrypted, 'base64', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return decrypted;
+  } catch (error) {
+    console.error('[Decryption] Error decrypting token:', error);
+    throw new Error('Failed to decrypt access token');
+  }
+}
 
 // Helper para inicializar cliente con secretos
 const getPlaidClient = () => {
@@ -73,8 +150,9 @@ exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaid
  * 2. EXCHANGE PUBLIC TOKEN
  * Intercambia el token público (frontend) por un access_token permanente y lo guarda.
  * CONVERTED TO onRequest FOR MANUAL CORS
+ * SECURITY: Access tokens se encriptan antes de guardar en Firestore
  */
-exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
+exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, encryptionKey], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -113,9 +191,12 @@ exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, p
     }
 
     // Guardar conexión en Firestore (Array Union)
-    console.log("Saving to Firestore Array...");
+    // SECURITY: Encriptar access token antes de guardar
+    console.log("Encrypting access token before saving...");
+    const encryptedToken = encryptToken(accessToken);
+    
     const newConnection = {
-      accessToken,
+      accessToken: encryptedToken, // Token encriptado
       itemId,
       institutionId,
       createdAt: Date.now(),
@@ -141,8 +222,9 @@ exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, p
  * 3. GET BANK DATA (REFRESH BALANCE)
  * Usa los tokens guardados para obtener el saldo total y transacciones recientes.
  * CONVERTED TO onRequest FOR MANUAL CORS
+ * SECURITY: Desencripta tokens antes de usarlos con Plaid API
  */
-exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
+exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, encryptionKey], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -187,11 +269,18 @@ exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecr
 
     // Iterar sobre conexiones
     for (const account of bankAccounts) {
-      const { accessToken } = account;
+      const { accessToken: encryptedToken } = account;
       
-      if (!accessToken) continue;
+      if (!encryptedToken) continue;
 
       try {
+        // SECURITY: Desencriptar token antes de usarlo
+        const accessToken = decryptToken(encryptedToken);
+        if (!accessToken) {
+          console.warn(`[getBankData] Failed to decrypt token for item ${account.itemId}`);
+          continue;
+        }
+        
         // 2. Manejo de Errores de API
         const balanceResponse = await plaidClient.accountsBalanceGet({
           access_token: accessToken,
@@ -235,8 +324,9 @@ exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecr
 /**
  * 4. DISCONNECT BANK
  * Elimina los tokens de acceso de la base de datos y (opcionalmente) de Plaid.
+ * SECURITY: Desencripta tokens antes de eliminarlos de Plaid
  */
-exports.disconnectBank = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
+exports.disconnectBank = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, encryptionKey], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -273,7 +363,11 @@ exports.disconnectBank = onRequest({ cors: true, secrets: [plaidClientId, plaidS
     for (const account of bankAccounts) {
         if (account.accessToken) {
             try {
-                await plaidClient.itemRemove({ access_token: account.accessToken });
+                // SECURITY: Desencriptar token antes de usarlo
+                const decryptedToken = decryptToken(account.accessToken);
+                if (decryptedToken) {
+                    await plaidClient.itemRemove({ access_token: decryptedToken });
+                }
             } catch (err) {
                 console.warn(`Failed to remove item from Plaid: ${err.message}`);
             }
@@ -282,10 +376,12 @@ exports.disconnectBank = onRequest({ cors: true, secrets: [plaidClientId, plaidS
 
     // 2. Remove from Plaid (Legacy Subcollection)
     for (const doc of subSnapshot.docs) {
-        const { accessToken } = doc.data();
-        if (accessToken) {
+        const { accessToken: encryptedToken } = doc.data();
+        if (encryptedToken) {
             try {
-                await plaidClient.itemRemove({ access_token: accessToken });
+                // SECURITY: Desencriptar token antes de usarlo (o usar tal cual si es legacy)
+                const decryptedToken = decryptToken(encryptedToken) || encryptedToken;
+                await plaidClient.itemRemove({ access_token: decryptedToken });
             } catch (err) {
                 console.warn(`Failed to remove legacy item from Plaid: ${err.message}`);
             }

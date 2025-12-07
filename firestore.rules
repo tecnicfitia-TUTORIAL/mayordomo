@@ -1,8 +1,68 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // ============================================
+    // USERS COLLECTION - STRICT OWNERSHIP RULES
+    // ============================================
+    // Un usuario solo puede acceder a su propio documento
+    match /users/{userId} {
+      // Verificar que el usuario autenticado coincide con el userId del documento
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // BLOQUEAR listado de todos los usuarios
+      // No permitir queries que puedan listar múltiples usuarios
+      allow list: if false; // Nunca permitir listar usuarios
+      
+      // ============================================
+      // SUBCOLLECTIONS - STRICT OWNERSHIP
+      // ============================================
+      
+      // Secrets de MFA (TOTP)
+      match /secrets/{secretId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow list: if false; // No permitir listar secrets
+      }
+      
+      // Contexto de usuario
+      match /user_context/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow list: if request.auth != null && request.auth.uid == userId; // Permitir listar solo el propio contexto
+      }
+      
+      // Obligaciones de vida
+      match /life_obligations/{obligationId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow list: if request.auth != null && request.auth.uid == userId; // Permitir listar solo las propias obligaciones
+      }
+      
+      // Logs de auditoría (Append-Only)
+      match /audit_logs/{logId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update, delete: if false; // Logs son inmutables después de crearse
+        allow list: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Mandatos legales
+      match /legal_mandates/{mandateId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow list: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Conexiones bancarias (legacy subcollection - si existe)
+      match /bank_connections/{connectionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow list: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // ============================================
+    // DENY ALL OTHER COLLECTIONS
+    // ============================================
+    // Cualquier otra colección que no esté explícitamente permitida queda bloqueada
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

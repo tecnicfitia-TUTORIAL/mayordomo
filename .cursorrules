@@ -1,0 +1,180 @@
+# Project Context
+Stack: React (Vite), Firebase (Auth, Firestore, Storage), Cloud Run, Stripe, Vercel.
+
+# Architecture Rules
+- Frontend: Deployed on Vercel.
+- Backend Logic: Uses Cloud Run (stateless containers) and Firebase Functions.
+- Database: Firestore (NoSQL). Use modular SDK (v9+) syntax (e.g., `doc`, `getDoc`, `collection`).
+- Auth: Firebase Auth.
+- Payment: Stripe Webhooks are handled in `/api/webhooks`.
+- Environment: Secrets are loaded from `.env.local`.
+
+# Workflow & Style
+- Always use TypeScript with strict typing.
+- When modifying backend, check if Firestore security rules need updates.
+- Use `npm run dev` to start the local server (Vite).
+
+# ============================================
+# USER ROLES & LAYOUT HIERARCHY
+# ============================================
+# CRITICAL: Understanding where to place features based on user type
+
+## Layout Files & Responsibilities
+
+### 1. MAIN USER LAYOUT (Authenticated Users)
+**File**: `ClientApp.tsx`
+- **Purpose**: Main application container for ALL authenticated users (Demo, User, Admin)
+- **Location**: Root level, rendered at route `/app/*`
+- **Props**: Receives `isDemoMode?: boolean` from `App.tsx`
+- **Key Logic**:
+  - Checks `profile.role === 'ADMIN'` to determine which layout to show
+  - If `profile.role === 'ADMIN' || originalAdminProfile`: Shows Admin Layout
+  - Otherwise: Shows Standard User Layout
+- **Standard User View** (lines 748-1026):
+  - Sidebar: Custom user sidebar with profile info, settings menu (lines 748-854)
+  - Header: Tab navigation (RESUMEN, Centinela, Hogar, Concierge, Coach, Familia)
+  - Content: Tab-based content area with SmartDashboard and PillarDetailView
+  - Chat: Overlay chat interface (optional)
+- **Where to add USER features**: 
+  - Add to tab content area (lines 968-1022)
+  - Add to user sidebar (lines 748-854)
+  - Add to header actions (lines 900-925)
+
+### 2. ADMIN LAYOUT
+**Files**: 
+- `ClientApp.tsx` (rendering logic, lines 737-882)
+- `components/AdminSidebar.tsx` (sidebar component)
+- `components/AdminDashboard.tsx` (main dashboard)
+- `components/SupportDashboard.tsx` (support console)
+- `components/EvolutionInfinitoPanel.tsx` (evolution console)
+
+**Purpose**: Administrative interface for system management
+**Key Logic**:
+- Rendered when: `(profile.role === 'ADMIN' || originalAdminProfile) && adminView === 'MENU'`
+- Admin Sidebar: Vertical sidebar (20px width) with navigation icons
+- Admin Dashboard: Main menu with simulation tools, support console, evolution panel
+- Admin Views: Controlled by `adminView` state ('MENU' | 'SIMULATION' | 'SUPPORT' | 'EVOLUTION')
+- **Where to add ADMIN features**:
+  - Add to `AdminDashboard.tsx` for new admin tools
+  - Add to `AdminSidebar.tsx` for new navigation items
+  - Add conditional rendering in `ClientApp.tsx` (lines 860-882) for new admin views
+
+### 3. AUTHENTICATION & ROUTING
+**File**: `App.tsx`
+- **Purpose**: Top-level routing and authentication state management
+- **Routes**:
+  - `/` → `LandingPage` (if not authenticated) or redirect to `/app` (if authenticated)
+  - `/app/*` → `ClientApp` (if authenticated) or redirect to `/` (if not authenticated)
+- **Demo Mode Activation**: 
+  - Triggered by URL param `?mode=demo` (line 24)
+  - Sets `isDemoMode={true}` and passes to `ClientApp`
+  - Bypasses Firebase Auth, creates demo profile directly
+
+## User Role Types & Differences
+
+### DEMO MODE (`isDemoMode === true`)
+**Characteristics**:
+- Activated via URL: `/app?mode=demo` or `/app?mode=demo` from LandingPage
+- Profile: Hardcoded demo profile (lines 243-258 in ClientApp.tsx)
+  - `role: 'USER'` (not ADMIN)
+  - `subscriptionTier: SubscriptionTier.VIP` (full access for demo)
+  - `uid: 'demo_user'`, `email: 'demo@mayordomo.app'`
+- Restrictions:
+  - Shows `DemoModal` when attempting real actions (lines 705-707, 783-784, 983-984)
+  - Settings button disabled (line 802)
+  - Logout redirects to `/` (line 843)
+  - Visual indicator: Gold bar at top (line 647)
+- **Where to add Demo restrictions**: 
+  - Check `isDemoMode` prop before allowing actions
+  - Call `setShowDemoModal(true)` to show restriction modal
+  - Example pattern: `if (isDemoMode) { setShowDemoModal(true); return; }`
+
+### USER ROLE (`profile.role === 'USER'` or undefined)
+**Characteristics**:
+- Default role for new users (set in `LoginScreen.tsx` line 98)
+- Profile stored in Firestore collection `users/{uid}`
+- Access: Standard user interface with tabs and pillars
+- Sidebar: Full user sidebar with profile, settings menu, chat, logout
+- **Where to add USER features**:
+  - Add to standard user view section (lines 885-1026 in ClientApp.tsx)
+  - Add to tab content areas
+  - Add to user sidebar menu
+
+### ADMIN ROLE (`profile.role === 'ADMIN'`)
+**Characteristics**:
+- Determined at profile creation/login (checked in `LoginScreen.tsx` or `Onboarding.tsx`)
+- Email-based check: `ADMIN_EMAILS` constant in `constants.ts` (line 554: `['admin@mayordomo.app']`)
+- Access: Admin sidebar + Admin Dashboard
+- Special Features:
+  - Can simulate other subscription tiers (lines 432-446)
+  - Access to SupportDashboard (line 872)
+  - Access to EvolutionInfinitoPanel (line 876)
+  - Can switch between admin menu and user simulation view
+- **Admin Simulation Mode**:
+  - When admin selects a tier to simulate: `adminView` changes to 'SIMULATION'
+  - Shows standard user view but with admin controls visible
+  - Original admin profile stored in `originalAdminProfile` state
+  - Exit simulation returns to admin menu
+- **Where to add ADMIN features**:
+  - Add to `AdminDashboard.tsx` for new admin tools
+  - Add conditional checks: `(profile.role === 'ADMIN' || originalAdminProfile)`
+  - Add new admin views in `ClientApp.tsx` (lines 860-882)
+
+## Role Detection & Routing Logic
+
+### Profile Loading Flow:
+1. **App.tsx** (lines 47-70): Checks Firebase Auth state
+2. **ClientApp.tsx** (lines 240-327): Loads profile from:
+   - localStorage (if exists)
+   - Firestore `users/{uid}` (if localStorage empty but auth exists)
+   - Creates demo profile (if `isDemoMode === true`)
+3. **LoginScreen.tsx** (lines 78-127): Creates new profile with `role: 'USER'` by default
+4. **Onboarding.tsx** (lines 86-124): Updates profile but doesn't change role (role set at login)
+
+### Admin Detection:
+- Check: `profile.role && profile.role.toUpperCase() === 'ADMIN'` (line 392)
+- On admin login: Redirects to Support Dashboard (line 394)
+- Route guard: Prevents non-admins from accessing admin views (lines 365-376)
+
+### Demo Detection:
+- Check: `isDemoMode` prop (passed from App.tsx)
+- Visual indicator: Gold bar at top of screen (line 647)
+- Action blocking: Check `isDemoMode` before allowing real actions
+
+## Component Placement Guidelines
+
+### For USER-ONLY Features:
+- Place in: `ClientApp.tsx` standard user view (lines 885-1026)
+- Conditional: `{!(profile.role === 'ADMIN' || originalAdminProfile) || adminView === 'SIMULATION'}`
+- Examples: Tab navigation, user sidebar, SmartDashboard, PillarDetailView
+
+### For ADMIN-ONLY Features:
+- Place in: `AdminDashboard.tsx` or new admin component
+- Conditional: `{(profile.role === 'ADMIN' || originalAdminProfile) && adminView === 'MENU'}`
+- Examples: User simulation, support console, evolution panel, system logs
+
+### For DEMO-RESTRICTED Features:
+- Check: `if (isDemoMode) { setShowDemoModal(true); return; }`
+- Show: `DemoModal` component (imported in ClientApp.tsx line 26)
+- Examples: Settings changes, real data connections, payment actions
+
+### For ALL USERS (including Demo):
+- Place in: Shared areas of ClientApp.tsx
+- No role check needed
+- Examples: Chat interface, notifications, theme preferences
+
+## Key State Variables in ClientApp.tsx
+
+- `profile: UserProfile | null` - Current user profile (determines role)
+- `isDemoMode: boolean` - Demo mode flag (from props)
+- `adminView: 'MENU' | 'SIMULATION' | 'SUPPORT' | 'EVOLUTION'` - Current admin view
+- `isSimulating: boolean` - Whether admin is simulating a user tier
+- `originalAdminProfile: UserProfile | null` - Original admin profile during simulation
+- `showSupportDashboard: boolean` - Admin support console visibility
+
+## Security Notes
+
+- Route protection: `ClientApp.tsx` line 365-376 guards admin routes
+- Role check: Always use `profile.role && profile.role.toUpperCase() === 'ADMIN'` (case-insensitive)
+- Demo restrictions: Always check `isDemoMode` before allowing data persistence
+- Profile sanitization: `sanitizeProfileForStorage()` removes sensitive data before localStorage (lines 49-82)
