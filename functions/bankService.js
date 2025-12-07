@@ -14,6 +14,7 @@ const db = admin.firestore();
 const plaidClientId = defineSecret('PLAID_CLIENT_ID');
 const plaidSecret = defineSecret('PLAID_SECRET');
 const encryptionKey = defineSecret('PLAID_ENCRYPTION_KEY'); // Clave de 32 bytes (256 bits) para AES-256
+const plaidEnv = defineSecret('PLAID_ENV'); // 'sandbox', 'development', o 'production'
 
 // ============================================
 // ENCRYPTION UTILITIES
@@ -90,10 +91,36 @@ function decryptToken(encryptedData) {
   }
 }
 
-// Helper para inicializar cliente con secretos
+// ============================================
+// PLAID CLIENT CONFIGURATION (PRODUCTION READY)
+// ============================================
+/**
+ * Helper para inicializar cliente Plaid con entorno configurable
+ * SECURITY: Encripta tokens antes de guardar en Firestore
+ */
 const getPlaidClient = () => {
+  // Determinar entorno de Plaid
+  const env = (plaidEnv.value() || 'sandbox').toLowerCase();
+  
+  let basePath;
+  switch (env) {
+    case 'production':
+      basePath = PlaidEnvironments.production;
+      console.log('[Plaid] Using PRODUCTION environment');
+      break;
+    case 'development':
+      basePath = PlaidEnvironments.development;
+      console.log('[Plaid] Using DEVELOPMENT environment');
+      break;
+    case 'sandbox':
+    default:
+      basePath = PlaidEnvironments.sandbox;
+      console.log('[Plaid] Using SANDBOX environment');
+      break;
+  }
+
   const configuration = new Configuration({
-    basePath: PlaidEnvironments.sandbox, // Forzamos Sandbox para desarrollo
+    basePath: basePath,
     baseOptions: {
       headers: {
         'PLAID-CLIENT-ID': plaidClientId.value(),
@@ -101,6 +128,7 @@ const getPlaidClient = () => {
       },
     },
   });
+  
   return new PlaidApi(configuration);
 };
 
@@ -108,7 +136,7 @@ const getPlaidClient = () => {
  * 1. CREATE LINK TOKEN
  * Genera un token temporal para inicializar el widget de Plaid en el frontend.
  */
-exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret], maxInstances: 10 }, async (req, res) => {
+exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, plaidEnv], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -152,7 +180,7 @@ exports.createLinkToken = onRequest({ cors: true, secrets: [plaidClientId, plaid
  * CONVERTED TO onRequest FOR MANUAL CORS
  * SECURITY: Access tokens se encriptan antes de guardar en Firestore
  */
-exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, encryptionKey], maxInstances: 10 }, async (req, res) => {
+exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, encryptionKey, plaidEnv], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -224,7 +252,7 @@ exports.exchangePublicToken = onRequest({ cors: true, secrets: [plaidClientId, p
  * CONVERTED TO onRequest FOR MANUAL CORS
  * SECURITY: Desencripta tokens antes de usarlos con Plaid API
  */
-exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, encryptionKey], maxInstances: 10 }, async (req, res) => {
+exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, encryptionKey, plaidEnv], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -326,7 +354,7 @@ exports.getBankData = onRequest({ cors: true, secrets: [plaidClientId, plaidSecr
  * Elimina los tokens de acceso de la base de datos y (opcionalmente) de Plaid.
  * SECURITY: Desencripta tokens antes de eliminarlos de Plaid
  */
-exports.disconnectBank = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, encryptionKey], maxInstances: 10 }, async (req, res) => {
+exports.disconnectBank = onRequest({ cors: true, secrets: [plaidClientId, plaidSecret, encryptionKey, plaidEnv], maxInstances: 10 }, async (req, res) => {
   // MANUAL CORS FIX
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');

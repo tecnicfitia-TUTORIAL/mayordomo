@@ -54,6 +54,18 @@ exports.createLinkToken = bankService.createLinkToken;
 exports.exchangePublicToken = bankService.exchangePublicToken;
 exports.getBankData = bankService.getBankData;
 exports.disconnectBank = bankService.disconnectBank;
+
+// Export Government Services
+const governmentService = require('./governmentService');
+exports.getDEHUNotifications = governmentService.getDEHUNotifications;
+exports.getAEATStatus = governmentService.getAEATStatus;
+exports.getDGTPoints = governmentService.getDGTPoints;
+
+// Export Certificate Services
+const certificateService = require('./certificateService');
+exports.uploadUserCertificate = certificateService.uploadUserCertificate;
+exports.getUserCertificateStatus = certificateService.getUserCertificateStatus;
+exports.deleteUserCertificate = certificateService.deleteUserCertificate;
 exports.getGmailAuthUrl = emailService.getGmailAuthUrl;
 exports.validateGmailConnection = emailService.validateGmailConnection;
 exports.scanGmail = emailService.scanGmail;
