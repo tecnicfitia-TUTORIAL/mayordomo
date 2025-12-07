@@ -176,7 +176,7 @@ function parsePKCS12(certBuffer, password) {
  * Valida, encripta y guarda en Firestore
  */
 exports.uploadUserCertificate = onRequest(
-  { cors: true, secrets: [encryptionKey], maxInstances: 10, maxRequestSize: '10MB', invoker: 'public' },
+  { cors: true, secrets: [encryptionKey], maxInstances: 10, maxRequestSize: '10MB' },
   async (req, res) => {
     // MANUAL CORS FIX
     res.set('Access-Control-Allow-Origin', '*');
@@ -318,7 +318,7 @@ exports.uploadUserCertificate = onRequest(
  * Obtiene el estado del certificado del usuario (sin datos sensibles)
  */
 exports.getUserCertificateStatus = onRequest(
-  { cors: true, secrets: [encryptionKey], maxInstances: 10, invoker: 'public' },
+  { cors: true, secrets: [encryptionKey], maxInstances: 10 },
   async (req, res) => {
     // MANUAL CORS FIX
     res.set('Access-Control-Allow-Origin', '*');
@@ -393,7 +393,7 @@ exports.getUserCertificateStatus = onRequest(
  * Elimina el certificado del usuario
  */
 exports.deleteUserCertificate = onRequest(
-  { cors: true, secrets: [encryptionKey], maxInstances: 10, invoker: 'public' },
+  { cors: true, secrets: [encryptionKey], maxInstances: 10 },
   async (req, res) => {
     // MANUAL CORS FIX
     res.set('Access-Control-Allow-Origin', '*');
